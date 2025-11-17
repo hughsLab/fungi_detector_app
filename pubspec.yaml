@@ -1,0 +1,30 @@
+name: realtime_detection_app
+description: "RealtimeDetectionApp - YOLOv11 TFLite realtime object detection"
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  camera: ^0.10.5+9
+  tflite_flutter:
+    path: third_party/tflite_flutter
+  image: ^3.3.0
+  yaml: ^3.1.2
+  permission_handler: ^11.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/models/
+
+dependency_overrides:
+  tflite_flutter:
+    path: third_party/tflite_flutter
