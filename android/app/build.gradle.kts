@@ -10,6 +10,10 @@ android {
     compileSdk = 36
     ndkVersion = "27.0.12077973"
 
+    buildFeatures {
+        prefab = true
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -28,6 +32,14 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
+        externalNativeBuild {
+            cmake {
+                arguments += listOf("-DANDROID_STL=c++_shared")
+            }
+        }
     }
 
     buildTypes {
@@ -37,8 +49,20 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
 }
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation("org.tensorflow:tensorflow-lite:2.16.1")
+    implementation("org.tensorflow:tensorflow-lite-gpu:2.16.1")
 }

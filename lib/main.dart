@@ -1,15 +1,16 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image/image.dart' as imglib;
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:yaml/yaml.dart';
+
+import 'native/native_yolo_engine.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,9 +40,10 @@ class DetectionPage extends StatefulWidget {
 
 class _DetectionPageState extends State<DetectionPage> with WidgetsBindingObserver {
   CameraController? _camera;
-  Interpreter? _interpreter;
+  NativeYoloEngine? _nativeEngine;
+  StreamSubscription<List<NativeDetection>>? _nativeDetectionsSub;
+  StreamSubscription<String>? _nativeErrorSub;
   List<String> _labels = [];
-  bool _isBusy = false;
   bool _isInitialized = false;
   bool _hasPermission = false;
 
@@ -77,14 +79,13 @@ class _DetectionPageState extends State<DetectionPage> with WidgetsBindingObserv
         _hasPermission = true;
       });
       _labels = await _loadClassNamesFromYaml('assets/models/metadata.yaml');
-      await _loadInterpreter('assets/models/yolo11n_float32.tflite');
+      await _initializeNativeEngine();
       await _initCamera();
 
       setState(() {
         _isInitialized = true;
       });
 
-      _dumpModelInfo();
       await _startImageStream();
     } catch (e, stack) {
       debugPrint('Initialization error: $e');
@@ -116,11 +117,13 @@ class _DetectionPageState extends State<DetectionPage> with WidgetsBindingObserv
 
     List<String> names = [];
     if (doc is YamlMap) {
+      _updateInputShapeFromMetadata(doc);
       dynamic namesNode;
       if (doc.containsKey('names')) {
         namesNode = doc['names'];
       } else if (doc.containsKey('model') && doc['model'] is YamlMap) {
         final modelNode = doc['model'] as YamlMap;
+        _updateInputShapeFromMetadata(modelNode);
         if (modelNode.containsKey('names')) {
           namesNode = modelNode['names'];
         }
@@ -144,21 +147,79 @@ class _DetectionPageState extends State<DetectionPage> with WidgetsBindingObserv
     return names;
   }
 
-  Future<void> _loadInterpreter(String assetPath) async {
-    final options = InterpreterOptions()..threads = 2;
-    _interpreter = await Interpreter.fromAsset(assetPath, options: options);
-
-    final inputTensor = _interpreter!.getInputTensors().first;
-    final shape = inputTensor.shape;
-    if (shape.length == 4) {
-      if (shape[3] == 3) {
-        _inputHeight = shape[1];
-        _inputWidth = shape[2];
-      } else if (shape[1] == 3) {
-        _inputHeight = shape[2];
-        _inputWidth = shape[3];
+  void _updateInputShapeFromMetadata(YamlMap source) {
+    final imgsz = source['imgsz'];
+    if (imgsz is YamlList && imgsz.isNotEmpty) {
+      if (imgsz.length >= 2 && imgsz[0] is num && imgsz[1] is num) {
+        _inputWidth = (imgsz[0] as num).toInt();
+        _inputHeight = (imgsz[1] as num).toInt();
+      } else if (imgsz.length == 1 && imgsz[0] is num) {
+        final size = (imgsz[0] as num).toInt();
+        _inputWidth = size;
+        _inputHeight = size;
       }
     }
+  }
+
+  Future<void> _initializeNativeEngine() async {
+    final modelPath = await _materializeAsset('assets/models/yolo11n_float32.tflite', 'yolo11n_float32.tflite');
+    final config = NativeYoloConfig(
+      modelPath: modelPath,
+      inputWidth: _inputWidth,
+      inputHeight: _inputHeight,
+      threads: Platform.isAndroid ? 3 : 2,
+      maxDetections: 150,
+      confidenceThreshold: _confThreshold,
+      iouThreshold: _nmsIoUThreshold,
+      useGpu: true,
+      allowFp16: true,
+    );
+
+    await _nativeDetectionsSub?.cancel();
+    await _nativeErrorSub?.cancel();
+    await _nativeEngine?.dispose();
+
+    _nativeEngine = await NativeYoloEngine.create(config);
+    _nativeDetectionsSub = _nativeEngine!.detections.listen(_onNativeDetections);
+    _nativeErrorSub = _nativeEngine!.errors.listen((msg) {
+      debugPrint('Native engine warning: $msg');
+    });
+  }
+
+  Future<String> _materializeAsset(String assetPath, String fileName) async {
+    final directory = await getApplicationSupportDirectory();
+    final file = File('${directory.path}/$fileName');
+    final data = await rootBundle.load(assetPath);
+    if (!await file.exists() || (await file.length()) != data.lengthInBytes) {
+      if (!await file.parent.exists()) {
+        await file.parent.create(recursive: true);
+      }
+      await file.writeAsBytes(data.buffer.asUint8List(), flush: true);
+    }
+    return file.path;
+  }
+
+  void _onNativeDetections(List<NativeDetection> detections) {
+    if (!mounted) return;
+    setState(() {
+      _detections = detections
+          .map(
+            (d) => Detection(
+              box: Rect.fromLTRB(d.left, d.top, d.right, d.bottom),
+              score: d.score,
+              classIndex: d.classIndex,
+              label: _labelForIndex(d.classIndex),
+            ),
+          )
+          .toList();
+    });
+  }
+
+  String _labelForIndex(int index) {
+    if (index >= 0 && index < _labels.length) {
+      return _labels[index];
+    }
+    return 'id_$index';
   }
 
   Future<void> _initCamera() async {
@@ -185,288 +246,18 @@ class _DetectionPageState extends State<DetectionPage> with WidgetsBindingObserv
     _previewSize = orientation == Orientation.portrait ? Size(pv.height, pv.width) : Size(pv.width, pv.height);
   }
 
-  void _dumpModelInfo() {
-    final inputs = _interpreter!.getInputTensors();
-    final outputs = _interpreter!.getOutputTensors();
-
-    debugPrint('Model Inputs:');
-    for (final t in inputs) {
-      debugPrint(' - name=${t.name}, shape=${t.shape}, type=${t.type}');
-    }
-    debugPrint('Model Outputs:');
-    for (final t in outputs) {
-      debugPrint(' - name=${t.name}, shape=${t.shape}, type=${t.type}');
-    }
-  }
-
   Future<void> _startImageStream() async {
-    if (!(_camera?.value.isInitialized ?? false)) return;
+    final controller = _camera;
+    final engine = _nativeEngine;
+    if (controller == null || engine == null || !controller.value.isInitialized) {
+      return;
+    }
 
-    await _camera!.startImageStream((CameraImage image) async {
-      if (_isBusy || !mounted || _interpreter == null) return;
-      _isBusy = true;
-
-      try {
-        await _processCameraImage(image);
-      } catch (e, stack) {
-        debugPrint('Processing error: $e');
-        debugPrintStack(stackTrace: stack);
-      } finally {
-        _isBusy = false;
-      }
+    await controller.startImageStream((CameraImage image) {
+      if (!mounted) return;
+      final rotationDegrees = controller.description.sensorOrientation;
+      engine.submitCameraImage(image, rotationDegrees: rotationDegrees);
     });
-  }
-
-  Future<void> _processCameraImage(CameraImage camImage) async {
-    final rgb = _convertYUV420ToImage(camImage);
-
-    final rotationDegrees = _camera?.description.sensorOrientation ?? 0;
-    imglib.Image oriented = rgb;
-    if (rotationDegrees != 0) {
-      oriented = imglib.copyRotate(rgb, rotationDegrees);
-    }
-
-    final inputBuffer = _preprocess(oriented, _inputWidth, _inputHeight);
-
-    final outputTensor = _interpreter!.getOutputTensors().first;
-    final outputShape = outputTensor.shape;
-    final outputBuffer = Float32List(outputShape.reduce((value, element) => value * element));
-
-    _interpreter!.run(
-      inputBuffer.buffer.asUint8List(),
-      outputBuffer.buffer.asUint8List(),
-    );
-
-    final detections = _decodeDetections(outputBuffer, outputShape, inputW: _inputWidth, inputH: _inputHeight);
-    final filtered = _nonMaxSuppression(detections, iouThreshold: _nmsIoUThreshold);
-
-    if (!mounted) return;
-    setState(() {
-      _detections = filtered;
-    });
-  }
-
-  Float32List _preprocess(imglib.Image rgb, int targetW, int targetH) {
-    final resized = imglib.copyResize(
-      rgb,
-      width: targetW,
-      height: targetH,
-      interpolation: imglib.Interpolation.linear,
-    );
-    final buffer = Float32List(targetW * targetH * 3);
-    int index = 0;
-    for (int y = 0; y < targetH; y++) {
-      for (int x = 0; x < targetW; x++) {
-        final pixel = resized.getPixel(x, y);
-        buffer[index++] = imglib.getRed(pixel) / 255.0;
-        buffer[index++] = imglib.getGreen(pixel) / 255.0;
-        buffer[index++] = imglib.getBlue(pixel) / 255.0;
-      }
-    }
-    return buffer;
-  }
-
-  List<Detection> _decodeDetections(
-    Float32List output,
-    List<int> shape, {
-    required int inputW,
-    required int inputH,
-  }) {
-    if (shape.length != 3 && shape.length != 4) {
-      return [];
-    }
-
-    int numBoxes;
-    int channels;
-    bool channelsFirst;
-
-    if (shape.length == 3) {
-      final a = shape[1];
-      final b = shape[2];
-      if (a <= b && (a == 84 || a == 85 || (a > 4 && a < 200))) {
-        channels = a;
-        numBoxes = b;
-        channelsFirst = true;
-      } else {
-        channels = b;
-        numBoxes = a;
-        channelsFirst = false;
-      }
-    } else {
-      final a = shape[2];
-      final b = shape[3];
-      if (a == 84 || a == 85 || (a > 4 && a < 200)) {
-        channels = a;
-        numBoxes = b;
-        channelsFirst = true;
-      } else {
-        channels = b;
-        numBoxes = a;
-        channelsFirst = false;
-      }
-    }
-
-    final hasObjectness = (channels >= 85);
-    final numClasses = hasObjectness ? channels - 5 : channels - 4;
-
-    final List<Detection> results = [];
-    for (int i = 0; i < numBoxes; i++) {
-      double cx, cy, w, h, objectness = 1.0;
-      int bestClass = -1;
-      double bestScore = -double.infinity;
-
-      if (channelsFirst) {
-        final base = i;
-        cx = output[0 * numBoxes + base];
-        cy = output[1 * numBoxes + base];
-        w = output[2 * numBoxes + base];
-        h = output[3 * numBoxes + base];
-        if (hasObjectness) {
-          objectness = output[4 * numBoxes + base];
-        }
-        final classStart = hasObjectness ? 5 : 4;
-        for (int c = 0; c < numClasses; c++) {
-          final clsScore = output[(classStart + c) * numBoxes + base];
-          if (clsScore > bestScore) {
-            bestScore = clsScore;
-            bestClass = c;
-          }
-        }
-      } else {
-        final base = i * channels;
-        cx = output[base + 0];
-        cy = output[base + 1];
-        w = output[base + 2];
-        h = output[base + 3];
-        if (hasObjectness) {
-          objectness = output[base + 4];
-        }
-        final classStart = hasObjectness ? 5 : 4;
-        for (int c = 0; c < numClasses; c++) {
-          final clsScore = output[base + classStart + c];
-          if (clsScore > bestScore) {
-            bestScore = clsScore;
-            bestClass = c;
-          }
-        }
-      }
-
-      final score = hasObjectness ? (objectness * bestScore) : bestScore;
-      if (score < _confThreshold) {
-        continue;
-      }
-
-      final isNormalized = (cx.abs() <= 1.5 && cy.abs() <= 1.5 && w <= 1.5 && h <= 1.5);
-      final double scaleX = isNormalized ? inputW.toDouble() : 1.0;
-      final double scaleY = isNormalized ? inputH.toDouble() : 1.0;
-
-      final double bx = cx * scaleX - (w * scaleX) / 2.0;
-      final double by = cy * scaleY - (h * scaleY) / 2.0;
-      final double bw = w * scaleX;
-      final double bh = h * scaleY;
-
-      final double left = bx.clamp(0.0, inputW.toDouble());
-      final double top = by.clamp(0.0, inputH.toDouble());
-      final double right = (bx + bw).clamp(0.0, inputW.toDouble());
-      final double bottom = (by + bh).clamp(0.0, inputH.toDouble());
-
-      results.add(
-        Detection(
-          box: Rect.fromLTRB(left, top, right, bottom),
-          score: score,
-          classIndex: bestClass,
-          label: bestClass >= 0 && bestClass < _labels.length ? _labels[bestClass] : 'id_$bestClass',
-        ),
-      );
-    }
-
-    return results;
-  }
-
-  List<Detection> _nonMaxSuppression(List<Detection> detections, {double iouThreshold = 0.45}) {
-    final dets = List<Detection>.from(detections)..sort((a, b) => b.score.compareTo(a.score));
-    final List<Detection> keep = [];
-
-    while (dets.isNotEmpty) {
-      final best = dets.removeAt(0);
-      keep.add(best);
-
-      dets.removeWhere((d) {
-        if (d.classIndex != best.classIndex) return false;
-        final iou = _iou(best.box, d.box);
-        return iou > iouThreshold;
-      });
-    }
-    return keep;
-  }
-
-  double _iou(Rect a, Rect b) {
-    final double interLeft = math.max(a.left, b.left);
-    final double interTop = math.max(a.top, b.top);
-    final double interRight = math.min(a.right, b.right);
-    final double interBottom = math.min(a.bottom, b.bottom);
-
-    final double interW = math.max(0.0, interRight - interLeft);
-    final double interH = math.max(0.0, interBottom - interTop);
-    final double interArea = interW * interH;
-
-    final double areaA = (a.width) * (a.height);
-    final double areaB = (b.width) * (b.height);
-
-    final double union = areaA + areaB - interArea + 1e-5;
-    return interArea / union;
-  }
-
-  imglib.Image _convertYUV420ToImage(CameraImage image) {
-    final int width = image.width;
-    final int height = image.height;
-
-    final Plane yPlane = image.planes[0];
-    final Plane uPlane = image.planes[1];
-    final Plane vPlane = image.planes[2];
-
-    final int yRowStride = yPlane.bytesPerRow;
-    final int uvRowStride = uPlane.bytesPerRow;
-    final int uvPixelStride = uPlane.bytesPerPixel ?? 2;
-
-    final Uint8List yBytes = yPlane.bytes;
-    final Uint8List uBytes = uPlane.bytes;
-    final Uint8List vBytes = vPlane.bytes;
-
-    final Uint8List rgbBytes = Uint8List(width * height * 3);
-
-    int rgbIndex = 0;
-    for (int y = 0; y < height; y++) {
-      final int yRow = yRowStride * y;
-      final int uvRow = uvRowStride * (y >> 1);
-
-      for (int x = 0; x < width; x++) {
-        final int yIndex = yRow + x;
-        final int uvIndex = uvRow + (x >> 1) * uvPixelStride;
-
-        final int yp = yBytes[yIndex] & 0xFF;
-        final int up = uBytes[uvIndex] & 0xFF;
-        final int vp = vBytes[uvIndex] & 0xFF;
-
-        final double yf = yp.toDouble();
-        final double uf = up.toDouble() - 128.0;
-        final double vf = vp.toDouble() - 128.0;
-
-        int r = (yf + 1.402 * vf).round();
-        int g = (yf - 0.344136 * uf - 0.714136 * vf).round();
-        int b = (yf + 1.772 * uf).round();
-
-        r = r.clamp(0, 255);
-        g = g.clamp(0, 255);
-        b = b.clamp(0, 255);
-
-        rgbBytes[rgbIndex++] = r;
-        rgbBytes[rgbIndex++] = g;
-        rgbBytes[rgbIndex++] = b;
-      }
-    }
-
-    return imglib.Image.fromBytes(width, height, rgbBytes, format: imglib.Format.rgb);
   }
 
   @override
@@ -485,9 +276,12 @@ class _DetectionPageState extends State<DetectionPage> with WidgetsBindingObserv
         await _camera!.dispose();
       }
     } catch (_) {}
+    await _nativeDetectionsSub?.cancel();
+    await _nativeErrorSub?.cancel();
     try {
-      _interpreter?.close();
+      await _nativeEngine?.dispose();
     } catch (_) {}
+    _nativeEngine = null;
   }
 
   @override
