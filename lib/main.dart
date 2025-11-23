@@ -38,7 +38,8 @@ class DetectionPage extends StatefulWidget {
   State<DetectionPage> createState() => _DetectionPageState();
 }
 
-class _DetectionPageState extends State<DetectionPage> with WidgetsBindingObserver {
+class _DetectionPageState extends State<DetectionPage>
+    with WidgetsBindingObserver {
   CameraController? _camera;
   NativeYoloEngine? _nativeEngine;
   StreamSubscription<List<NativeDetection>>? _nativeDetectionsSub;
@@ -81,11 +82,6 @@ class _DetectionPageState extends State<DetectionPage> with WidgetsBindingObserv
       _labels = await _loadClassNamesFromYaml('assets/models/metadata.yaml');
       await _initializeNativeEngine();
       await _initCamera();
-
-      setState(() {
-        _isInitialized = true;
-      });
-
       await _startImageStream();
     } catch (e, stack) {
       debugPrint('Initialization error: $e');
@@ -132,11 +128,12 @@ class _DetectionPageState extends State<DetectionPage> with WidgetsBindingObserv
       if (namesNode is YamlList) {
         names = namesNode.map((e) => e.toString()).toList();
       } else if (namesNode is YamlMap) {
-        final sortedKeys = namesNode.keys
-            .where((k) => k is int || int.tryParse(k.toString()) != null)
-            .map((k) => k is int ? k : int.parse(k.toString()))
-            .toList()
-          ..sort();
+        final sortedKeys =
+            namesNode.keys
+                .where((k) => k is int || int.tryParse(k.toString()) != null)
+                .map((k) => k is int ? k : int.parse(k.toString()))
+                .toList()
+              ..sort();
         names = sortedKeys.map((k) => namesNode[k].toString()).toList();
       }
     }
@@ -162,7 +159,10 @@ class _DetectionPageState extends State<DetectionPage> with WidgetsBindingObserv
   }
 
   Future<void> _initializeNativeEngine() async {
-    final modelPath = await _materializeAsset('assets/models/yolo11n_float32.tflite', 'yolo11n_float32.tflite');
+    final modelPath = await _materializeAsset(
+      'assets/models/yolo11n_float32.tflite',
+      'yolo11n_float32.tflite',
+    );
     final config = NativeYoloConfig(
       modelPath: modelPath,
       inputWidth: _inputWidth,
@@ -180,7 +180,9 @@ class _DetectionPageState extends State<DetectionPage> with WidgetsBindingObserv
     await _nativeEngine?.dispose();
 
     _nativeEngine = await NativeYoloEngine.create(config);
-    _nativeDetectionsSub = _nativeEngine!.detections.listen(_onNativeDetections);
+    _nativeDetectionsSub = _nativeEngine!.detections.listen(
+      _onNativeDetections,
+    );
     _nativeErrorSub = _nativeEngine!.errors.listen((msg) {
       debugPrint('Native engine warning: $msg');
     });
@@ -224,32 +226,53 @@ class _DetectionPageState extends State<DetectionPage> with WidgetsBindingObserv
 
   Future<void> _initCamera() async {
     final cameras = await availableCameras();
-    CameraDescription selected = cameras.firstWhere(
+    final selected = cameras.firstWhere(
       (c) => c.lensDirection == CameraLensDirection.back,
-      orElse: () => cameras.isNotEmpty ? cameras.first : throw Exception('No camera found'),
+      orElse: () => cameras.isNotEmpty
+          ? cameras.first
+          : throw Exception('No camera found'),
     );
 
-    _isFrontCamera = selected.lensDirection == CameraLensDirection.front;
+    if (_camera != null) {
+      await _disposeCameraController(silently: true);
+    }
 
-    _camera = CameraController(
+    final controller = CameraController(
       selected,
       ResolutionPreset.medium,
       enableAudio: false,
       imageFormatGroup: ImageFormatGroup.yuv420,
     );
 
-    await _camera!.initialize();
+    await controller.initialize();
 
-    final pv = _camera!.value.previewSize!;
-    final ui.FlutterView view = WidgetsBinding.instance.platformDispatcher.views.first;
+    final pv = controller.value.previewSize!;
+    final ui.FlutterView view =
+        WidgetsBinding.instance.platformDispatcher.views.first;
     final orientation = MediaQueryData.fromView(view).orientation;
-    _previewSize = orientation == Orientation.portrait ? Size(pv.height, pv.width) : Size(pv.width, pv.height);
+    final newPreviewSize = orientation == Orientation.portrait
+        ? Size(pv.height, pv.width)
+        : Size(pv.width, pv.height);
+
+    if (!mounted) {
+      await controller.dispose();
+      return;
+    }
+
+    setState(() {
+      _camera = controller;
+      _isFrontCamera = selected.lensDirection == CameraLensDirection.front;
+      _previewSize = newPreviewSize;
+      _isInitialized = true;
+    });
   }
 
   Future<void> _startImageStream() async {
     final controller = _camera;
     final engine = _nativeEngine;
-    if (controller == null || engine == null || !controller.value.isInitialized) {
+    if (controller == null ||
+        engine == null ||
+        !controller.value.isInitialized) {
       return;
     }
 
@@ -260,6 +283,34 @@ class _DetectionPageState extends State<DetectionPage> with WidgetsBindingObserv
     });
   }
 
+  Future<void> _disposeCameraController({bool silently = false}) async {
+    final controller = _camera;
+    if (controller == null) {
+      return;
+    }
+
+    try {
+      if (controller.value.isInitialized &&
+          controller.value.isStreamingImages) {
+        await controller.stopImageStream();
+      }
+    } catch (_) {}
+
+    if (!silently && mounted) {
+      setState(() {
+        _camera = null;
+        _isInitialized = false;
+      });
+    } else {
+      _camera = null;
+      _isInitialized = false;
+    }
+
+    try {
+      await controller.dispose();
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -268,14 +319,7 @@ class _DetectionPageState extends State<DetectionPage> with WidgetsBindingObserv
   }
 
   Future<void> _stopStreamAndDispose() async {
-    try {
-      if (_camera != null) {
-        if (_camera!.value.isStreamingImages) {
-          await _camera!.stopImageStream();
-        }
-        await _camera!.dispose();
-      }
-    } catch (_) {}
+    await _disposeCameraController(silently: true);
     await _nativeDetectionsSub?.cancel();
     await _nativeErrorSub?.cancel();
     try {
@@ -286,15 +330,9 @@ class _DetectionPageState extends State<DetectionPage> with WidgetsBindingObserv
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final CameraController? controller = _camera;
-    if (controller == null || !controller.value.isInitialized) {
-      return;
-    }
-
     if (state == AppLifecycleState.inactive) {
-      controller.stopImageStream();
-      controller.dispose();
-    } else if (state == AppLifecycleState.resumed) {
+      unawaited(_disposeCameraController());
+    } else if (state == AppLifecycleState.resumed && _hasPermission) {
       _initCamera().then((_) => _startImageStream());
     }
   }
@@ -302,6 +340,7 @@ class _DetectionPageState extends State<DetectionPage> with WidgetsBindingObserv
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(title: const Text('Realtime Detection')),
       body: _errorMessage != null
           ? Center(
@@ -315,31 +354,47 @@ class _DetectionPageState extends State<DetectionPage> with WidgetsBindingObserv
               ),
             )
           : !_hasPermission
-              ? const Center(child: CircularProgressIndicator())
-              : !_isInitialized || _camera == null
-                  ? const Center(child: CircularProgressIndicator())
-                  : LayoutBuilder(
-                      builder: (context, constraints) {
-                        final preview = _camera!;
-                        final size = constraints.biggest;
+          ? const Center(child: CircularProgressIndicator())
+          : !_isInitialized || _camera == null
+          ? const Center(child: CircularProgressIndicator())
+          : LayoutBuilder(
+              builder: (context, _) {
+                final preview = _camera!;
 
-                        return Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            CameraPreview(preview),
-                            CustomPaint(
-                              painter: DetectionPainter(
-                                detections: _detections,
-                                inputSize: Size(_inputWidth.toDouble(), _inputHeight.toDouble()),
-                                previewSize: _previewSize,
-                                canvasSize: size,
-                                isFrontCamera: _isFrontCamera,
+                return ColoredBox(
+                  color: Colors.black,
+                  child: SizedBox.expand(
+                    child: ClipRect(
+                      child: FittedBox(
+                        fit: BoxFit.cover,
+                        child: SizedBox(
+                          width: _previewSize.width,
+                          height: _previewSize.height,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              SizedBox.expand(child: CameraPreview(preview)),
+                              CustomPaint(
+                                painter: DetectionPainter(
+                                  detections: _detections,
+                                  inputSize: Size(
+                                    _inputWidth.toDouble(),
+                                    _inputHeight.toDouble(),
+                                  ),
+                                  previewSize: _previewSize,
+                                  canvasSize: _previewSize,
+                                  isFrontCamera: _isFrontCamera,
+                                ),
                               ),
-                            ),
-                          ],
-                        );
-                      },
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
+                  ),
+                );
+              },
+            ),
     );
   }
 }
@@ -419,7 +474,11 @@ class DetectionPainter extends CustomPainter {
       final label = '${d.label} ${(d.score * 100).toStringAsFixed(1)}%';
       textPainter.text = TextSpan(
         text: label,
-        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
       );
       textPainter.layout();
 
@@ -431,7 +490,10 @@ class DetectionPainter extends CustomPainter {
         textPainter.height + textPadding,
       );
       canvas.drawRect(textBgRect, bgPaint);
-      textPainter.paint(canvas, Offset(textBgRect.left + textPadding, textBgRect.top + textPadding / 2));
+      textPainter.paint(
+        canvas,
+        Offset(textBgRect.left + textPadding, textBgRect.top + textPadding / 2),
+      );
     }
   }
 
