@@ -1,0 +1,141 @@
+[
+  {
+    "speciesId": "amanita-muscaria",
+    "scientificName": "Amanita muscaria",
+    "commonName": "Fly agaric",
+    "keyFeatures": [
+      "Bright red to orange cap with white warts",
+      "White, free gills and a skirt-like ring",
+      "Bulbous base with veil remnants",
+      "Often found under pine or birch"
+    ],
+    "similarSpeciesIds": [
+      "amanita-phalloides",
+      "amanita-crocea"
+    ],
+    "distributionNote": "Introduced species recorded in cooler, forested areas of Tasmania.",
+    "thumbnailAssetPath": null
+  },
+  {
+    "speciesId": "amanita-phalloides",
+    "scientificName": "Amanita phalloides",
+    "commonName": "Death cap",
+    "keyFeatures": [
+      "Olive to yellow-green cap with smooth surface",
+      "White gills and ring, sac-like volva at base",
+      "Fruity or sweet odor in mature specimens"
+    ],
+    "similarSpeciesIds": [
+      "amanita-muscaria",
+      "amanita-crocea"
+    ],
+    "distributionNote": "Scattered records in Tasmania; treat any Amanita with extreme caution.",
+    "thumbnailAssetPath": null
+  },
+  {
+    "speciesId": "amanita-crocea",
+    "scientificName": "Amanita crocea",
+    "commonName": "Saffron ringless amanita",
+    "keyFeatures": [
+      "Orange-brown cap with striated margins",
+      "Ringless stem with bulbous base",
+      "White gills and fragile flesh"
+    ],
+    "similarSpeciesIds": [
+      "amanita-muscaria",
+      "amanita-phalloides"
+    ],
+    "distributionNote": "Occurs in damp woodlands across Tasmania in season.",
+    "thumbnailAssetPath": null
+  },
+  {
+    "speciesId": "mycena-interrupta",
+    "scientificName": "Mycena interrupta",
+    "commonName": "Pixie's parasol",
+    "keyFeatures": [
+      "Tiny, vivid blue caps on thin stems",
+      "Grows in clusters on rotting wood",
+      "Moist, translucent cap margins"
+    ],
+    "similarSpeciesIds": [
+      "cortinarius-violaceus"
+    ],
+    "distributionNote": "Common in cool, wet forests and temperate rainforests in Tasmania.",
+    "thumbnailAssetPath": null
+  },
+  {
+    "speciesId": "cortinarius-violaceus",
+    "scientificName": "Cortinarius violaceus",
+    "commonName": "Violet webcap",
+    "keyFeatures": [
+      "Deep violet cap and stem with velvety texture",
+      "Rusty-brown spores as it matures",
+      "Web-like cortina when young"
+    ],
+    "similarSpeciesIds": [
+      "mycena-interrupta"
+    ],
+    "distributionNote": "Recorded in eucalypt forests and damp gullies in Tasmania.",
+    "thumbnailAssetPath": null
+  },
+  {
+    "speciesId": "lactarius-deliciosus",
+    "scientificName": "Lactarius deliciosus",
+    "commonName": "Saffron milk cap",
+    "keyFeatures": [
+      "Orange cap with concentric rings",
+      "Orange latex that stains green",
+      "Decurrent gills and brittle flesh"
+    ],
+    "similarSpeciesIds": [
+      "lactarius-sanguifluus"
+    ],
+    "distributionNote": "Common under pine plantations and mixed forests in Tasmania.",
+    "thumbnailAssetPath": null
+  },
+  {
+    "speciesId": "lactarius-sanguifluus",
+    "scientificName": "Lactarius sanguifluus",
+    "commonName": "Bloody milk cap",
+    "keyFeatures": [
+      "Reddish-orange cap with darker blotches",
+      "Latex turns wine-red on exposure",
+      "Grows under pines in autumn"
+    ],
+    "similarSpeciesIds": [
+      "lactarius-deliciosus"
+    ],
+    "distributionNote": "Less common in Tasmania; reported in pine plantations.",
+    "thumbnailAssetPath": null
+  },
+  {
+    "speciesId": "ganoderma-australe",
+    "scientificName": "Ganoderma australe",
+    "commonName": "Southern bracket",
+    "keyFeatures": [
+      "Large, woody bracket with reddish-brown lacquered surface",
+      "White pore surface underneath",
+      "Persists on dead or living hardwoods"
+    ],
+    "similarSpeciesIds": [
+      "ganoderma-lucidum"
+    ],
+    "distributionNote": "Widespread across Tasmania on fallen logs and tree bases.",
+    "thumbnailAssetPath": null
+  },
+  {
+    "speciesId": "ganoderma-lucidum",
+    "scientificName": "Ganoderma lucidum",
+    "commonName": "Reishi",
+    "keyFeatures": [
+      "Shiny, varnished cap with reddish tones",
+      "White to tan pore surface",
+      "Tough, woody texture"
+    ],
+    "similarSpeciesIds": [
+      "ganoderma-australe"
+    ],
+    "distributionNote": "Occasional records in Tasmania; confirm carefully with experts.",
+    "thumbnailAssetPath": null
+  }
+]

@@ -322,7 +322,18 @@ class _DetectionPageState extends State<DetectionPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(title: const Text('Realtime Detection')),
+      appBar: AppBar(
+        title: const Text('Realtime Detection'),
+        actions: [
+          IconButton(
+            tooltip: 'Save Observation',
+            icon: const Icon(Icons.bookmark_add),
+            onPressed: () {
+              Navigator.of(context).pushNamed('/save-observation');
+            },
+          ),
+        ],
+      ),
       body: _errorMessage != null
           ? Center(
               child: Padding(

@@ -45,6 +45,15 @@ class SignInScreen extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          SizedBox(
+                            height: 110,
+                            width: 110,
+                            child: Image.asset(
+                              'assets/images/logo.png',
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                          const SizedBox(height: 22),
                           const Text(
                             'Sign In',
                             style: TextStyle(
@@ -96,7 +105,7 @@ class SignInScreen extends StatelessWidget {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: () => _goTo(context, '/'),
+                              onPressed: () => _goTo(context, '/home'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: buttonColor,
                                 foregroundColor: Colors.white,
@@ -109,6 +118,27 @@ class SignInScreen extends StatelessWidget {
                                 'Sign In',
                                 style: TextStyle(
                                   fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton(
+                              onPressed: () => _goTo(context, '/home'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                side: const BorderSide(color: Colors.white70),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: const StadiumBorder(),
+                              ),
+                              child: const Text(
+                                'Continue Without Account',
+                                style: TextStyle(
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
