@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
@@ -353,38 +352,75 @@ class _DetectionPageState extends State<DetectionPage>
                   : LayoutBuilder(
                       builder: (context, _) {
                         final preview = _camera!;
+                        final Detection? topDetection = _detections.isEmpty
+                            ? null
+                            : _detections.reduce(
+                                (a, b) => a.score >= b.score ? a : b,
+                              );
+                        final String? topLabel = topDetection == null
+                            ? null
+                            : '${topDetection.label} ${(topDetection.score * 100).toStringAsFixed(1)}%';
 
                         return ColoredBox(
                           color: Colors.black,
                           child: SizedBox.expand(
-                            child: ClipRect(
-                              child: FittedBox(
-                                fit: BoxFit.cover,
-                                child: SizedBox(
-                                  width: _previewSize.width,
-                                  height: _previewSize.height,
-                                  child: Stack(
-                                    fit: StackFit.expand,
-                                    children: [
-                                      SizedBox.expand(
-                                        child: CameraPreview(preview),
-                                      ),
-                                      CustomPaint(
-                                        painter: DetectionPainter(
-                                          detections: _detections,
-                                          inputSize: Size(
-                                            _inputWidth.toDouble(),
-                                            _inputHeight.toDouble(),
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                ClipRect(
+                                  child: FittedBox(
+                                    fit: BoxFit.cover,
+                                    child: SizedBox(
+                                      width: _previewSize.width,
+                                      height: _previewSize.height,
+                                      child: Stack(
+                                        fit: StackFit.expand,
+                                        children: [
+                                          SizedBox.expand(
+                                            child: CameraPreview(preview),
                                           ),
-                                          previewSize: _previewSize,
-                                          canvasSize: _previewSize,
-                                          isFrontCamera: _isFrontCamera,
-                                        ),
+                                          CustomPaint(
+                                            painter: DetectionPainter(
+                                              detections: _detections,
+                                              inputSize: Size(
+                                                _inputWidth.toDouble(),
+                                                _inputHeight.toDouble(),
+                                              ),
+                                              previewSize: _previewSize,
+                                              canvasSize: _previewSize,
+                                              isFrontCamera: _isFrontCamera,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 ),
-                              ),
+                                SafeArea(
+                                  child: Align(
+                                    alignment: Alignment.topCenter,
+                                    child: topLabel == null
+                                        ? const SizedBox.shrink()
+                                        : Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                              vertical: 2,
+                                            ),
+                                            color: Colors.black.withValues(
+                                              alpha: 0.5,
+                                            ),
+                                            child: Text(
+                                              topLabel,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         );
@@ -430,15 +466,6 @@ class DetectionPainter extends CustomPainter {
       ..strokeWidth = 2.0
       ..color = Colors.greenAccent;
 
-    final Paint bgPaint = Paint()
-      ..style = PaintingStyle.fill
-      ..color = Colors.black.withValues(alpha: 0.5);
-
-    final TextPainter textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-      maxLines: 1,
-    );
-
     final double scaleXPreview = previewSize.width / inputSize.width;
     final double scaleYPreview = previewSize.height / inputSize.height;
 
@@ -465,30 +492,6 @@ class DetectionPainter extends CustomPainter {
 
       final rect = Rect.fromLTRB(left, top, right, bottom);
       canvas.drawRect(rect, boxPaint);
-
-      final label = '${d.label} ${(d.score * 100).toStringAsFixed(1)}%';
-      textPainter.text = TextSpan(
-        text: label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      );
-      textPainter.layout();
-
-      final double textPadding = 4.0;
-      final Rect textBgRect = Rect.fromLTWH(
-        rect.left,
-        math.max(0.0, rect.top - textPainter.height - 2),
-        textPainter.width + textPadding * 2,
-        textPainter.height + textPadding,
-      );
-      canvas.drawRect(textBgRect, bgPaint);
-      textPainter.paint(
-        canvas,
-        Offset(textBgRect.left + textPadding, textBgRect.top + textPadding / 2),
-      );
     }
   }
 
