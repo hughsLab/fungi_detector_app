@@ -2,12 +2,42 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <limits>
+#include <sstream>
+#include <string>
 #include <utility>
+
+#if defined(__ANDROID__)
+#include <android/log.h>
+#endif
 
 namespace yolo {
 
 namespace {
+
+constexpr char kLogTag[] = "YoloEngine";
+
+void LogMessage(const std::string& message) {
+#if defined(__ANDROID__)
+  __android_log_print(ANDROID_LOG_INFO, kLogTag, "%s", message.c_str());
+#else
+  std::fprintf(stderr, "%s\n", message.c_str());
+#endif
+}
+
+std::string ShapeToString(const std::vector<int>& shape) {
+  std::ostringstream out;
+  out << '[';
+  for (size_t i = 0; i < shape.size(); ++i) {
+    if (i > 0) {
+      out << ',';
+    }
+    out << shape[i];
+  }
+  out << ']';
+  return out.str();
+}
 
 float Clamp(float value, float minimum, float maximum) {
   if (value < minimum) return minimum;
@@ -39,95 +69,88 @@ std::vector<YoloDetection> DecodeDetections(const std::vector<float>& tensor,
     return empty;
   }
   if (shape.size() != 3 && shape.size() != 4) {
+    LogMessage("decode: unsupported outputTensorShape=" + ShapeToString(shape));
     return empty;
   }
 
-  int num_boxes = 0;
   int channels = 0;
-  bool channels_first = false;
+  int num_pred = 0;
 
   if (shape.size() == 3) {
-    const int dim1 = shape[1];
-    const int dim2 = shape[2];
-    if (dim1 <= dim2 && (dim1 == 84 || dim1 == 85 || (dim1 > 4 && dim1 < 200))) {
-      channels = dim1;
-      num_boxes = dim2;
-      channels_first = true;
-    } else {
-      channels = dim2;
-      num_boxes = dim1;
-      channels_first = false;
-    }
-  } else {
-    const int dim2 = shape[2];
-    const int dim3 = shape[3];
-    if (dim2 == 84 || dim2 == 85 || (dim2 > 4 && dim2 < 200)) {
-      channels = dim2;
-      num_boxes = dim3;
-      channels_first = true;
-    } else {
-      channels = dim3;
-      num_boxes = dim2;
-      channels_first = false;
-    }
+    channels = shape[1];
+    num_pred = shape[2];
+  } else if (shape.size() == 4 && shape[1] == 1) {
+    channels = shape[2];
+    num_pred = shape[3];
+  } else if (shape.size() == 4 && shape[3] == 1) {
+    channels = shape[1];
+    num_pred = shape[2];
   }
 
-  if (channels <= 0 || num_boxes <= 0) {
+  if (channels < 5 || num_pred <= 0) {
+    std::ostringstream log;
+    log << "decode: invalid outputTensorShape=" << ShapeToString(shape)
+        << " channels=" << channels << " numPred=" << num_pred;
+    LogMessage(log.str());
     return empty;
   }
 
-  const bool has_objectness = channels >= 85;
-  const int num_classes = has_objectness ? channels - 5 : channels - 4;
-  std::vector<YoloDetection> candidates;
-  candidates.reserve(std::min(num_boxes, options.max_detections * 2));
+  const int num_classes = channels - 4;
+  if (num_classes <= 0) {
+    std::ostringstream log;
+    log << "decode: invalid numClasses=" << num_classes
+        << " from outputTensorShape=" << ShapeToString(shape);
+    LogMessage(log.str());
+    return empty;
+  }
 
-  for (int i = 0; i < num_boxes; ++i) {
+  const size_t expected_size = static_cast<size_t>(channels) * static_cast<size_t>(num_pred);
+  if (tensor.size() < expected_size) {
+    std::ostringstream log;
+    log << "decode: outputTensor too small (size=" << tensor.size()
+        << " expected>=" << expected_size << ") for outputTensorShape="
+        << ShapeToString(shape);
+    LogMessage(log.str());
+    return empty;
+  }
+
+  const int loop_pred_count = num_pred;
+  {
+    std::ostringstream log;
+    log << "decode: outputTensorShape=" << ShapeToString(shape)
+        << " channels=" << channels
+        << " numPred=" << num_pred
+        << " numClasses=" << num_classes
+        << " loopBound=" << loop_pred_count;
+    LogMessage(log.str());
+  }
+
+  std::vector<YoloDetection> candidates;
+  candidates.reserve(std::min(loop_pred_count, options.max_detections * 2));
+
+  for (int i = 0; i < loop_pred_count; ++i) {
     float cx = 0.0f;
     float cy = 0.0f;
     float w = 0.0f;
     float h = 0.0f;
-    float objectness = 1.0f;
     int best_class = -1;
     float best_score = -std::numeric_limits<float>::infinity();
 
-    if (channels_first) {
-      const int base = i;
-      cx = tensor[0 * num_boxes + base];
-      cy = tensor[1 * num_boxes + base];
-      w = tensor[2 * num_boxes + base];
-      h = tensor[3 * num_boxes + base];
-      if (has_objectness) {
-        objectness = tensor[4 * num_boxes + base];
-      }
-      const int class_start = has_objectness ? 5 : 4;
-      for (int c = 0; c < num_classes; ++c) {
-        const float cls_score = tensor[(class_start + c) * num_boxes + base];
-        if (cls_score > best_score) {
-          best_score = cls_score;
-          best_class = c;
-        }
-      }
-    } else {
-      const int base = i * channels;
-      cx = tensor[base + 0];
-      cy = tensor[base + 1];
-      w = tensor[base + 2];
-      h = tensor[base + 3];
-      if (has_objectness) {
-        objectness = tensor[base + 4];
-      }
-      const int class_start = has_objectness ? 5 : 4;
-      for (int c = 0; c < num_classes; ++c) {
-        const float cls_score = tensor[base + class_start + c];
-        if (cls_score > best_score) {
-          best_score = cls_score;
-          best_class = c;
-        }
+    const int base = i;
+    cx = tensor[0 * loop_pred_count + base];
+    cy = tensor[1 * loop_pred_count + base];
+    w = tensor[2 * loop_pred_count + base];
+    h = tensor[3 * loop_pred_count + base];
+    const int class_start = 4;
+    for (int c = 0; c < num_classes; ++c) {
+      const float cls_score = tensor[(class_start + c) * loop_pred_count + base];
+      if (cls_score > best_score) {
+        best_score = cls_score;
+        best_class = c;
       }
     }
 
-    const float combined_score = has_objectness ? objectness * best_score : best_score;
-    if (combined_score < options.confidence_threshold) {
+    if (best_score < options.confidence_threshold) {
       continue;
     }
 
@@ -146,7 +169,7 @@ std::vector<YoloDetection> DecodeDetections(const std::vector<float>& tensor,
     det.top = Clamp(by, 0.0f, static_cast<float>(options.input_height));
     det.right = Clamp(bx + bw, 0.0f, static_cast<float>(options.input_width));
     det.bottom = Clamp(by + bh, 0.0f, static_cast<float>(options.input_height));
-    det.score = combined_score;
+    det.score = best_score;
     det.class_index = best_class;
     candidates.push_back(det);
   }

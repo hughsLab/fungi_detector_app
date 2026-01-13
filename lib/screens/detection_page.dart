@@ -61,6 +61,7 @@ class _DetectionPageState extends State<DetectionPage>
         _hasPermission = true;
       });
       _labels = await _loadClassNamesFromYaml('assets/models/metadata.yaml');
+      debugPrint('labels.length: ${_labels.length}');
       await _initializeNativeEngine();
       await _initCamera();
       await _startImageStream();

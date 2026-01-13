@@ -57,6 +57,7 @@ class YoloEngine {
   TfLiteDelegate* gpu_delegate_ = nullptr;
   std::vector<uint8_t> rgb_buffer_;
   std::vector<uint8_t> rotated_buffer_;
+  bool logged_shapes_ = false;
 };
 
 }  // namespace yolo

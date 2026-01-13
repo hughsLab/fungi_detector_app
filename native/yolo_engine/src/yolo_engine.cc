@@ -1,7 +1,9 @@
 #include "yolo_engine.h"
 
 #include <algorithm>
+#include <cstdio>
 #include <memory>
+#include <sstream>
 #include <utility>
 #include <vector>
 
@@ -9,6 +11,7 @@
 #include "postprocess.h"
 
 #if defined(__ANDROID__)
+#include <android/log.h>
 #include "tensorflow_lite/delegate.h"
 #include "tensorflow_lite/delegate_options.h"
 #elif defined(__APPLE__)
@@ -17,6 +20,34 @@
 #include "tensorflow_lite/metal_delegate.h"
 #endif
 #endif
+
+namespace {
+
+#if defined(__ANDROID__)
+constexpr char kLogTag[] = "YoloEngine";
+void LogMessage(const std::string& message) {
+  __android_log_print(ANDROID_LOG_INFO, kLogTag, "%s", message.c_str());
+}
+#else
+void LogMessage(const std::string& message) {
+  std::fprintf(stderr, "%s\n", message.c_str());
+}
+#endif
+
+void LogShape(const char* label, const std::vector<int>& shape) {
+  std::ostringstream out;
+  out << label << ": [";
+  for (size_t i = 0; i < shape.size(); ++i) {
+    if (i > 0) {
+      out << ',';
+    }
+    out << shape[i];
+  }
+  out << ']';
+  LogMessage(out.str());
+}
+
+}  // namespace
 
 namespace yolo {
 
@@ -168,6 +199,15 @@ bool YoloEngine::InvokeInterpreter(const std::vector<float>& input_buffer,
   if (input_tensor == nullptr) {
     return false;
   }
+  if (!logged_shapes_) {
+    const int input_dims = TfLiteTensorNumDims(input_tensor);
+    std::vector<int> input_shape;
+    input_shape.reserve(input_dims);
+    for (int i = 0; i < input_dims; ++i) {
+      input_shape.push_back(TfLiteTensorDim(input_tensor, i));
+    }
+    LogShape("inputTensorShape", input_shape);
+  }
   const size_t input_bytes = input_buffer.size() * sizeof(float);
   if (TfLiteTensorCopyFromBuffer(input_tensor, input_buffer.data(), input_bytes) != kTfLiteOk) {
     return false;
@@ -189,6 +229,10 @@ bool YoloEngine::InvokeInterpreter(const std::vector<float>& input_buffer,
     output_size *= static_cast<size_t>(dim);
   }
   output_buffer->resize(output_size);
+  if (!logged_shapes_) {
+    LogShape("outputTensorShape", *output_shape);
+    logged_shapes_ = true;
+  }
   if (TfLiteTensorCopyToBuffer(output_tensor, output_buffer->data(),
                                output_size * sizeof(float)) != kTfLiteOk) {
     return false;

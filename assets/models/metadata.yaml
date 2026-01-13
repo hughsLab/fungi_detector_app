@@ -1,7 +1,7 @@
-description: Ultralytics YOLO11n model trained on /usr/src/ultralytics/ultralytics/cfg/datasets/coco.yaml
+description: Ultralytics YOLO11n model trained on D:\Inatrualist_170_species_global\dataset.yaml
 author: Ultralytics
-date: '2025-01-27T22:57:15.342648'
-version: 8.3.68
+date: '2026-01-13T12:01:42.756921'
+version: 8.3.160
 license: AGPL-3.0 License (https://ultralytics.com/license)
 docs: https://docs.ultralytics.com
 stride: 32
@@ -11,89 +11,147 @@ imgsz:
 - 320
 - 320
 names:
-  0: person
-  1: bicycle - 自行车 (zìxíngchē)
-  2: car
-    汽车 (qìchē)
-  3: motorcycle
-  4: airplane
-  5: bus
-  6: train
-  7: truck
-  8: boat
-  9: traffic light
-  10: fire hydrant
-  11: stop sign
-  12: parking meter
-  13: bench
-  14: bird
-  15: cat
-  16: dog
-  17: horse
-  18: sheep
-  19: cow
-  20: elephant
-  21: bear
-  22: zebra
-  23: giraffe
-  24: backpack
-  25: umbrella
-  26: handbag
-  27: tie
-  28: suitcase
-  29: frisbee
-  30: skis
-  31: snowboard
-  32: sports ball
-  33: kite
-  34: baseball bat
-  35: baseball glove
-  36: skateboard
-  37: surfboard
-  38: tennis racket
-  39: bottle
-  40: wine glass
-  41: cup
-  42: fork
-  43: knife
-  44: spoon
-  45: bowl
-  46: banana
-  47: apple
-  48: sandwich
-  49: orange
-  50: broccoli
-  51: carrot
-  52: hot dog
-  53: pizza
-  54: donut
-  55: cake
-  56: chair
-  57: couch
-  58: potted plant
-  59: bed
-  60: dining table
-  61: toilet
-  62: tv
-  63: laptop
-  64: mouse
-  65: remote
-  66: keyboard
-  67: cell phone
-  68: microwave
-  69: oven
-  70: toaster
-  71: sink
-  72: refrigerator
-  73: book
-  74: clock
-  75: vase
-  76: scissors
-  77: teddy bear
-  78: hair drier
-  79: toothbrush
+  0: Aleuria aurantia
+  1: Amanita muscaria
+  2: Amanita xanthocephala
+  3: Anthracophyllum archeri
+  4: Apioperdon pyriforme
+  5: Armillaria luteobubalina
+  6: Armillaria novae-zelandiae
+  7: Ascocoryne sarcoides
+  8: Aseroe rubra
+  9: Aurantiporus pulcherrimus
+  10: Austropaxillus infundibuliformis
+  11: Baeomyces heteromorphus
+  12: Boletellus obscurecoccineus
+  13: Byssomerulius corium
+  14: Calycina citrina
+  15: Cantharellus concinnus
+  16: Cerrena zonata
+  17: Chlorociboria aeruginascens
+  18: Cladia aggregata
+  19: Cladonia confusa
+  20: Cladonia fimbriata
+  21: Cladonia floerkeana
+  22: Cladonia pleurota
+  23: Cladonia scabriuscula
+  24: Clavaria zollingeri
+  25: Clavulina subrugosa
+  26: Clavulinopsis amoena
+  27: Clavulinopsis corallinorosacea
+  28: Clavulinopsis sulcata
+  29: Collybia nuda
+  30: Coprinellus disseminatus
+  31: Coprinus comatus
+  32: Cortinarius archeri
+  33: Cortinarius austrovenetus
+  34: Cortinarius rotundisporus
+  35: Cortinarius sinapicolor
+  36: Crepidotus nephrodes
+  37: Crepidotus variabilis
+  38: Cruentomycena viscidocruenta
+  39: Cyclocybe parasitica
+  40: Cyptotrama asprata
+  41: Cyttaria gunnii
+  42: Descolea recedens
+  43: Dibaeis arcuata
+  44: Drechmeria gunnii
+  45: Favolaschia claudopus
+  46: Fistulina spiculifera
+  47: Fistulinella mollis
+  48: Flammulina velutipes
+  49: Flavoparmelia rutidota
+  50: Galerina hypnorum
+  51: Galerina patagonica
+  52: Ganoderma australe
+  53: Geastrum saccatum
+  54: Geastrum triplex
+  55: Gliophorus graminicolor
+  56: Gloioxanthomyces chromolimoneus
+  57: Gymnopilus allantopus
+  58: Gymnopilus ferruginosus
+  59: Gymnopilus junonius
+  60: Hericium coralloides
+  61: Heterotextus peziziformis
+  62: Humidicutis mavis
+  63: Hygrocybe astatogala
+  64: Hygrocybe miniata
+  65: Hypholoma australianum
+  66: Hypholoma brunneum
+  67: Hypholoma fasciculare
+  68: Laccaria fraterna
+  69: Laccaria laccata
+  70: Lactarius deliciosus
+  71: Lactarius eucalypti
+  72: Laetiporus portentosus
+  73: Leotia lubrica
+  74: Leratiomyces ceres
+  75: Leucopaxillus eucalyptorum
+  76: Lichenomphalia chromacea
+  77: Lycoperdon perlatum
+  78: Macrolepiota clelandii
+  79: Marasmius elegans
+  80: Mycena austrofilopes
+  81: Mycena clarkeana
+  82: Mycena cystidiosa
+  83: Mycena epipterygia
+  84: Mycena interrupta
+  85: Mycena kuurkacea
+  86: Mycena mulawaestris
+  87: Mycena nargan
+  88: Mycena subgalericulata
+  89: Mycena vinacea
+  90: Omphalotus nidiformis
+  91: Oudemansiella gigaspora
+  92: Panellus stipticus
+  93: Phaeohelotium baileyanum
+  94: Phellodon niger
+  95: Phlebia subceracea
+  96: Picipes melanopus
+  97: Podoscypha petalodes
+  98: Podoserpula pusio
+  99: Porpolomopsis lewelliniae
+  100: Postia pelliculosa
+  101: Protostropharia semiglobata
+  102: Psathyrella echinata
+  103: Pseudocyphellaria glabra
+  104: Pseudohydnum gelatinosum
+  105: Psilocybe subaeruginosa
+  106: Pulchrocladia retipora
+  107: Ramaria filicicola
+  108: Ramaria lorithamnus
+  109: Rhizocarpon geographicum
+  110: Rhodocollybia eucalyptorum
+  111: Rickenella fibula
+  112: Roridomyces austrororidus
+  113: Russula lenkunya
+  114: Russula persanguinea
+  115: Ryvardenia campyla
+  116: Sanguinoderma rude
+  117: Scleroderma cepa
+  118: Scytinotus longinquus
+  119: Singerocybe clitocyboides
+  120: Stereocaulon ramulosum
+  121: Stereum hirsutum
+  122: Stereum illudens
+  123: Stereum ostrea
+  124: Stereum versicolor
+  125: Teloschistes chrysophthalmus
+  126: Trametes coccinea
+  127: Trametes versicolor
+  128: Tremella fuciformis
+  129: Tremella mesenterica
+  130: Tricholoma terreum
+  131: Tubaria rufofulva
+  132: Urnula campylospora
+  133: Usnea barbata
+  134: Usnea cornuta
+  135: Usnea hirta
+  136: Xanthoria parietina
 args:
   batch: 1
+  fraction: 1.0
   half: false
   int8: false
   nms: false
+channels: 3
