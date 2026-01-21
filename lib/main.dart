@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'screens/about_screen.dart';
 import 'screens/detection_page.dart';
+import 'screens/detection_result_screen.dart';
 import 'screens/disclaimer_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/observations_screen.dart';
@@ -36,6 +37,7 @@ class RealtimeDetectionApp extends StatelessWidget {
         '/signin': (context) => const SignInScreen(),
         '/home': (context) => const HomeScreen(),
         '/detect': (context) => const DetectionPage(),
+        '/detection-result': (context) => const DetectionResultScreen(),
         '/species-library': (context) => const SpeciesLibraryScreen(),
         '/species-detail': (context) => const SpeciesDetailScreen(),
         '/save-observation': (context) => const SaveObservationScreen(),

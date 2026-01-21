@@ -93,6 +93,8 @@ class NativeYoloEngine {
   final Completer<void> _readyCompleter = Completer<void>();
   final Completer<void> _disposedCompleter = Completer<void>();
 
+  static const double _minDisplayConfidence = 0.45;
+
   bool _disposed = false;
   bool _frameInFlight = false;
   _FramePacket? _pendingFrame;
@@ -193,7 +195,10 @@ class NativeYoloEngine {
         final items = (message['items'] as List<dynamic>)
             .map((dynamic e) => NativeDetection.fromMap(e as Map<dynamic, dynamic>))
             .toList(growable: false);
-        _detectionsController.add(items);
+        final filtered = items
+            .where((d) => d.score >= _minDisplayConfidence)
+            .toList(growable: false); // Gate detections so only >= 0.45 reach UI.
+        _detectionsController.add(filtered);
         _frameInFlight = false;
         _pushPendingFrame();
         break;
