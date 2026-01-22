@@ -25,13 +25,13 @@ class _StartupScreenState extends State<StartupScreen> {
       Navigator.of(context).pushReplacementNamed(
         '/disclaimer',
         arguments: const DisclaimerArgs(
-          nextRoute: '/welcome',
+          nextRoute: '/auth',
           allowBack: false,
         ),
       );
       return;
     }
-    Navigator.of(context).pushReplacementNamed('/welcome');
+    Navigator.of(context).pushReplacementNamed('/auth');
   }
 
   @override

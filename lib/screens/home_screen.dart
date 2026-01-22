@@ -1,12 +1,48 @@
 import 'package:flutter/material.dart';
 
+import '../auth/google_auth_service.dart';
 import '../widgets/forest_background.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final GoogleAuthService _authService = GoogleAuthService();
+  bool _isSigningOut = false;
 
   void _goTo(BuildContext context, String route) {
     Navigator.of(context).pushNamed(route);
+  }
+
+  void _showToast(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _handleSignOut() async {
+    if (_isSigningOut) return;
+    setState(() => _isSigningOut = true);
+    try {
+      await _authService.signOut();
+      if (!mounted) return;
+      _showToast('Signed out.');
+    } catch (_) {
+      if (!mounted) return;
+      _showToast('Sign-out failed. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() => _isSigningOut = false);
+      }
+    }
   }
 
   @override
@@ -26,6 +62,30 @@ class HomeScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        onPressed: _isSigningOut ? null : _handleSignOut,
+                        tooltip: 'Sign out',
+                        icon: _isSigningOut
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                            : const Icon(
+                                Icons.logout,
+                                color: Colors.white,
+                              ),
+                      ),
+                    ],
+                  ),
                   const Text(
                     'Tasmania',
                     style: TextStyle(

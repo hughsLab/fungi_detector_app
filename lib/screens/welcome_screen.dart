@@ -1,10 +1,54 @@
 import 'package:flutter/material.dart';
 
-class WelcomeScreen extends StatelessWidget {
+import '../auth/google_auth_service.dart';
+
+class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
+
+  @override
+  State<WelcomeScreen> createState() => _WelcomeScreenState();
+}
+
+class _WelcomeScreenState extends State<WelcomeScreen> {
+  final GoogleAuthService _authService = GoogleAuthService();
+  bool _isSigningIn = false;
 
   void _goTo(BuildContext context, String route) {
     Navigator.of(context).pushReplacementNamed(route);
+  }
+
+  void _showToast(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    if (_isSigningIn) return;
+    setState(() => _isSigningIn = true);
+    try {
+      final credential = await _authService.signInWithGoogleDebug();
+      if (!mounted) return;
+      if (credential == null) {
+        _showToast('Sign-in cancelled.');
+        return;
+      }
+      final email = credential.user?.email;
+      _showToast(
+        email == null ? 'Signed in successfully.' : 'Signed in as $email',
+      );
+    } catch (error) {
+      if (!mounted) return;
+      _showToast(GoogleAuthService.userMessageForError(error));
+    } finally {
+      if (mounted) {
+        setState(() => _isSigningIn = false);
+      }
+    }
   }
 
   @override
@@ -101,14 +145,40 @@ class WelcomeScreen extends StatelessWidget {
                               const Spacer()
                             else
                               const SizedBox(height: 32),
-                            GestureDetector(
-                              onTap: () {},
-                              child: Center(
-                                child: SizedBox(
-                                  height: 54,
-                                  child: Image.asset(
-                                    'assets/images/android_dark_rd_ctn_4x.png',
-                                    fit: BoxFit.contain,
+                            Center(
+                              child: SizedBox(
+                                height: 54,
+                                child: TextButton(
+                                  onPressed:
+                                      _isSigningIn ? null : _handleGoogleSignIn,
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      Opacity(
+                                        opacity: _isSigningIn ? 0.6 : 1,
+                                        child: Image.asset(
+                                          'assets/images/android_dark_rd_ctn_4x.png',
+                                          fit: BoxFit.contain,
+                                        ),
+                                      ),
+                                      if (_isSigningIn)
+                                        const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                 ),
                               ),

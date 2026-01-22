@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "481160676993",
-    "project_id": "fungi-97456",
-    "storage_bucket": "fungi-97456.firebasestorage.app"
+    "project_number": "YOUR_PROJECT_NUMBER",
+    "project_id": "YOUR_PROJECT_ID",
+    "storage_bucket": "YOUR_STORAGE_BUCKET"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:481160676993:android:7bfdf9c5fe0894f417ef80",
+        "mobilesdk_app_id": "YOUR_ANDROID_APP_ID",
         "android_client_info": {
-          "package_name": "com.example.app1"
+          "package_name": "your.package.name"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCFFMbNK5eKcZv3UAHow5ZB8kK8hF2XSs8"
+          "current_key": "YOUR_ANDROID_API_KEY"
         }
       ],
       "services": {
