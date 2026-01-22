@@ -126,18 +126,39 @@ class _DetectionPageState extends State<DetectionPage>
       if (namesNode is YamlList) {
         names = namesNode.map((e) => e.toString()).toList();
       } else if (namesNode is YamlMap) {
-        final sortedKeys =
-            namesNode.keys
-                .where((k) => k is int || int.tryParse(k.toString()) != null)
-                .map((k) => k is int ? k : int.parse(k.toString()))
-                .toList()
-              ..sort();
-        names = sortedKeys.map((k) => namesNode[k].toString()).toList();
+        final keys = namesNode.entries
+            .map((entry) {
+              final key = entry.key;
+              if (key is int) {
+                return key;
+              }
+              return int.tryParse(key.toString());
+            })
+            .whereType<int>()
+            .toList()
+          ..sort();
+        if (keys.isNotEmpty) {
+          final int maxKey =
+              keys.reduce((value, element) => value > element ? value : element);
+          final filled = List<String>.filled(maxKey + 1, '');
+          for (final entry in namesNode.entries) {
+            final key = entry.key;
+            final int? index = key is int ? key : int.tryParse(key.toString());
+            if (index == null || index < 0 || index >= filled.length) {
+              continue;
+            }
+            filled[index] = entry.value.toString();
+          }
+          names = filled;
+        }
       }
     }
 
     if (names.isEmpty) {
-      names = List.generate(80, (i) => 'class_$i');
+      throw StateError('No class labels found in metadata');
+    }
+    if (names.any((name) => name.trim().isEmpty)) {
+      throw StateError('Metadata labels contain empty entries');
     }
     return names;
   }
@@ -224,9 +245,12 @@ class _DetectionPageState extends State<DetectionPage>
 
   String _labelForIndex(int index) {
     if (index >= 0 && index < _labels.length) {
-      return _labels[index];
+      final label = _labels[index].trim();
+      if (label.isNotEmpty) {
+        return label;
+      }
     }
-    return 'id_$index';
+    return 'Unknown';
   }
 
   Future<void> _loadSpeciesIndex() async {
@@ -285,12 +309,16 @@ class _DetectionPageState extends State<DetectionPage>
   }
 
   void _handleCapture(StableTrack track) {
-    final String label = track.lockedLabel ?? track.top1Label ?? 'Unknown';
-    final String? speciesId = _speciesIdForLabel(label);
+    final int? classIndex = track.lockedClassId ?? track.top1ClassId;
+    final String label =
+        classIndex == null ? 'Unknown' : _labelForIndex(classIndex);
+    final String? speciesId =
+        classIndex == null ? _speciesIdForLabel(label) : classIndex.toString();
     final args = DetectionResultArgs(
       lockedLabel: label,
       top2Label: track.isAmbiguous ? track.top2Label : null,
-      top1AvgConf: track.top1AvgConf,
+      top1AvgConf:
+          track.lockedClassId == null ? track.top1AvgConf : track.lockedAvgConf,
       top2AvgConf: track.isAmbiguous ? track.top2AvgConf : null,
       top1VoteRatio: track.top1VoteRatio,
       windowFrameCount: track.windowFrameCount,
@@ -299,6 +327,7 @@ class _DetectionPageState extends State<DetectionPage>
       stabilityWindowSize: track.stabilityWindowSize,
       timestamp: DateTime.now(),
       speciesId: speciesId,
+      classIndex: classIndex,
     );
     Navigator.of(context).pushNamed('/detection-result', arguments: args);
   }
@@ -478,9 +507,14 @@ class _DetectionPageState extends State<DetectionPage>
                         final String? primaryLabel = hasLocked
                             ? primaryTrack?.lockedLabel
                             : primaryTrack?.top1Label;
-                        final String? topSpeciesId = primaryLabel == null
-                            ? null
-                            : _speciesIdForLabel(primaryLabel);
+                        final int? primaryClassIndex = hasLocked
+                            ? primaryTrack?.lockedClassId
+                            : primaryTrack?.top1ClassId;
+                        final String? topSpeciesId = primaryClassIndex == null
+                            ? (primaryLabel == null
+                                  ? null
+                                  : _speciesIdForLabel(primaryLabel))
+                            : primaryClassIndex.toString();
                         final String? topConfidence = primaryTrack == null
                             ? null
                             : '${(primaryTrack.top1AvgConf * 100).toStringAsFixed(1)}%';

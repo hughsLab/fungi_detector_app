@@ -18,6 +18,7 @@ class Species {
   });
 
   factory Species.fromJson(Map<String, dynamic> json) {
+    final rawId = json['id'] ?? json['speciesId'] ?? json['species_id'];
     final keyFeatures =
         (json['keyFeatures'] as List<dynamic>? ?? const <dynamic>[])
             .map((item) => item.toString())
@@ -28,7 +29,7 @@ class Species {
             .toList();
 
     return Species(
-      id: json['speciesId']?.toString() ?? '',
+      id: rawId?.toString() ?? '',
       scientificName: json['scientificName']?.toString() ?? '',
       commonName: json['commonName']?.toString(),
       keyFeatures: keyFeatures,

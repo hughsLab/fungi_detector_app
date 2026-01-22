@@ -1,6 +1,7 @@
 class Observation {
   final String id;
   final String speciesId;
+  final int? classIndex;
   final String label;
   final double? confidence;
   final DateTime timestamp;
@@ -11,6 +12,7 @@ class Observation {
   const Observation({
     required this.id,
     required this.speciesId,
+    required this.classIndex,
     required this.label,
     required this.confidence,
     required this.timestamp,
@@ -26,9 +28,23 @@ class Observation {
       location = ObservationLocation.fromJson(locationJson);
     }
 
+    final dynamic rawClassIndex = json['classIndex'];
+    int? classIndex;
+    if (rawClassIndex is int) {
+      classIndex = rawClassIndex;
+    } else if (rawClassIndex is num) {
+      classIndex = rawClassIndex.toInt();
+    } else if (rawClassIndex != null) {
+      classIndex = int.tryParse(rawClassIndex.toString());
+    }
+
+    final String speciesId = json['speciesId']?.toString() ??
+        (classIndex == null ? '' : classIndex.toString());
+
     return Observation(
       id: json['id']?.toString() ?? '',
-      speciesId: json['speciesId']?.toString() ?? '',
+      speciesId: speciesId,
+      classIndex: classIndex,
       label: json['label']?.toString() ?? '',
       confidence:
           json['confidence'] == null ? null : (json['confidence'] as num).toDouble(),
@@ -44,6 +60,7 @@ class Observation {
     return {
       'id': id,
       'speciesId': speciesId,
+      'classIndex': classIndex,
       'label': label,
       'confidence': confidence,
       'timestamp': timestamp.toIso8601String(),

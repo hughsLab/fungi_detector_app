@@ -51,14 +51,22 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
     final list = [..._observations];
     if (_sort == ObservationSort.speciesName) {
       list.sort((a, b) {
-        final nameA = _speciesNames[a.speciesId] ?? a.label;
-        final nameB = _speciesNames[b.speciesId] ?? b.label;
+        final nameA = _displayNameFor(a);
+        final nameB = _displayNameFor(b);
         return nameA.compareTo(nameB);
       });
     } else {
       list.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     }
     return list;
+  }
+
+  String _displayNameFor(Observation observation) {
+    final label = observation.label.trim();
+    if (label.isNotEmpty) {
+      return label;
+    }
+    return _speciesNames[observation.speciesId] ?? 'Unknown';
   }
 
   void _openDetail(Observation observation) {
@@ -143,9 +151,7 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
                       final observation = _sortedObservations[index];
-                      final name =
-                          _speciesNames[observation.speciesId] ??
-                              observation.label;
+                      final name = _displayNameFor(observation);
                       final photoPath = observation.photoPath;
 
                       return Material(

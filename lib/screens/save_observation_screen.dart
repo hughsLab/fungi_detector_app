@@ -85,6 +85,7 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
     final observation = Observation(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       speciesId: species.id,
+      classIndex: int.tryParse(species.id),
       label: species.commonName?.isNotEmpty == true
           ? species.commonName!
           : species.scientificName,

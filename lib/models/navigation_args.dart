@@ -38,6 +38,7 @@ class DetectionResultArgs {
   final int stabilityWindowSize;
   final DateTime timestamp;
   final String? speciesId;
+  final int? classIndex;
 
   const DetectionResultArgs({
     required this.lockedLabel,
@@ -51,5 +52,6 @@ class DetectionResultArgs {
     required this.stabilityWindowSize,
     required this.timestamp,
     required this.speciesId,
+    required this.classIndex,
   });
 }

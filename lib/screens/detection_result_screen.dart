@@ -1,10 +1,76 @@
 import 'package:flutter/material.dart';
 
 import '../models/navigation_args.dart';
+import '../models/observation.dart';
+import '../repositories/observation_repository.dart';
 import '../widgets/forest_background.dart';
 
-class DetectionResultScreen extends StatelessWidget {
+class DetectionResultScreen extends StatefulWidget {
   const DetectionResultScreen({super.key});
+
+  @override
+  State<DetectionResultScreen> createState() => _DetectionResultScreenState();
+}
+
+class _DetectionResultScreenState extends State<DetectionResultScreen> {
+  final ObservationRepository _observationRepository =
+      ObservationRepository.instance;
+  bool _saving = false;
+
+  Future<void> _saveObservation(DetectionResultArgs args) async {
+    if (_saving) return;
+
+    final label = args.lockedLabel.trim();
+    if (label.isEmpty || label == 'Unknown') {
+      _showMessage('Detection label is unavailable. Cannot save.');
+      return;
+    }
+    final classIndex = args.classIndex;
+    if (classIndex == null || classIndex < 0) {
+      _showMessage('Detection class index is invalid. Cannot save.');
+      return;
+    }
+    final confidence = args.top1AvgConf;
+    if (confidence.isNaN || confidence.isInfinite) {
+      _showMessage('Detection confidence is invalid. Cannot save.');
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+    });
+    try {
+      final observation = Observation(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        speciesId: classIndex.toString(),
+        classIndex: classIndex,
+        label: label,
+        confidence: confidence,
+        timestamp: DateTime.now(),
+        photoPath: null,
+        location: null,
+        notes: null,
+      );
+      await _observationRepository.addObservation(observation);
+      if (!mounted) return;
+      _showMessage('Observation saved.');
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage('Failed to save observation: $e');
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+      });
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -140,6 +206,22 @@ class DetectionResultScreen extends StatelessWidget {
                   ),
                 ),
               ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _saving ? null : () => _saveObservation(args),
+                icon: const Icon(Icons.bookmark_add),
+                label: Text(_saving ? 'Saving...' : 'Save Observation'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8FBFA1),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: const StadiumBorder(),
+                ),
+              ),
+            ),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
