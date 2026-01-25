@@ -1,10 +1,125 @@
 import 'package:flutter/material.dart';
 
-class SignUpScreen extends StatelessWidget {
+import '../auth/email_auth_service.dart';
+
+class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
+
+  @override
+  State<SignUpScreen> createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends State<SignUpScreen> {
+  final EmailAuthService _authService = EmailAuthService();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+  bool _isSigningUp = false;
+
+  static final RegExp _emailRegex =
+      RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
   void _goTo(BuildContext context, String route) {
     Navigator.of(context).pushReplacementNamed(route);
+  }
+
+  void _showToast(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  bool _validateInputs({
+    required String email,
+    required String password,
+    required String confirmPassword,
+  }) {
+    if (email.isEmpty) {
+      _showToast('Email is required.');
+      return false;
+    }
+    if (!_emailRegex.hasMatch(email)) {
+      _showToast('Enter a valid email address.');
+      return false;
+    }
+    if (password.isEmpty) {
+      _showToast('Password is required.');
+      return false;
+    }
+    if (password.length < 6) {
+      _showToast('Password must be at least 6 characters.');
+      return false;
+    }
+    if (confirmPassword.isEmpty) {
+      _showToast('Confirm your password.');
+      return false;
+    }
+    if (password != confirmPassword) {
+      _showToast('Passwords do not match.');
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> _handleEmailSignUp() async {
+    if (_isSigningUp) return;
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+    if (!_validateInputs(
+      email: email,
+      password: password,
+      confirmPassword: confirmPassword,
+    )) {
+      return;
+    }
+    setState(() => _isSigningUp = true);
+    try {
+      final credential = await _authService.signUpWithEmailPassword(
+        email: email,
+        password: password,
+      );
+      final user = credential.user;
+      if (!mounted) return;
+      if (user != null && !user.emailVerified) {
+        try {
+          await _authService.sendEmailVerification(user: user);
+          if (!mounted) return;
+          _showToast('Account created. Check your inbox to verify.');
+        } catch (error) {
+          if (!mounted) return;
+          _showToast(EmailAuthService.userMessageForError(error));
+        }
+      } else {
+        final userEmail = user?.email;
+        _showToast(
+          userEmail == null
+              ? 'Account created.'
+              : 'Account created for $userEmail',
+        );
+      }
+      _goTo(context, '/home');
+    } catch (error) {
+      if (!mounted) return;
+      _showToast(EmailAuthService.userMessageForError(error));
+    } finally {
+      if (mounted) {
+        setState(() => _isSigningUp = false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -87,7 +202,9 @@ class SignUpScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 22),
                           TextField(
+                            controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
+                            textInputAction: TextInputAction.next,
                             style: const TextStyle(color: Colors.white),
                             decoration: const InputDecoration(
                               labelText: 'Email Address',
@@ -102,10 +219,31 @@ class SignUpScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 22),
                           TextField(
+                            controller: _passwordController,
                             obscureText: true,
+                            textInputAction: TextInputAction.next,
                             style: const TextStyle(color: Colors.white),
                             decoration: const InputDecoration(
                               labelText: 'Password',
+                              labelStyle: TextStyle(color: accentTextColor),
+                              enabledBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(color: accentTextColor),
+                              ),
+                              focusedBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(color: Colors.white),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          TextField(
+                            controller: _confirmPasswordController,
+                            obscureText: true,
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) =>
+                                _isSigningUp ? null : _handleEmailSignUp(),
+                            style: const TextStyle(color: Colors.white),
+                            decoration: const InputDecoration(
+                              labelText: 'Confirm Password',
                               labelStyle: TextStyle(color: accentTextColor),
                               enabledBorder: UnderlineInputBorder(
                                 borderSide: BorderSide(color: accentTextColor),
@@ -119,7 +257,8 @@ class SignUpScreen extends StatelessWidget {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: () => _goTo(context, '/home'),
+                              onPressed:
+                                  _isSigningUp ? null : _handleEmailSignUp,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: buttonColor,
                                 foregroundColor: Colors.white,
@@ -128,9 +267,9 @@ class SignUpScreen extends StatelessWidget {
                                     const EdgeInsets.symmetric(vertical: 16),
                                 shape: const StadiumBorder(),
                               ),
-                              child: const Text(
-                                'Sign Up',
-                                style: TextStyle(
+                              child: Text(
+                                _isSigningUp ? 'Signing Up...' : 'Sign Up',
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                 ),
