@@ -15,8 +15,22 @@ class SpeciesRepository {
     if (_cache != null) {
       return _cache!;
     }
-    final raw = await rootBundle.loadString('assets/data/species_tas.json');
-    final data = jsonDecode(raw) as List<dynamic>;
+    String raw;
+    try {
+      raw = await rootBundle.loadString('assets/data/species.json');
+    } catch (_) {
+      raw = await rootBundle.loadString('assets/data/species_tas.json');
+    }
+    final decoded = jsonDecode(raw);
+    final List<dynamic> data;
+    if (decoded is List<dynamic>) {
+      data = decoded;
+    } else if (decoded is Map<String, dynamic> &&
+        decoded['cards'] is List<dynamic>) {
+      data = decoded['cards'] as List<dynamic>;
+    } else {
+      throw FormatException('Unexpected species data format');
+    }
     _cache = data
         .whereType<Map<String, dynamic>>()
         .map((item) => Species.fromJson(item))
