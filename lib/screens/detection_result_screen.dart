@@ -5,7 +5,10 @@ import 'package:path_provider/path_provider.dart';
 
 import '../models/navigation_args.dart';
 import '../models/observation.dart';
+import '../models/species.dart';
 import '../repositories/observation_repository.dart';
+import '../repositories/species_repository.dart';
+import '../utils/lichen_headline_gate.dart';
 import '../widgets/forest_background.dart';
 
 class DetectionResultScreen extends StatefulWidget {
@@ -18,10 +21,13 @@ class DetectionResultScreen extends StatefulWidget {
 class _DetectionResultScreenState extends State<DetectionResultScreen> {
   final ObservationRepository _observationRepository =
       ObservationRepository.instance;
+  final SpeciesRepository _speciesRepository = SpeciesRepository.instance;
   bool _saving = false;
   bool _saved = false;
   DetectionResultArgs? _args;
   String? _tempPhotoPath;
+  Future<Species?>? _speciesFuture;
+  bool _ownsTempPhoto = true;
 
   @override
   void didChangeDependencies() {
@@ -34,6 +40,8 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
     if (args != null) {
       _args = args;
       _tempPhotoPath = args.photoPath;
+      _speciesFuture = _loadMatchedSpecies(args);
+      _ownsTempPhoto = !args.isSavedView;
     }
   }
 
@@ -72,10 +80,20 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
       }
       final observation = Observation(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        speciesId: classIndex.toString(),
+        speciesId: (args.speciesId?.trim().isNotEmpty ?? false)
+            ? args.speciesId!.trim()
+            : classIndex.toString(),
         classIndex: classIndex,
         label: label,
         confidence: confidence,
+        top2Label: args.top2Label,
+        top2Confidence: args.top2AvgConf,
+        top1VoteRatio: args.top1VoteRatio,
+        windowFrameCount: args.windowFrameCount,
+        windowDurationMs: args.windowDurationMs,
+        stabilityWinCount: args.stabilityWinCount,
+        stabilityWindowSize: args.stabilityWindowSize,
+        isLichen: args.isLichen,
         timestamp: DateTime.now(),
         photoPath: photoPath,
         location: null,
@@ -96,6 +114,33 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
     }
   }
 
+  Future<Species?> _loadMatchedSpecies(DetectionResultArgs args) async {
+    final String? speciesId = args.speciesId?.trim();
+    if (speciesId != null && speciesId.isNotEmpty) {
+      final Species? exact = await _speciesRepository.getById(speciesId);
+      if (exact != null) {
+        return exact;
+      }
+    }
+
+    final String normalizedLabel = args.lockedLabel.trim().toLowerCase();
+    if (normalizedLabel.isEmpty) {
+      return null;
+    }
+
+    final all = await _speciesRepository.loadSpecies();
+    for (final item in all) {
+      if (item.scientificName.trim().toLowerCase() == normalizedLabel) {
+        return item;
+      }
+      final String common = (item.commonName ?? '').trim().toLowerCase();
+      if (common.isNotEmpty && common == normalizedLabel) {
+        return item;
+      }
+    }
+    return null;
+  }
+
   Future<String?> _persistPhoto(String tempPath) async {
     final tempFile = File(tempPath);
     if (!await tempFile.exists()) {
@@ -106,8 +151,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
     if (!await photosDir.exists()) {
       await photosDir.create(recursive: true);
     }
-    final fileName =
-        'observation_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final fileName = 'observation_${DateTime.now().millisecondsSinceEpoch}.jpg';
     final savedPath = '${photosDir.path}${Platform.pathSeparator}$fileName';
     final savedFile = await tempFile.copy(savedPath);
     try {
@@ -117,6 +161,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
   }
 
   void _cleanupTempPhoto() {
+    if (!_ownsTempPhoto) return;
     if (_saved) return;
     final path = _tempPhotoPath;
     if (path == null) return;
@@ -136,9 +181,9 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -161,9 +206,30 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
         '${(args.top1AvgConf * 100).toStringAsFixed(1)}%';
     final String votePercent =
         '${(args.top1VoteRatio * 100).toStringAsFixed(1)}%';
-    final String durationSeconds =
-        (args.windowDurationMs / 1000).toStringAsFixed(1);
+    final String durationSeconds = (args.windowDurationMs / 1000)
+        .toStringAsFixed(1);
     final String capturedAt = _formatTimestamp(args.timestamp);
+    final String? top2Percent = args.top2AvgConf == null
+        ? null
+        : '${(args.top2AvgConf! * 100).toStringAsFixed(1)}%';
+    final String? marginPercent = args.top2AvgConf == null
+        ? null
+        : '${((args.top1AvgConf - args.top2AvgConf!) * 100).toStringAsFixed(1)}%';
+    final List<TopCandidate> topCandidates = [
+      TopCandidate(label: args.lockedLabel, probability: args.top1AvgConf),
+      if (args.top2Label != null && args.top2AvgConf != null)
+        TopCandidate(label: args.top2Label!, probability: args.top2AvgConf!),
+    ];
+    final DecisionResult headlineDecision = decideHeadline(
+      topK: topCandidates,
+      isLichen: args.isLichen,
+      existingRulesContext: ExistingRulesContext(
+        headlineLabel: args.lockedLabel,
+      ),
+    );
+    final bool canOpenSpeciesProfile =
+        args.speciesId != null &&
+        headlineDecision.headlineRankLevel == HeadlineRankLevel.species;
 
     return Scaffold(
       appBar: AppBar(
@@ -177,83 +243,172 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 12),
-            const Text(
-              'Stable detection captured',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: const Color(0xFF8FBFA1).withValues(alpha: 0.85),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    args.lockedLabel,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (args.top2Label != null) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      'Also possible: ${args.top2Label}',
-                      style: const TextStyle(
-                        color: Color(0xCCFFFFFF),
-                        fontSize: 14,
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Stable detection captured',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    _PhotoPreviewCard(photoPath: args.photoPath),
+                    const SizedBox(height: 12),
+                    _ResultCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            headlineDecision.headlineLabel,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          if (headlineDecision.explanationNote != null) ...[
+                            Text(
+                              headlineDecision.explanationNote!,
+                              style: const TextStyle(
+                                color: Color(0xFFD9EBD8),
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                          Text(
+                            'Headline level: ${headlineDecision.headlineRankLevel.name}',
+                            style: const TextStyle(
+                              color: Color(0xCCFFFFFF),
+                              fontSize: 13,
+                            ),
+                          ),
+                          Text(
+                            'Lichen gate active: ${args.isLichen ? 'yes' : 'no'}',
+                            style: const TextStyle(
+                              color: Color(0xCCFFFFFF),
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Top candidates',
+                            style: TextStyle(
+                              color: Color(0xFFFFFFFF),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          ...headlineDecision.candidates.take(5).map((
+                            candidate,
+                          ) {
+                            final String percent =
+                                '${(candidate.probability * 100).toStringAsFixed(1)}%';
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Text(
+                                '${candidate.label}: $percent',
+                                style: const TextStyle(
+                                  color: Color(0xCCFFFFFF),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            );
+                          }),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Avg confidence: $top1Percent',
+                            style: const TextStyle(
+                              color: Color(0xCCFFFFFF),
+                              fontSize: 13,
+                            ),
+                          ),
+                          if (top2Percent != null)
+                            Text(
+                              '2nd confidence: $top2Percent',
+                              style: const TextStyle(
+                                color: Color(0xCCFFFFFF),
+                                fontSize: 13,
+                              ),
+                            ),
+                          if (marginPercent != null)
+                            Text(
+                              'Top1-Top2 margin: $marginPercent',
+                              style: const TextStyle(
+                                color: Color(0xCCFFFFFF),
+                                fontSize: 13,
+                              ),
+                            ),
+                          Text(
+                            'Vote ratio: $votePercent',
+                            style: const TextStyle(
+                              color: Color(0xCCFFFFFF),
+                              fontSize: 13,
+                            ),
+                          ),
+                          Text(
+                            'Stable for ${args.stabilityWinCount}/${args.stabilityWindowSize} frames over ${durationSeconds}s',
+                            style: const TextStyle(
+                              color: Color(0xCCFFFFFF),
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Captured at $capturedAt',
+                            style: const TextStyle(
+                              color: Color(0xAAFFFFFF),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    FutureBuilder<Species?>(
+                      future: _speciesFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const _ResultCard(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFF8FBFA1),
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        final Species? species = snapshot.data;
+                        if (species == null) {
+                          return const _ResultCard(
+                            child: Text(
+                              'No matching species card found for this capture.',
+                              style: TextStyle(
+                                color: Color(0xCCFFFFFF),
+                                fontSize: 13,
+                              ),
+                            ),
+                          );
+                        }
+                        return _SpeciesSnapshotCard(species: species);
+                      },
+                    ),
                   ],
-                  const SizedBox(height: 12),
-                  Text(
-                    'Avg confidence: $top1Percent',
-                    style: const TextStyle(
-                      color: Color(0xCCFFFFFF),
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Vote ratio: $votePercent',
-                    style: const TextStyle(
-                      color: Color(0xCCFFFFFF),
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Stable for ${args.stabilityWinCount}/${args.stabilityWindowSize} frames over ${durationSeconds}s',
-                    style: const TextStyle(
-                      color: Color(0xCCFFFFFF),
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Captured at $capturedAt',
-                    style: const TextStyle(
-                      color: Color(0xAAFFFFFF),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-            const Spacer(),
-            if (args.speciesId != null)
+            if (canOpenSpeciesProfile)
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -275,35 +430,39 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                 ),
               ),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _saving ? null : () => _saveObservation(args),
-                icon: const Icon(Icons.bookmark_add),
-                label: Text(_saving ? 'Saving...' : 'Save Observation'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8FBFA1),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: const StadiumBorder(),
+            if (!args.isSavedView) ...[
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _saving ? null : () => _saveObservation(args),
+                  icon: const Icon(Icons.bookmark_add),
+                  label: Text(_saving ? 'Saving...' : 'Save Observation'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8FBFA1),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: const StadiumBorder(),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
+            ],
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
                 onPressed: _handleBack,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
-                  side: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.5),
-                  ),
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: const StadiumBorder(),
                 ),
-                child: const Text('Back to detection'),
+                child: Text(
+                  args.isSavedView
+                      ? 'Back to observations'
+                      : 'Back to detection',
+                ),
               ),
             ),
           ],
@@ -322,4 +481,184 @@ String _formatTimestamp(DateTime timestamp) {
   final String minute = local.minute.toString().padLeft(2, '0');
   final String second = local.second.toString().padLeft(2, '0');
   return '$year-$month-$day $hour:$minute:$second';
+}
+
+class _ResultCard extends StatelessWidget {
+  final Widget child;
+
+  const _ResultCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: const Color(0xFF8FBFA1).withValues(alpha: 0.85),
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _PhotoPreviewCard extends StatelessWidget {
+  final String? photoPath;
+
+  const _PhotoPreviewCard({required this.photoPath});
+
+  @override
+  Widget build(BuildContext context) {
+    final String? path = photoPath;
+    final bool hasImage = path != null && File(path).existsSync();
+    if (!hasImage) {
+      return const _ResultCard(
+        child: Text(
+          'Captured photo not available for this result.',
+          style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 13),
+        ),
+      );
+    }
+
+    return _ResultCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Captured photo',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: AspectRatio(
+              aspectRatio: 4 / 3,
+              child: Image.file(File(path), fit: BoxFit.cover),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SpeciesSnapshotCard extends StatelessWidget {
+  final Species species;
+
+  const _SpeciesSnapshotCard({required this.species});
+
+  @override
+  Widget build(BuildContext context) {
+    final String description = (species.shortDescription ?? '').trim();
+    final String commonName = (species.commonName ?? '').trim();
+    final String habitat = (species.habitat ?? '').trim();
+    final String season = (species.season ?? '').trim();
+    final String distribution = species.distributionNote.trim();
+    final String edibility = (species.edibilityWarning ?? '').trim();
+
+    return _ResultCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Species card',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            species.scientificName,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (commonName.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                commonName,
+                style: const TextStyle(color: Color(0xCCFFFFFF), fontSize: 13),
+              ),
+            ),
+          const SizedBox(height: 10),
+          _InfoLine(
+            label: 'Taxonomy',
+            value: [
+              species.taxonomyKingdom,
+              species.taxonomyPhylum,
+              species.taxonomyClass,
+              species.taxonomyOrder,
+              species.taxonomyFamily,
+              species.taxonomyGenus,
+              species.taxonomySpecies,
+            ].whereType<String>().where((v) => v.trim().isNotEmpty).join(' > '),
+          ),
+          if (description.isNotEmpty)
+            _InfoLine(label: 'Description', value: description),
+          if (species.keyFeatures.isNotEmpty)
+            _InfoLine(
+              label: 'Key features',
+              value: species.keyFeatures
+                  .where((f) => f.trim().isNotEmpty)
+                  .map((f) => '- ${f.trim()}')
+                  .join('\n'),
+            ),
+          if (habitat.isNotEmpty) _InfoLine(label: 'Habitat', value: habitat),
+          if (season.isNotEmpty) _InfoLine(label: 'Season', value: season),
+          if (distribution.isNotEmpty)
+            _InfoLine(label: 'Distribution', value: distribution),
+          if (edibility.isNotEmpty)
+            _InfoLine(label: 'Safety', value: edibility),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoLine extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoLine({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFFE7F3E7),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Color(0xCCFFFFFF),
+              fontSize: 13,
+              height: 1.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

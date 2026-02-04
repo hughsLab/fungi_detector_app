@@ -4,10 +4,7 @@ class SpeciesDetailArgs {
   final String speciesId;
   final Observation? observation;
 
-  const SpeciesDetailArgs({
-    required this.speciesId,
-    this.observation,
-  });
+  const SpeciesDetailArgs({required this.speciesId, this.observation});
 }
 
 class SaveObservationArgs {
@@ -20,10 +17,7 @@ class DisclaimerArgs {
   final String? nextRoute;
   final bool allowBack;
 
-  const DisclaimerArgs({
-    this.nextRoute,
-    this.allowBack = true,
-  });
+  const DisclaimerArgs({this.nextRoute, this.allowBack = true});
 }
 
 class DetectionResultArgs {
@@ -40,6 +34,8 @@ class DetectionResultArgs {
   final String? speciesId;
   final int? classIndex;
   final String? photoPath;
+  final bool isLichen;
+  final bool isSavedView;
 
   const DetectionResultArgs({
     required this.lockedLabel,
@@ -55,5 +51,7 @@ class DetectionResultArgs {
     required this.speciesId,
     required this.classIndex,
     this.photoPath,
+    required this.isLichen,
+    this.isSavedView = false,
   });
 }

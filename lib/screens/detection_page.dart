@@ -11,6 +11,7 @@ import 'package:yaml/yaml.dart';
 
 import '../detection/detection.dart';
 import '../detection/stability_engine.dart';
+import '../models/species.dart';
 import '../models/navigation_args.dart';
 import '../native/native_yolo_engine.dart';
 import '../repositories/species_repository.dart';
@@ -37,6 +38,8 @@ class _DetectionPageState extends State<DetectionPage>
   List<String> _labels = [];
   final SpeciesRepository _speciesRepository = SpeciesRepository.instance;
   Map<String, String> _speciesIdByName = {};
+  Set<int> _lichenClassIndices = <int>{};
+  Set<String> _lichenNames = <String>{};
   bool _isInitialized = false;
   bool _hasPermission = false;
   bool _engineReady = false;
@@ -127,20 +130,22 @@ class _DetectionPageState extends State<DetectionPage>
       if (namesNode is YamlList) {
         names = namesNode.map((e) => e.toString()).toList();
       } else if (namesNode is YamlMap) {
-        final keys = namesNode.entries
-            .map((entry) {
-              final key = entry.key;
-              if (key is int) {
-                return key;
-              }
-              return int.tryParse(key.toString());
-            })
-            .whereType<int>()
-            .toList()
-          ..sort();
+        final keys =
+            namesNode.entries
+                .map((entry) {
+                  final key = entry.key;
+                  if (key is int) {
+                    return key;
+                  }
+                  return int.tryParse(key.toString());
+                })
+                .whereType<int>()
+                .toList()
+              ..sort();
         if (keys.isNotEmpty) {
-          final int maxKey =
-              keys.reduce((value, element) => value > element ? value : element);
+          final int maxKey = keys.reduce(
+            (value, element) => value > element ? value : element,
+          );
           final filled = List<String>.filled(maxKey + 1, '');
           for (final entry in namesNode.entries) {
             final key = entry.key;
@@ -235,8 +240,10 @@ class _DetectionPageState extends State<DetectionPage>
           ),
         )
         .toList();
-    final List<StableTrack> stableTracks =
-        _stabilityEngine.processFrame(mapped, nowMs);
+    final List<StableTrack> stableTracks = _stabilityEngine.processFrame(
+      mapped,
+      nowMs,
+    );
     final StableTrack? primaryTrack = _selectPrimaryTrack(stableTracks);
     setState(() {
       _detections = mapped;
@@ -258,6 +265,8 @@ class _DetectionPageState extends State<DetectionPage>
     try {
       final species = await _speciesRepository.loadSpecies();
       final map = <String, String>{};
+      final lichenClassIndices = <int>{};
+      final lichenNames = <String>{};
       for (final item in species) {
         final scientific = _normalizeName(item.scientificName);
         if (scientific.isNotEmpty) {
@@ -267,15 +276,47 @@ class _DetectionPageState extends State<DetectionPage>
         if (common.isNotEmpty && !map.containsKey(common)) {
           map[common] = item.id;
         }
+        if (_isLichenSpecies(item)) {
+          final int? classIndex = int.tryParse(item.id);
+          if (classIndex != null) {
+            lichenClassIndices.add(classIndex);
+          }
+          if (scientific.isNotEmpty) {
+            lichenNames.add(scientific);
+          }
+          if (common.isNotEmpty) {
+            lichenNames.add(common);
+          }
+        }
       }
       if (!mounted) return;
       setState(() {
         _speciesIdByName = map;
+        _lichenClassIndices = lichenClassIndices;
+        _lichenNames = lichenNames;
       });
     } catch (e, stack) {
       debugPrint('Failed to load species index: $e');
       debugPrintStack(stackTrace: stack);
     }
+  }
+
+  bool _isLichenSpecies(Species species) {
+    final String taxonomyClass = (species.taxonomyClass ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    if (taxonomyClass == 'lecanoromycetes') {
+      return true;
+    }
+
+    final String combinedText = [
+      species.commonName,
+      species.shortDescription,
+      species.taxonomyOrder,
+      species.taxonomyFamily,
+    ].whereType<String>().join(' ').toLowerCase();
+    return combinedText.contains('lichen');
   }
 
   String _normalizeName(String value) {
@@ -290,12 +331,21 @@ class _DetectionPageState extends State<DetectionPage>
     return _speciesIdByName[_normalizeName(label)];
   }
 
+  bool _isLichenDetection({required int? classIndex, required String label}) {
+    if (classIndex != null && _lichenClassIndices.contains(classIndex)) {
+      return true;
+    }
+    final String normalizedLabel = _normalizeName(label);
+    return _lichenNames.contains(normalizedLabel);
+  }
+
   StableTrack? _selectPrimaryTrack(List<StableTrack> tracks) {
     if (tracks.isEmpty) {
       return null;
     }
-    final List<StableTrack> locked =
-        tracks.where((t) => t.lockedClassId != null).toList();
+    final List<StableTrack> locked = tracks
+        .where((t) => t.lockedClassId != null)
+        .toList();
     final List<StableTrack> candidates = locked.isNotEmpty ? locked : tracks;
     StableTrack best = candidates.first;
     double bestArea = best.bbox.width * best.bbox.height;
@@ -323,8 +373,13 @@ class _DetectionPageState extends State<DetectionPage>
       if (!mounted) return;
 
       final int? classIndex = track.lockedClassId ?? track.top1ClassId;
-      final String label =
-          classIndex == null ? 'Unknown' : _labelForIndex(classIndex);
+      final String label = classIndex == null
+          ? 'Unknown'
+          : _labelForIndex(classIndex);
+      final bool isLichen = _isLichenDetection(
+        classIndex: classIndex,
+        label: label,
+      );
       final String? speciesId = classIndex == null
           ? _speciesIdForLabel(label)
           : classIndex.toString();
@@ -344,11 +399,11 @@ class _DetectionPageState extends State<DetectionPage>
         speciesId: speciesId,
         classIndex: classIndex,
         photoPath: photoPath,
+        isLichen: isLichen,
       );
-      await Navigator.of(context).pushNamed(
-        '/detection-result',
-        arguments: args,
-      );
+      await Navigator.of(
+        context,
+      ).pushNamed('/detection-result', arguments: args);
     } finally {
       if (!mounted) return;
       try {
@@ -396,9 +451,9 @@ class _DetectionPageState extends State<DetectionPage>
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _openSpeciesDetail(String speciesId) {
@@ -547,245 +602,218 @@ class _DetectionPageState extends State<DetectionPage>
                 padding: const EdgeInsets.all(24),
                 child: Text(
                   _errorMessage!,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: _mutedWhite,
-                  ),
+                  style: const TextStyle(fontSize: 16, color: _mutedWhite),
                   textAlign: TextAlign.center,
                 ),
               ),
             )
           : !_hasPermission
-              ? const Center(
-                  child: CircularProgressIndicator(color: _accentGreen),
-                )
-              : !_isInitialized || _camera == null
-                  ? const Center(
-                      child: CircularProgressIndicator(color: _accentGreen),
-                    )
-                  : LayoutBuilder(
-                      builder: (context, _) {
-                        final preview = _camera!;
-                        final StableTrack? primaryTrack = _primaryTrack;
-                        final bool hasLocked =
-                            primaryTrack?.lockedClassId != null;
-                        final bool isAmbiguous =
-                            primaryTrack?.isAmbiguous ?? false;
-                        final bool isReady =
-                            primaryTrack?.isReadyToCapture ?? false;
-                        final String? primaryLabel = hasLocked
-                            ? primaryTrack?.lockedLabel
-                            : primaryTrack?.top1Label;
-                        final int? primaryClassIndex = hasLocked
-                            ? primaryTrack?.lockedClassId
-                            : primaryTrack?.top1ClassId;
-                        final String? topSpeciesId = primaryClassIndex == null
-                            ? (primaryLabel == null
-                                  ? null
-                                  : _speciesIdForLabel(primaryLabel))
-                            : primaryClassIndex.toString();
-                        final String? topConfidence = primaryTrack == null
-                            ? null
-                            : '${(primaryTrack.top1AvgConf * 100).toStringAsFixed(1)}%';
-                        final String statusText;
-                        final IconData statusIcon;
-                        if (primaryTrack == null) {
-                          statusText = 'Scanning for species...';
-                          statusIcon = Icons.center_focus_strong;
-                        } else if (isReady) {
-                          statusText = 'Ready to capture';
-                          statusIcon = Icons.check_circle;
-                        } else if (hasLocked) {
-                          statusText = 'Stable detection - hold steady';
-                          statusIcon = Icons.shield_outlined;
-                        } else {
-                          statusText = 'Stabilising detection...';
-                          statusIcon = Icons.timelapse;
-                        }
+          ? const Center(child: CircularProgressIndicator(color: _accentGreen))
+          : !_isInitialized || _camera == null
+          ? const Center(child: CircularProgressIndicator(color: _accentGreen))
+          : LayoutBuilder(
+              builder: (context, _) {
+                final preview = _camera!;
+                final StableTrack? primaryTrack = _primaryTrack;
+                final bool hasLocked = primaryTrack?.lockedClassId != null;
+                final bool isAmbiguous = primaryTrack?.isAmbiguous ?? false;
+                final bool isReady = primaryTrack?.isReadyToCapture ?? false;
+                final String? primaryLabel = hasLocked
+                    ? primaryTrack?.lockedLabel
+                    : primaryTrack?.top1Label;
+                final int? primaryClassIndex = hasLocked
+                    ? primaryTrack?.lockedClassId
+                    : primaryTrack?.top1ClassId;
+                final String? topSpeciesId = primaryClassIndex == null
+                    ? (primaryLabel == null
+                          ? null
+                          : _speciesIdForLabel(primaryLabel))
+                    : primaryClassIndex.toString();
+                final String? topConfidence = primaryTrack == null
+                    ? null
+                    : '${(primaryTrack.top1AvgConf * 100).toStringAsFixed(1)}%';
+                final String statusText;
+                final IconData statusIcon;
+                if (primaryTrack == null) {
+                  statusText = 'Scanning for species...';
+                  statusIcon = Icons.center_focus_strong;
+                } else if (isReady) {
+                  statusText = 'Ready to capture';
+                  statusIcon = Icons.check_circle;
+                } else if (hasLocked) {
+                  statusText = 'Stable detection - hold steady';
+                  statusIcon = Icons.shield_outlined;
+                } else {
+                  statusText = 'Stabilising detection...';
+                  statusIcon = Icons.timelapse;
+                }
 
-                        String? bannerTitle;
-                        String? bannerSubtitle;
-                        String? bannerDetail;
-                        if (primaryTrack != null) {
-                          if (hasLocked) {
-                            bannerTitle = primaryTrack.lockedLabel;
-                            if (isAmbiguous &&
-                                primaryTrack.top2Label != null) {
-                              bannerSubtitle =
-                                  'Also possible: ${primaryTrack.top2Label}';
-                            } else if (topConfidence != null) {
-                              bannerSubtitle = 'Stable $topConfidence';
-                            }
-                          } else {
-                            bannerTitle = 'Stabilising...';
-                            if (primaryTrack.top1Label != null) {
-                              bannerSubtitle =
-                                  'Leading: ${primaryTrack.top1Label}';
-                            }
-                            if (isAmbiguous &&
-                                primaryTrack.top2Label != null) {
-                              bannerDetail =
-                                  'Also possible: ${primaryTrack.top2Label}';
-                            }
-                          }
-                        }
+                String? bannerTitle;
+                String? bannerSubtitle;
+                String? bannerDetail;
+                if (primaryTrack != null) {
+                  if (hasLocked) {
+                    bannerTitle = primaryTrack.lockedLabel;
+                    if (isAmbiguous && primaryTrack.top2Label != null) {
+                      bannerSubtitle =
+                          'Also possible: ${primaryTrack.top2Label}';
+                    } else if (topConfidence != null) {
+                      bannerSubtitle = 'Stable $topConfidence';
+                    }
+                  } else {
+                    bannerTitle = 'Stabilising...';
+                    if (primaryTrack.top1Label != null) {
+                      bannerSubtitle = 'Leading: ${primaryTrack.top1Label}';
+                    }
+                    if (isAmbiguous && primaryTrack.top2Label != null) {
+                      bannerDetail = 'Also possible: ${primaryTrack.top2Label}';
+                    }
+                  }
+                }
 
-                        return ColoredBox(
-                          color: _deepGreen,
-                          child: SizedBox.expand(
-                            child: Stack(
-                              fit: StackFit.expand,
+                return ColoredBox(
+                  color: _deepGreen,
+                  child: SizedBox.expand(
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ClipRect(
+                          child: FittedBox(
+                            fit: BoxFit.cover,
+                            child: SizedBox(
+                              width: _previewSize.width,
+                              height: _previewSize.height,
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  SizedBox.expand(
+                                    child: CameraPreview(preview),
+                                  ),
+                                  CustomPaint(
+                                    painter: DetectionPainter(
+                                      detections: _detections,
+                                      inputSize: Size(
+                                        _inputWidth.toDouble(),
+                                        _inputHeight.toDouble(),
+                                      ),
+                                      previewSize: _previewSize,
+                                      canvasSize: _previewSize,
+                                      isFrontCamera: _isFrontCamera,
+                                      accentColor: _accentGreen,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    _deepGreen.withValues(alpha: 0.65),
+                                    Colors.transparent,
+                                    _deepGreen.withValues(alpha: 0.55),
+                                  ],
+                                  stops: const [0.0, 0.6, 1.0],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SafeArea(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            child: Column(
                               children: [
-                                ClipRect(
-                                  child: FittedBox(
-                                    fit: BoxFit.cover,
-                                    child: SizedBox(
-                                      width: _previewSize.width,
-                                      height: _previewSize.height,
-                                      child: Stack(
-                                        fit: StackFit.expand,
-                                        children: [
-                                          SizedBox.expand(
-                                            child: CameraPreview(preview),
-                                          ),
-                                          CustomPaint(
-                                            painter: DetectionPainter(
-                                              detections: _detections,
-                                              inputSize: Size(
-                                                _inputWidth.toDouble(),
-                                                _inputHeight.toDouble(),
-                                              ),
-                                              previewSize: _previewSize,
-                                              canvasSize: _previewSize,
-                                              isFrontCamera: _isFrontCamera,
-                                              accentColor: _accentGreen,
-                                            ),
-                                          ),
-                                        ],
+                                if (bannerTitle != null)
+                                  Align(
+                                    alignment: Alignment.topCenter,
+                                    child: _DetectionBanner(
+                                      title: bannerTitle,
+                                      subtitle: bannerSubtitle,
+                                      secondarySubtitle: bannerDetail,
+                                      accentColor: _accentGreen,
+                                      backgroundColor: _deepGreen.withValues(
+                                        alpha: 0.78,
                                       ),
+                                      onTap: !hasLocked || topSpeciesId == null
+                                          ? null
+                                          : () => _openSpeciesDetail(
+                                              topSpeciesId,
+                                            ),
                                     ),
                                   ),
-                                ),
-                                Positioned.fill(
-                                  child: IgnorePointer(
-                                    child: DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                          colors: [
-                                            _deepGreen.withValues(alpha: 0.65),
-                                            Colors.transparent,
-                                            _deepGreen.withValues(alpha: 0.55),
-                                          ],
-                                          stops: const [0.0, 0.6, 1.0],
+                                const Spacer(),
+                                Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _StatusPill(
+                                        text: statusText,
+                                        icon: statusIcon,
+                                        accentColor: isReady
+                                            ? _highlightGreen
+                                            : _accentGreen,
+                                        backgroundColor: _deepGreen.withValues(
+                                          alpha: 0.75,
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                ),
-                                SafeArea(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 10,
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        if (bannerTitle != null)
-                                          Align(
-                                            alignment: Alignment.topCenter,
-                                            child: _DetectionBanner(
-                                              title: bannerTitle,
-                                              subtitle: bannerSubtitle,
-                                              secondarySubtitle: bannerDetail,
-                                              accentColor: _accentGreen,
-                                              backgroundColor:
-                                                  _deepGreen.withValues(
-                                                alpha: 0.78,
-                                              ),
-                                              onTap: !hasLocked ||
-                                                      topSpeciesId == null
-                                                  ? null
-                                                  : () => _openSpeciesDetail(
-                                                        topSpeciesId,
-                                                      ),
-                                            ),
+                                      const SizedBox(height: 10),
+                                      SizedBox(
+                                        width: 220,
+                                        child: ElevatedButton.icon(
+                                          onPressed:
+                                              (primaryTrack != null &&
+                                                  isReady &&
+                                                  !_isCapturing)
+                                              ? () =>
+                                                    _handleCapture(primaryTrack)
+                                              : null,
+                                          icon: const Icon(Icons.camera_alt),
+                                          label: Text(
+                                            _isCapturing
+                                                ? 'Capturing...'
+                                                : isReady
+                                                ? 'Capture'
+                                                : 'Not ready',
                                           ),
-                                        const Spacer(),
-                                        Align(
-                                          alignment: Alignment.bottomCenter,
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              _StatusPill(
-                                                text: statusText,
-                                                icon: statusIcon,
-                                                accentColor: isReady
-                                                    ? _highlightGreen
-                                                    : _accentGreen,
-                                                backgroundColor:
-                                                    _deepGreen.withValues(
-                                                  alpha: 0.75,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 10),
-                                              SizedBox(
-                                                width: 220,
-                                                child: ElevatedButton.icon(
-                                                  onPressed: (primaryTrack !=
-                                                              null &&
-                                                          isReady &&
-                                                          !_isCapturing)
-                                                      ? () => _handleCapture(
-                                                            primaryTrack,
-                                                          )
-                                                      : null,
-                                                  icon: const Icon(
-                                                    Icons.camera_alt,
-                                                  ),
-                                                  label: Text(
-                                                    _isCapturing
-                                                        ? 'Capturing...'
-                                                        : isReady
-                                                            ? 'Capture'
-                                                            : 'Not ready',
-                                                  ),
-                                                  style:
-                                                      ElevatedButton.styleFrom(
-                                                    backgroundColor:
-                                                        _highlightGreen,
-                                                    foregroundColor:
-                                                        _deepGreen,
-                                                    disabledBackgroundColor:
-                                                        _deepGreen.withValues(
-                                                      alpha: 0.35,
-                                                    ),
-                                                    disabledForegroundColor:
-                                                        _mutedWhite,
-                                                    elevation: 0,
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                      vertical: 12,
-                                                    ),
-                                                    shape:
-                                                        const StadiumBorder(),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: _highlightGreen,
+                                            foregroundColor: _deepGreen,
+                                            disabledBackgroundColor: _deepGreen
+                                                .withValues(alpha: 0.35),
+                                            disabledForegroundColor:
+                                                _mutedWhite,
+                                            elevation: 0,
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 12,
+                                            ),
+                                            shape: const StadiumBorder(),
                                           ),
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                        );
-                      },
+                        ),
+                      ],
                     ),
+                  ),
+                );
+              },
+            ),
     );
   }
 }
@@ -922,10 +950,7 @@ class _DetectionBanner extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle!,
-                      style: const TextStyle(
-                        color: _mutedWhite,
-                        fontSize: 12,
-                      ),
+                      style: const TextStyle(color: _mutedWhite, fontSize: 12),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -933,10 +958,7 @@ class _DetectionBanner extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       secondarySubtitle!,
-                      style: const TextStyle(
-                        color: _mutedWhite,
-                        fontSize: 12,
-                      ),
+                      style: const TextStyle(color: _mutedWhite, fontSize: 12),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -945,11 +967,7 @@ class _DetectionBanner extends StatelessWidget {
             ),
             if (onTap != null) ...[
               const SizedBox(width: 6),
-              const Icon(
-                Icons.chevron_right,
-                color: Colors.white70,
-                size: 18,
-              ),
+              const Icon(Icons.chevron_right, color: Colors.white70, size: 18),
             ],
           ],
         ),
@@ -1003,10 +1021,7 @@ class _StatusPill extends StatelessWidget {
             Flexible(
               child: Text(
                 text,
-                style: const TextStyle(
-                  color: _mutedWhite,
-                  fontSize: 12.5,
-                ),
+                style: const TextStyle(color: _mutedWhite, fontSize: 12.5),
                 overflow: TextOverflow.ellipsis,
               ),
             ),

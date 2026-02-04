@@ -4,6 +4,14 @@ class Observation {
   final int? classIndex;
   final String label;
   final double? confidence;
+  final String? top2Label;
+  final double? top2Confidence;
+  final double? top1VoteRatio;
+  final int? windowFrameCount;
+  final int? windowDurationMs;
+  final int? stabilityWinCount;
+  final int? stabilityWindowSize;
+  final bool? isLichen;
   final DateTime timestamp;
   final String? photoPath;
   final ObservationLocation? location;
@@ -15,6 +23,14 @@ class Observation {
     required this.classIndex,
     required this.label,
     required this.confidence,
+    this.top2Label,
+    this.top2Confidence,
+    this.top1VoteRatio,
+    this.windowFrameCount,
+    this.windowDurationMs,
+    this.stabilityWinCount,
+    this.stabilityWindowSize,
+    this.isLichen,
     required this.timestamp,
     required this.photoPath,
     required this.location,
@@ -38,7 +54,8 @@ class Observation {
       classIndex = int.tryParse(rawClassIndex.toString());
     }
 
-    final String speciesId = json['speciesId']?.toString() ??
+    final String speciesId =
+        json['speciesId']?.toString() ??
         (classIndex == null ? '' : classIndex.toString());
 
     return Observation(
@@ -46,9 +63,31 @@ class Observation {
       speciesId: speciesId,
       classIndex: classIndex,
       label: json['label']?.toString() ?? '',
-      confidence:
-          json['confidence'] == null ? null : (json['confidence'] as num).toDouble(),
-      timestamp: DateTime.tryParse(json['timestamp']?.toString() ?? '') ??
+      confidence: json['confidence'] == null
+          ? null
+          : (json['confidence'] as num).toDouble(),
+      top2Label: json['top2Label']?.toString(),
+      top2Confidence: json['top2Confidence'] == null
+          ? null
+          : (json['top2Confidence'] as num).toDouble(),
+      top1VoteRatio: json['top1VoteRatio'] == null
+          ? null
+          : (json['top1VoteRatio'] as num).toDouble(),
+      windowFrameCount: json['windowFrameCount'] is num
+          ? (json['windowFrameCount'] as num).toInt()
+          : null,
+      windowDurationMs: json['windowDurationMs'] is num
+          ? (json['windowDurationMs'] as num).toInt()
+          : null,
+      stabilityWinCount: json['stabilityWinCount'] is num
+          ? (json['stabilityWinCount'] as num).toInt()
+          : null,
+      stabilityWindowSize: json['stabilityWindowSize'] is num
+          ? (json['stabilityWindowSize'] as num).toInt()
+          : null,
+      isLichen: json['isLichen'] is bool ? json['isLichen'] as bool : null,
+      timestamp:
+          DateTime.tryParse(json['timestamp']?.toString() ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
       photoPath: json['photoPath']?.toString(),
       location: location,
@@ -63,6 +102,14 @@ class Observation {
       'classIndex': classIndex,
       'label': label,
       'confidence': confidence,
+      'top2Label': top2Label,
+      'top2Confidence': top2Confidence,
+      'top1VoteRatio': top1VoteRatio,
+      'windowFrameCount': windowFrameCount,
+      'windowDurationMs': windowDurationMs,
+      'stabilityWinCount': stabilityWinCount,
+      'stabilityWindowSize': stabilityWindowSize,
+      'isLichen': isLichen,
       'timestamp': timestamp.toIso8601String(),
       'photoPath': photoPath,
       'location': location?.toJson(),
@@ -75,10 +122,7 @@ class ObservationLocation {
   final double latitude;
   final double longitude;
 
-  const ObservationLocation({
-    required this.latitude,
-    required this.longitude,
-  });
+  const ObservationLocation({required this.latitude, required this.longitude});
 
   factory ObservationLocation.fromJson(Map<String, dynamic> json) {
     return ObservationLocation(
@@ -88,9 +132,6 @@ class ObservationLocation {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'latitude': latitude,
-      'longitude': longitude,
-    };
+    return {'latitude': latitude, 'longitude': longitude};
   }
 }

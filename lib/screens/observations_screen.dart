@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/navigation_args.dart';
 import '../models/observation.dart';
+import '../models/species.dart';
 import '../repositories/observation_repository.dart';
 import '../repositories/species_repository.dart';
 import '../utils/formatting.dart';
@@ -23,6 +24,8 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
 
   List<Observation> _observations = [];
   Map<String, String> _speciesNames = {};
+  Set<String> _lichenSpeciesIds = <String>{};
+  Set<String> _lichenNames = <String>{};
   bool _loading = true;
   ObservationSort _sort = ObservationSort.date;
 
@@ -35,16 +38,47 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
   Future<void> _loadData() async {
     final observations = await _observationRepository.loadObservations();
     final species = await _speciesRepository.loadSpecies();
-    final nameMap = {
-      for (final item in species) item.id: item.displayName,
-    };
+    final nameMap = {for (final item in species) item.id: item.displayName};
+    final lichenSpeciesIds = <String>{};
+    final lichenNames = <String>{};
+    for (final item in species) {
+      if (_isLichenSpecies(item)) {
+        lichenSpeciesIds.add(item.id);
+        final scientific = item.scientificName.trim().toLowerCase();
+        if (scientific.isNotEmpty) {
+          lichenNames.add(scientific);
+        }
+        final common = (item.commonName ?? '').trim().toLowerCase();
+        if (common.isNotEmpty) {
+          lichenNames.add(common);
+        }
+      }
+    }
     if (!mounted) return;
 
     setState(() {
       _observations = observations;
       _speciesNames = nameMap;
+      _lichenSpeciesIds = lichenSpeciesIds;
+      _lichenNames = lichenNames;
       _loading = false;
     });
+  }
+
+  bool _isLichenSpecies(Species species) {
+    final String taxonomyClass = (species.taxonomyClass ?? '')
+        .trim()
+        .toLowerCase();
+    if (taxonomyClass == 'lecanoromycetes') {
+      return true;
+    }
+    final String combined = [
+      species.commonName,
+      species.shortDescription,
+      species.taxonomyOrder,
+      species.taxonomyFamily,
+    ].whereType<String>().join(' ').toLowerCase();
+    return combined.contains('lichen');
   }
 
   List<Observation> get _sortedObservations {
@@ -70,19 +104,40 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
   }
 
   void _openDetail(Observation observation) {
+    final String label = _displayNameFor(observation);
+    final String normalizedLabel = label.trim().toLowerCase();
+    final bool isLichen =
+        observation.isLichen ??
+        _lichenSpeciesIds.contains(observation.speciesId) ||
+            _lichenNames.contains(normalizedLabel);
     Navigator.of(context).pushNamed(
-      '/species-detail',
-      arguments: SpeciesDetailArgs(
-        speciesId: observation.speciesId,
-        observation: observation,
+      '/detection-result',
+      arguments: DetectionResultArgs(
+        lockedLabel: label,
+        top2Label: observation.top2Label,
+        top1AvgConf: observation.confidence ?? 0.0,
+        top2AvgConf: observation.top2Confidence,
+        top1VoteRatio: observation.top1VoteRatio ?? 0.0,
+        windowFrameCount: observation.windowFrameCount ?? 0,
+        windowDurationMs: observation.windowDurationMs ?? 0,
+        stabilityWinCount: observation.stabilityWinCount ?? 0,
+        stabilityWindowSize: observation.stabilityWindowSize ?? 0,
+        timestamp: observation.timestamp,
+        speciesId: observation.speciesId.trim().isEmpty
+            ? null
+            : observation.speciesId,
+        classIndex: observation.classIndex,
+        photoPath: observation.photoPath,
+        isLichen: isLichen,
+        isSavedView: true,
       ),
     );
   }
 
   void _openSaveObservation() {
-    Navigator.of(context)
-        .pushNamed('/save-observation')
-        .then((_) => _loadData());
+    Navigator.of(
+      context,
+    ).pushNamed('/save-observation').then((_) => _loadData());
   }
 
   @override
@@ -140,48 +195,48 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _observations.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No observations saved yet.',
-                      style: TextStyle(color: accentTextColor),
-                    ),
-                  )
-                : ListView.separated(
-                    itemCount: _sortedObservations.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (context, index) {
-                      final observation = _sortedObservations[index];
-                      final name = _displayNameFor(observation);
-                      final photoPath = observation.photoPath;
+            ? const Center(
+                child: Text(
+                  'No observations saved yet.',
+                  style: TextStyle(color: accentTextColor),
+                ),
+              )
+            : ListView.separated(
+                itemCount: _sortedObservations.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  final observation = _sortedObservations[index];
+                  final name = _displayNameFor(observation);
+                  final photoPath = observation.photoPath;
 
-                      return Material(
-                        color: Colors.white.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(14),
-                        child: ListTile(
-                          onTap: () => _openDetail(observation),
-                          leading: _ObservationThumbnail(photoPath: photoPath),
-                          title: Text(
-                            name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          subtitle: Text(
-                            '${formatDateTime(observation.timestamp)} · ${formatConfidence(observation.confidence)}',
-                            style: const TextStyle(
-                              color: accentTextColor,
-                              fontSize: 12.5,
-                            ),
-                          ),
-                          trailing: const Icon(
-                            Icons.chevron_right,
-                            color: Colors.white70,
-                          ),
+                  return Material(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    child: ListTile(
+                      onTap: () => _openDetail(observation),
+                      leading: _ObservationThumbnail(photoPath: photoPath),
+                      title: Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                      subtitle: Text(
+                        '${formatDateTime(observation.timestamp)} · ${formatConfidence(observation.confidence)}',
+                        style: const TextStyle(
+                          color: accentTextColor,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                      trailing: const Icon(
+                        Icons.chevron_right,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  );
+                },
+              ),
       ),
     );
   }
@@ -207,15 +262,9 @@ class _ObservationThumbnail extends StatelessWidget {
       child: hasImage
           ? ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: Image.file(
-                File(path!),
-                fit: BoxFit.cover,
-              ),
+              child: Image.file(File(path), fit: BoxFit.cover),
             )
-          : const Icon(
-              Icons.local_florist,
-              color: Colors.white70,
-            ),
+          : const Icon(Icons.local_florist, color: Colors.white70),
     );
   }
 }
