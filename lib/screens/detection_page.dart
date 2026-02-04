@@ -40,6 +40,7 @@ class _DetectionPageState extends State<DetectionPage>
   bool _isInitialized = false;
   bool _hasPermission = false;
   bool _engineReady = false;
+  bool _isCapturing = false;
 
   int _inputWidth = 640;
   int _inputHeight = 640;
@@ -308,28 +309,96 @@ class _DetectionPageState extends State<DetectionPage>
     return best;
   }
 
-  void _handleCapture(StableTrack track) {
-    final int? classIndex = track.lockedClassId ?? track.top1ClassId;
-    final String label =
-        classIndex == null ? 'Unknown' : _labelForIndex(classIndex);
-    final String? speciesId =
-        classIndex == null ? _speciesIdForLabel(label) : classIndex.toString();
-    final args = DetectionResultArgs(
-      lockedLabel: label,
-      top2Label: track.isAmbiguous ? track.top2Label : null,
-      top1AvgConf:
-          track.lockedClassId == null ? track.top1AvgConf : track.lockedAvgConf,
-      top2AvgConf: track.isAmbiguous ? track.top2AvgConf : null,
-      top1VoteRatio: track.top1VoteRatio,
-      windowFrameCount: track.windowFrameCount,
-      windowDurationMs: track.windowDurationMs,
-      stabilityWinCount: track.stabilityWinCount,
-      stabilityWindowSize: track.stabilityWindowSize,
-      timestamp: DateTime.now(),
-      speciesId: speciesId,
-      classIndex: classIndex,
+  Future<void> _handleCapture(StableTrack track) async {
+    if (_isCapturing) {
+      return;
+    }
+    setState(() {
+      _isCapturing = true;
+    });
+
+    String? photoPath;
+    try {
+      photoPath = await _capturePhoto();
+      if (!mounted) return;
+
+      final int? classIndex = track.lockedClassId ?? track.top1ClassId;
+      final String label =
+          classIndex == null ? 'Unknown' : _labelForIndex(classIndex);
+      final String? speciesId = classIndex == null
+          ? _speciesIdForLabel(label)
+          : classIndex.toString();
+      final args = DetectionResultArgs(
+        lockedLabel: label,
+        top2Label: track.isAmbiguous ? track.top2Label : null,
+        top1AvgConf: track.lockedClassId == null
+            ? track.top1AvgConf
+            : track.lockedAvgConf,
+        top2AvgConf: track.isAmbiguous ? track.top2AvgConf : null,
+        top1VoteRatio: track.top1VoteRatio,
+        windowFrameCount: track.windowFrameCount,
+        windowDurationMs: track.windowDurationMs,
+        stabilityWinCount: track.stabilityWinCount,
+        stabilityWindowSize: track.stabilityWindowSize,
+        timestamp: DateTime.now(),
+        speciesId: speciesId,
+        classIndex: classIndex,
+        photoPath: photoPath,
+      );
+      await Navigator.of(context).pushNamed(
+        '/detection-result',
+        arguments: args,
+      );
+    } finally {
+      if (!mounted) return;
+      try {
+        if (_camera != null &&
+            _camera!.value.isInitialized &&
+            !_camera!.value.isStreamingImages) {
+          await _startImageStream();
+        }
+      } catch (e, stack) {
+        debugPrint('Failed to restart camera stream: $e');
+        debugPrintStack(stackTrace: stack);
+      }
+      if (!mounted) return;
+      setState(() {
+        _isCapturing = false;
+      });
+    }
+  }
+
+  Future<String?> _capturePhoto() async {
+    final controller = _camera;
+    if (controller == null || !controller.value.isInitialized) {
+      _showMessage('Camera not ready. Unable to capture photo.');
+      return null;
+    }
+
+    try {
+      if (controller.value.isStreamingImages) {
+        await controller.stopImageStream();
+      }
+      if (controller.value.isTakingPicture) {
+        return null;
+      }
+      final XFile file = await controller.takePicture();
+      return file.path;
+    } catch (e, stack) {
+      debugPrint('Photo capture error: $e');
+      debugPrintStack(stackTrace: stack);
+      _showMessage(
+        'Could not capture photo. You can still save the observation.',
+      );
+      return null;
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
-    Navigator.of(context).pushNamed('/detection-result', arguments: args);
   }
 
   void _openSpeciesDetail(String speciesId) {
@@ -666,7 +735,8 @@ class _DetectionPageState extends State<DetectionPage>
                                                 child: ElevatedButton.icon(
                                                   onPressed: (primaryTrack !=
                                                               null &&
-                                                          isReady)
+                                                          isReady &&
+                                                          !_isCapturing)
                                                       ? () => _handleCapture(
                                                             primaryTrack,
                                                           )
@@ -675,9 +745,11 @@ class _DetectionPageState extends State<DetectionPage>
                                                     Icons.camera_alt,
                                                   ),
                                                   label: Text(
-                                                    isReady
-                                                        ? 'Capture'
-                                                        : 'Not ready',
+                                                    _isCapturing
+                                                        ? 'Capturing...'
+                                                        : isReady
+                                                            ? 'Capture'
+                                                            : 'Not ready',
                                                   ),
                                                   style:
                                                       ElevatedButton.styleFrom(

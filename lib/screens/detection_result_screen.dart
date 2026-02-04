@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../models/navigation_args.dart';
 import '../models/observation.dart';
@@ -16,6 +19,29 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
   final ObservationRepository _observationRepository =
       ObservationRepository.instance;
   bool _saving = false;
+  bool _saved = false;
+  DetectionResultArgs? _args;
+  String? _tempPhotoPath;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_args != null) {
+      return;
+    }
+    final args =
+        ModalRoute.of(context)?.settings.arguments as DetectionResultArgs?;
+    if (args != null) {
+      _args = args;
+      _tempPhotoPath = args.photoPath;
+    }
+  }
+
+  @override
+  void dispose() {
+    _cleanupTempPhoto();
+    super.dispose();
+  }
 
   Future<void> _saveObservation(DetectionResultArgs args) async {
     if (_saving) return;
@@ -40,6 +66,10 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
       _saving = true;
     });
     try {
+      String? photoPath;
+      if (args.photoPath != null) {
+        photoPath = await _persistPhoto(args.photoPath!);
+      }
       final observation = Observation(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         speciesId: classIndex.toString(),
@@ -47,12 +77,13 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
         label: label,
         confidence: confidence,
         timestamp: DateTime.now(),
-        photoPath: null,
+        photoPath: photoPath,
         location: null,
         notes: null,
       );
       await _observationRepository.addObservation(observation);
       if (!mounted) return;
+      _saved = true;
       _showMessage('Observation saved.');
     } catch (e) {
       if (!mounted) return;
@@ -65,6 +96,44 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
     }
   }
 
+  Future<String?> _persistPhoto(String tempPath) async {
+    final tempFile = File(tempPath);
+    if (!await tempFile.exists()) {
+      return null;
+    }
+    final directory = await getApplicationSupportDirectory();
+    final photosDir = Directory('${directory.path}/observation_photos');
+    if (!await photosDir.exists()) {
+      await photosDir.create(recursive: true);
+    }
+    final fileName =
+        'observation_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final savedPath = '${photosDir.path}${Platform.pathSeparator}$fileName';
+    final savedFile = await tempFile.copy(savedPath);
+    try {
+      await tempFile.delete();
+    } catch (_) {}
+    return savedFile.path;
+  }
+
+  void _cleanupTempPhoto() {
+    if (_saved) return;
+    final path = _tempPhotoPath;
+    if (path == null) return;
+    final file = File(path);
+    if (file.existsSync()) {
+      try {
+        file.deleteSync();
+      } catch (_) {}
+    }
+  }
+
+  void _handleBack() {
+    _cleanupTempPhoto();
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
   void _showMessage(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -74,8 +143,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final args =
-        ModalRoute.of(context)?.settings.arguments as DetectionResultArgs?;
+    final args = _args;
 
     if (args == null) {
       return const Scaffold(
@@ -226,7 +294,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: _handleBack,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
                   side: BorderSide(

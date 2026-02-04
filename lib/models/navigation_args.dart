@@ -39,6 +39,7 @@ class DetectionResultArgs {
   final DateTime timestamp;
   final String? speciesId;
   final int? classIndex;
+  final String? photoPath;
 
   const DetectionResultArgs({
     required this.lockedLabel,
@@ -53,5 +54,6 @@ class DetectionResultArgs {
     required this.timestamp,
     required this.speciesId,
     required this.classIndex,
+    this.photoPath,
   });
 }
