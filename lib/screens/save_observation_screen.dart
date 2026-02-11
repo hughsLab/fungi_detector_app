@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 
 import '../models/navigation_args.dart';
 import '../models/observation.dart';
 import '../models/species.dart';
 import '../repositories/observation_repository.dart';
 import '../repositories/species_repository.dart';
+import '../services/location_capture_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/forest_background.dart';
 
@@ -20,10 +22,11 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
   final ObservationRepository _observationRepository =
       ObservationRepository.instance;
   final SettingsService _settingsService = SettingsService.instance;
+  final LocationCaptureService _locationCaptureService =
+      LocationCaptureService.instance;
+  final Uuid _uuid = const Uuid();
 
   final TextEditingController _notesController = TextEditingController();
-  final TextEditingController _latitudeController = TextEditingController();
-  final TextEditingController _longitudeController = TextEditingController();
 
   List<Species> _species = [];
   Species? _selectedSpecies;
@@ -31,6 +34,7 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
   double _confidenceValue = 0.6;
   bool _locationEnabled = false;
   bool _loading = true;
+  bool _saving = false;
   bool _initialized = false;
 
   @override
@@ -68,49 +72,85 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
   }
 
   void _saveObservation() async {
+    if (_saving) return;
     final species = _selectedSpecies;
     if (species == null) {
       return;
     }
 
-    ObservationLocation? location;
-    if (_locationEnabled) {
-      final lat = double.tryParse(_latitudeController.text.trim());
-      final lon = double.tryParse(_longitudeController.text.trim());
-      if (lat != null && lon != null) {
-        location = ObservationLocation(latitude: lat, longitude: lon);
+    setState(() {
+      _saving = true;
+    });
+
+    try {
+      CapturedLocation? capturedLocation;
+      String? locationMessage;
+      ObservationLocationSource locationSource = ObservationLocationSource.none;
+      double? latitude;
+      double? longitude;
+      double? accuracyMeters;
+      DateTime? capturedAt;
+      if (_locationEnabled) {
+        capturedLocation =
+            await _locationCaptureService.captureForObservation();
+        locationMessage = _locationCaptureService.lastErrorMessage;
+        if (capturedLocation != null) {
+          latitude = capturedLocation.latitude;
+          longitude = capturedLocation.longitude;
+          accuracyMeters = capturedLocation.accuracyMeters;
+          capturedAt = capturedLocation.capturedAt;
+          locationSource = ObservationLocationSource.deviceGps;
+        }
       }
+
+      final observation = Observation(
+        id: _uuid.v4(),
+        speciesId: species.id,
+        classIndex: int.tryParse(species.id),
+        label: species.commonName?.isNotEmpty == true
+            ? species.commonName!
+            : species.scientificName,
+        confidence: _includeConfidence ? _confidenceValue : null,
+        createdAt: DateTime.now(),
+        photoPath: null,
+        latitude: latitude,
+        longitude: longitude,
+        accuracyMeters: accuracyMeters,
+        capturedAt: capturedAt,
+        locationSource: locationSource,
+        notes: _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
+      );
+
+      await _observationRepository.saveObservation(observation);
+      if (!mounted) return;
+      final String message =
+          (locationSource == ObservationLocationSource.deviceGps)
+              ? 'Saved (pin added to Map).'
+              : (_locationEnabled
+                  ? (locationMessage ?? 'Saved without location.')
+                  : 'Saved (location tagging off).');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save observation: $e')),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+      });
     }
-
-    final observation = Observation(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      speciesId: species.id,
-      classIndex: int.tryParse(species.id),
-      label: species.commonName?.isNotEmpty == true
-          ? species.commonName!
-          : species.scientificName,
-      confidence: _includeConfidence ? _confidenceValue : null,
-      timestamp: DateTime.now(),
-      photoPath: null,
-      location: location,
-      notes: _notesController.text.trim().isEmpty
-          ? null
-          : _notesController.text.trim(),
-    );
-
-    await _observationRepository.addObservation(observation);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Observation saved.')),
-    );
-    Navigator.of(context).pop();
   }
 
   @override
   void dispose() {
     _notesController.dispose();
-    _latitudeController.dispose();
-    _longitudeController.dispose();
     super.dispose();
   }
 
@@ -218,48 +258,22 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
                     const SizedBox(height: 8),
                     if (_locationEnabled) ...[
                       const Text(
-                        'Location (optional)',
+                        'Location tagging is enabled.',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      TextField(
-                        controller: _latitudeController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          signed: true,
-                          decimal: true,
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          labelText: 'Latitude',
-                          labelStyle: const TextStyle(color: accentTextColor),
-                          filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.08),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: _longitudeController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          signed: true,
-                          decimal: true,
-                        ),
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          labelText: 'Longitude',
-                          labelStyle: const TextStyle(color: accentTextColor),
-                          filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.08),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
+                        child: const Text(
+                          'GPS will be captured when you save. First fix may take a few seconds offline.',
+                          style: TextStyle(color: accentTextColor),
                         ),
                       ),
                     ] else ...[
@@ -295,7 +309,7 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _saveObservation,
+                        onPressed: _saving ? null : _saveObservation,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF8FBFA1),
                           foregroundColor: Colors.white,
@@ -303,9 +317,9 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: const StadiumBorder(),
                         ),
-                        child: const Text(
-                          'Save Observation',
-                          style: TextStyle(
+                        child: Text(
+                          _saving ? 'Saving...' : 'Save Observation',
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),

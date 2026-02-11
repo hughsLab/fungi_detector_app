@@ -1,3 +1,5 @@
+enum ObservationLocationSource { deviceGps, exifGps, none }
+
 class Observation {
   final String id;
   final String speciesId;
@@ -12,9 +14,13 @@ class Observation {
   final int? stabilityWinCount;
   final int? stabilityWindowSize;
   final bool? isLichen;
-  final DateTime timestamp;
+  final DateTime createdAt;
   final String? photoPath;
-  final ObservationLocation? location;
+  final double? latitude;
+  final double? longitude;
+  final double? accuracyMeters;
+  final DateTime? capturedAt;
+  final ObservationLocationSource locationSource;
   final String? notes;
 
   const Observation({
@@ -31,11 +37,34 @@ class Observation {
     this.stabilityWinCount,
     this.stabilityWindowSize,
     this.isLichen,
-    required this.timestamp,
+    required this.createdAt,
     required this.photoPath,
-    required this.location,
-    required this.notes,
+    this.latitude,
+    this.longitude,
+    this.accuracyMeters,
+    this.capturedAt,
+    this.locationSource = ObservationLocationSource.none,
+    this.notes,
   });
+
+  String get speciesName => label;
+  double? get lat => latitude;
+  double? get lon => longitude;
+  DateTime get timestamp => createdAt;
+
+  ObservationLocation? get location {
+    final lat = latitude;
+    final lon = longitude;
+    if (lat == null || lon == null) {
+      return null;
+    }
+    return ObservationLocation(
+      latitude: lat,
+      longitude: lon,
+      accuracyMeters: accuracyMeters,
+      capturedAt: capturedAt,
+    );
+  }
 
   factory Observation.fromJson(Map<String, dynamic> json) {
     final locationJson = json['location'];
@@ -58,11 +87,31 @@ class Observation {
         json['speciesId']?.toString() ??
         (classIndex == null ? '' : classIndex.toString());
 
+    final double? latitude =
+        _parseDouble(json['latitude']) ??
+        _parseDouble(json['lat']) ??
+        location?.latitude;
+    final double? longitude =
+        _parseDouble(json['longitude']) ??
+        _parseDouble(json['lon']) ??
+        location?.longitude;
+    final double? accuracyMeters =
+        _parseDouble(json['accuracyMeters']) ?? location?.accuracyMeters;
+    final DateTime? capturedAt =
+        _parseDateTime(json['capturedAt']) ?? location?.capturedAt;
+    final ObservationLocationSource locationSource =
+        _parseLocationSource(json['locationSource']) ??
+        ((latitude != null && longitude != null)
+            ? ObservationLocationSource.deviceGps
+            : ObservationLocationSource.none);
+
     return Observation(
       id: json['id']?.toString() ?? '',
       speciesId: speciesId,
       classIndex: classIndex,
-      label: json['label']?.toString() ?? '',
+      label: json['label']?.toString() ??
+          json['speciesName']?.toString() ??
+          '',
       confidence: json['confidence'] == null
           ? null
           : (json['confidence'] as num).toDouble(),
@@ -86,21 +135,28 @@ class Observation {
           ? (json['stabilityWindowSize'] as num).toInt()
           : null,
       isLichen: json['isLichen'] is bool ? json['isLichen'] as bool : null,
-      timestamp:
-          DateTime.tryParse(json['timestamp']?.toString() ?? '') ??
+      createdAt:
+          _parseDateTime(json['createdAt']) ??
+          _parseDateTime(json['timestamp']) ??
           DateTime.fromMillisecondsSinceEpoch(0),
       photoPath: json['photoPath']?.toString(),
-      location: location,
+      latitude: latitude,
+      longitude: longitude,
+      accuracyMeters: accuracyMeters,
+      capturedAt: capturedAt,
+      locationSource: locationSource,
       notes: json['notes']?.toString(),
     );
   }
 
   Map<String, dynamic> toJson() {
+    final String createdAtIso = createdAt.toIso8601String();
     return {
       'id': id,
       'speciesId': speciesId,
       'classIndex': classIndex,
       'label': label,
+      'speciesName': speciesName,
       'confidence': confidence,
       'top2Label': top2Label,
       'top2Confidence': top2Confidence,
@@ -110,8 +166,16 @@ class Observation {
       'stabilityWinCount': stabilityWinCount,
       'stabilityWindowSize': stabilityWindowSize,
       'isLichen': isLichen,
-      'timestamp': timestamp.toIso8601String(),
+      'createdAt': createdAtIso,
+      'timestamp': createdAtIso,
       'photoPath': photoPath,
+      'latitude': latitude,
+      'longitude': longitude,
+      'lat': latitude,
+      'lon': longitude,
+      'accuracyMeters': accuracyMeters,
+      'capturedAt': capturedAt?.toIso8601String(),
+      'locationSource': locationSource.name,
       'location': location?.toJson(),
       'notes': notes,
     };
@@ -121,17 +185,64 @@ class Observation {
 class ObservationLocation {
   final double latitude;
   final double longitude;
+  final double? accuracyMeters;
+  final DateTime? capturedAt;
 
-  const ObservationLocation({required this.latitude, required this.longitude});
+  const ObservationLocation({
+    required this.latitude,
+    required this.longitude,
+    this.accuracyMeters,
+    this.capturedAt,
+  });
 
   factory ObservationLocation.fromJson(Map<String, dynamic> json) {
     return ObservationLocation(
       latitude: (json['latitude'] as num?)?.toDouble() ?? 0,
       longitude: (json['longitude'] as num?)?.toDouble() ?? 0,
+      accuracyMeters: (json['accuracyMeters'] as num?)?.toDouble(),
+      capturedAt: _parseDateTime(json['capturedAt']),
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {'latitude': latitude, 'longitude': longitude};
+    return {
+      'latitude': latitude,
+      'longitude': longitude,
+      'accuracyMeters': accuracyMeters,
+      'capturedAt': capturedAt?.toIso8601String(),
+    };
   }
+}
+
+double? _parseDouble(dynamic value) {
+  if (value == null) {
+    return null;
+  }
+  if (value is num) {
+    return value.toDouble();
+  }
+  return double.tryParse(value.toString());
+}
+
+DateTime? _parseDateTime(dynamic value) {
+  if (value == null) {
+    return null;
+  }
+  if (value is DateTime) {
+    return value;
+  }
+  return DateTime.tryParse(value.toString());
+}
+
+ObservationLocationSource? _parseLocationSource(dynamic value) {
+  if (value == null) {
+    return null;
+  }
+  final raw = value.toString();
+  for (final candidate in ObservationLocationSource.values) {
+    if (candidate.name == raw) {
+      return candidate;
+    }
+  }
+  return null;
 }

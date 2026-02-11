@@ -87,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   const Text(
-                    'Tasmania',
+                    'Australia',
                     style: TextStyle(
                       fontSize: 34,
                       fontWeight: FontWeight.w700,
@@ -97,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    '(Offline)',
+                    '(Offline AI)',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -172,21 +172,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       _HomeActionCard(
                         title: 'Species Library',
-                        subtitle: 'Tasmanian field guide',
+                        subtitle: 'Australia-wide field guide',
                         icon: Icons.menu_book,
                         onTap: () => _goTo(context, '/species-library'),
+                      ),
+                      _HomeActionCard(
+                        title: 'Observation Map',
+                        subtitle: 'View mapped finds',
+                        icon: Icons.map,
+                        onTap: () => _goTo(context, '/map'),
                       ),
                       _HomeActionCard(
                         title: 'Settings',
                         subtitle: 'Tune on-device preferences',
                         icon: Icons.settings,
                         onTap: () => _goTo(context, '/settings'),
-                      ),
-                      _HomeActionCard(
-                        title: 'About',
-                        subtitle: 'Credits and disclosures',
-                        icon: Icons.info_outline,
-                        onTap: () => _goTo(context, '/about'),
                       ),
                     ],
                   ),

@@ -21,6 +21,7 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
   final ObservationRepository _observationRepository =
       ObservationRepository.instance;
   final SpeciesRepository _speciesRepository = SpeciesRepository.instance;
+  final TextEditingController _searchController = TextEditingController();
 
   List<Observation> _observations = [];
   Map<String, String> _speciesNames = {};
@@ -28,11 +29,20 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
   Set<String> _lichenNames = <String>{};
   bool _loading = true;
   ObservationSort _sort = ObservationSort.date;
+  double _minConfidence = 0.0;
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -62,6 +72,14 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
       _lichenSpeciesIds = lichenSpeciesIds;
       _lichenNames = lichenNames;
       _loading = false;
+    });
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.trim();
+    if (query == _searchQuery) return;
+    setState(() {
+      _searchQuery = query;
     });
   }
 
@@ -95,6 +113,21 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
     return list;
   }
 
+  List<Observation> get _filteredObservations {
+    final query = _searchQuery.trim().toLowerCase();
+    return _sortedObservations.where((observation) {
+      final confidence = observation.confidence ?? 0.0;
+      if (confidence < _minConfidence) {
+        return false;
+      }
+      if (query.isEmpty) {
+        return true;
+      }
+      final name = _displayNameFor(observation).toLowerCase();
+      return name.contains(query);
+    }).toList();
+  }
+
   String _displayNameFor(Observation observation) {
     final label = observation.label.trim();
     if (label.isNotEmpty) {
@@ -103,7 +136,40 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
     return _speciesNames[observation.speciesId] ?? 'Unknown';
   }
 
+  Color _confidenceColor(double? confidence) {
+    final value = confidence ?? 0.0;
+    if (value >= 0.8) {
+      return const Color(0xFF7CD39A);
+    }
+    if (value >= 0.6) {
+      return const Color(0xFFFFC857);
+    }
+    return Colors.white70;
+  }
+
   void _openDetail(Observation observation) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1F4E3D),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return _ObservationDetailSheet(
+          observation: observation,
+          displayName: _displayNameFor(observation),
+          confidenceColor: _confidenceColor(observation.confidence),
+          onViewFull: () {
+            Navigator.of(context).pop();
+            _openFullDetail(observation);
+          },
+        );
+      },
+    );
+  }
+
+  void _openFullDetail(Observation observation) {
     final String label = _displayNameFor(observation);
     final String normalizedLabel = label.trim().toLowerCase();
     final bool isLichen =
@@ -194,77 +260,398 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
         includeTopSafeArea: false,
         child: _loading
             ? const Center(child: CircularProgressIndicator())
-            : _observations.isEmpty
-            ? const Center(
-                child: Text(
-                  'No observations saved yet.',
-                  style: TextStyle(color: accentTextColor),
-                ),
-              )
-            : ListView.separated(
-                itemCount: _sortedObservations.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (context, index) {
-                  final observation = _sortedObservations[index];
-                  final name = _displayNameFor(observation);
-                  final photoPath = observation.photoPath;
-
-                  return Material(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(14),
-                    child: ListTile(
-                      onTap: () => _openDetail(observation),
-                      leading: _ObservationThumbnail(photoPath: photoPath),
-                      title: Text(
-                        name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      subtitle: Text(
-                        '${formatDateTime(observation.timestamp)} · ${formatConfidence(observation.confidence)}',
-                        style: const TextStyle(
-                          color: accentTextColor,
-                          fontSize: 12.5,
-                        ),
-                      ),
-                      trailing: const Icon(
-                        Icons.chevron_right,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  );
-                },
+            : Column(
+                children: [
+                  _ObservationFilterRow(
+                    searchController: _searchController,
+                    minConfidence: _minConfidence,
+                    onConfidenceChanged: (value) {
+                      setState(() {
+                        _minConfidence = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: _observations.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No observations saved yet.',
+                              style: TextStyle(color: accentTextColor),
+                            ),
+                          )
+                        : _filteredObservations.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No observations match your filters.',
+                              style: TextStyle(color: accentTextColor),
+                            ),
+                          )
+                        : ListView.separated(
+                            itemCount: _filteredObservations.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 10),
+                            itemBuilder: (context, index) {
+                              final observation = _filteredObservations[index];
+                              final name = _displayNameFor(observation);
+                              return _ObservationCard(
+                                observation: observation,
+                                displayName: name,
+                                confidenceColor: _confidenceColor(
+                                  observation.confidence,
+                                ),
+                                onTap: () => _openDetail(observation),
+                              );
+                            },
+                          ),
+                  ),
+                ],
               ),
       ),
     );
   }
 }
 
-class _ObservationThumbnail extends StatelessWidget {
-  final String? photoPath;
+class _ObservationFilterRow extends StatelessWidget {
+  final TextEditingController searchController;
+  final double minConfidence;
+  final ValueChanged<double> onConfidenceChanged;
 
-  const _ObservationThumbnail({required this.photoPath});
+  const _ObservationFilterRow({
+    required this.searchController,
+    required this.minConfidence,
+    required this.onConfidenceChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final path = photoPath;
-    final hasImage = path != null && File(path).existsSync();
+    const accentTextColor = Color(0xCCFFFFFF);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: searchController,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'Search by species label',
+            hintStyle: const TextStyle(color: accentTextColor),
+            prefixIcon: const Icon(Icons.search, color: accentTextColor),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.08),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Min confidence: ${(minConfidence * 100).toStringAsFixed(0)}%',
+          style: const TextStyle(color: accentTextColor, fontSize: 12.5),
+        ),
+        Slider(
+          value: minConfidence,
+          min: 0,
+          max: 1,
+          divisions: 20,
+          activeColor: const Color(0xFF8FBFA1),
+          inactiveColor: Colors.white24,
+          onChanged: onConfidenceChanged,
+        ),
+      ],
+    );
+  }
+}
 
-    return Container(
-      width: 52,
-      height: 52,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
+class _ObservationCard extends StatelessWidget {
+  final Observation observation;
+  final String displayName;
+  final Color confidenceColor;
+  final VoidCallback onTap;
+
+  const _ObservationCard({
+    required this.observation,
+    required this.displayName,
+    required this.confidenceColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final photoPath = observation.photoPath;
+    final hasImage = photoPath != null && File(photoPath).existsSync();
+    final hasLocation = observation.location != null;
+
+    return Material(
+      color: Colors.white.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                width: 62,
+                height: 62,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: hasImage
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.file(File(photoPath), fit: BoxFit.cover),
+                      )
+                    : const Icon(Icons.local_florist, color: Colors.white70),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      formatDateTime(observation.timestamp),
+                      style: const TextStyle(
+                        color: Color(0xCCFFFFFF),
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: confidenceColor.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: confidenceColor.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    child: Text(
+                      formatConfidence(observation.confidence),
+                      style: TextStyle(
+                        color: confidenceColor,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  if (hasLocation) ...[
+                    const SizedBox(height: 8),
+                    const Icon(
+                      Icons.location_on,
+                      color: Color(0xFF8FBFA1),
+                      size: 18,
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
-      child: hasImage
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.file(File(path), fit: BoxFit.cover),
-            )
-          : const Icon(Icons.local_florist, color: Colors.white70),
+    );
+  }
+}
+
+class _ObservationDetailSheet extends StatelessWidget {
+  final Observation observation;
+  final String displayName;
+  final Color confidenceColor;
+  final VoidCallback onViewFull;
+
+  const _ObservationDetailSheet({
+    required this.observation,
+    required this.displayName,
+    required this.confidenceColor,
+    required this.onViewFull,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const accentTextColor = Color(0xCCFFFFFF);
+    final location = observation.location;
+    final top2Label = observation.top2Label?.trim();
+    final top2Confidence = observation.top2Confidence;
+    final bool hasTop2 = top2Label != null && top2Label.isNotEmpty;
+    final String top2Value = top2Confidence == null
+        ? 'Not recorded'
+        : '${(top2Confidence * 100).toStringAsFixed(1)}%';
+    final double? voteRatio = observation.top1VoteRatio;
+    final String votePercent = voteRatio == null
+        ? 'Not recorded'
+        : '${(voteRatio * 100).toStringAsFixed(1)}%';
+    final int windowFrames = observation.windowFrameCount ?? 0;
+    final int windowMs = observation.windowDurationMs ?? 0;
+    final String windowDuration = windowMs == 0
+        ? 'Not recorded'
+        : '${(windowMs / 1000).toStringAsFixed(1)}s';
+    final int stabilityWins = observation.stabilityWinCount ?? 0;
+    final int stabilityWindow = observation.stabilityWindowSize ?? 0;
+
+    final photoPath = observation.photoPath;
+    final hasImage = photoPath != null && File(photoPath).existsSync();
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              displayName,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              formatDateTime(observation.timestamp),
+              style: const TextStyle(
+                color: accentTextColor,
+                fontSize: 12.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              height: 160,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: hasImage
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.file(File(photoPath!), fit: BoxFit.cover),
+                    )
+                  : const Center(
+                      child: Icon(
+                        Icons.image_not_supported,
+                        color: Colors.white70,
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 16),
+            _ObservationDetailRow(
+              label: 'Primary Confidence',
+              value: formatConfidence(observation.confidence),
+              valueColor: confidenceColor,
+            ),
+            if (hasTop2)
+              _ObservationDetailRow(
+                label: 'Secondary Candidate',
+                value: '$top2Label - $top2Value',
+              ),
+            const SizedBox(height: 8),
+            _ObservationDetailRow(
+              label: 'Vote ratio',
+              value: votePercent,
+            ),
+            _ObservationDetailRow(
+              label: 'Stability window',
+              value: stabilityWindow == 0
+                  ? 'Not recorded'
+                  : '$stabilityWins/$stabilityWindow frames',
+            ),
+            _ObservationDetailRow(
+              label: 'Window duration',
+              value: windowDuration,
+            ),
+            if (location != null)
+              _ObservationDetailRow(
+                label: 'Location',
+                value:
+                    '${location.latitude.toStringAsFixed(3)}, ${location.longitude.toStringAsFixed(3)}',
+              ),
+            if (observation.notes != null &&
+                observation.notes!.trim().isNotEmpty)
+              _ObservationDetailRow(
+                label: 'Notes',
+                value: observation.notes!.trim(),
+              ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: onViewFull,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8FBFA1),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: const StadiumBorder(),
+                ),
+                child: const Text('View Full Detail'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ObservationDetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  const _ObservationDetailRow({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 130,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFFE7F3E7),
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: valueColor ?? const Color(0xCCFFFFFF),
+                fontSize: 13,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

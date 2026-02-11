@@ -55,6 +55,114 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
     );
   }
 
+  String? _extractEcologicalRole(Species species) {
+    final description = (species.shortDescription ?? '').toLowerCase();
+    if (description.contains('mycorrh')) {
+      return 'Mycorrhizal';
+    }
+    if (description.contains('saprotroph') ||
+        description.contains('saprobe') ||
+        description.contains('saprotrophic')) {
+      return 'Saprotrophic';
+    }
+    if (description.contains('parasit')) {
+      return 'Parasitic';
+    }
+    if (description.contains('lichen')) {
+      return 'Lichenized';
+    }
+    if (description.contains('symbio')) {
+      return 'Symbiotic';
+    }
+    return null;
+  }
+
+  Set<int> _parseSeasonalityMonths(String season) {
+    final normalized = season.toLowerCase();
+    final Map<String, int> months = const {
+      'jan': 1,
+      'january': 1,
+      'feb': 2,
+      'february': 2,
+      'mar': 3,
+      'march': 3,
+      'apr': 4,
+      'april': 4,
+      'may': 5,
+      'jun': 6,
+      'june': 6,
+      'jul': 7,
+      'july': 7,
+      'aug': 8,
+      'august': 8,
+      'sep': 9,
+      'sept': 9,
+      'september': 9,
+      'oct': 10,
+      'october': 10,
+      'nov': 11,
+      'november': 11,
+      'dec': 12,
+      'december': 12,
+    };
+
+    final Set<int> found = {};
+    for (final entry in months.entries) {
+      if (normalized.contains(entry.key)) {
+        found.add(entry.value);
+      }
+    }
+
+    if (found.isNotEmpty) {
+      return found;
+    }
+    if (normalized.contains('summer')) {
+      return {12, 1, 2};
+    }
+    if (normalized.contains('autumn') || normalized.contains('fall')) {
+      return {3, 4, 5};
+    }
+    if (normalized.contains('winter')) {
+      return {6, 7, 8};
+    }
+    if (normalized.contains('spring')) {
+      return {9, 10, 11};
+    }
+    return {};
+  }
+
+  String _normalizeLabel(String value) {
+    return value.trim().toLowerCase();
+  }
+
+  Widget _sectionTitle(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 15.5,
+        fontWeight: FontWeight.w600,
+        color: Colors.white,
+      ),
+    );
+  }
+
+  Widget _similarChip(String label, {bool highlight = false}) {
+    final Color border = highlight
+        ? const Color(0xFF7CD39A)
+        : Colors.white.withValues(alpha: 0.2);
+    final Color background = highlight
+        ? const Color(0xFF7CD39A).withValues(alpha: 0.2)
+        : Colors.white.withValues(alpha: 0.12);
+    return Chip(
+      label: Text(
+        label,
+        style: const TextStyle(color: Colors.white, fontSize: 12.5),
+      ),
+      backgroundColor: background,
+      side: BorderSide(color: border),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const accentTextColor = Color(0xCCFFFFFF);
@@ -89,41 +197,49 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                   final species = snapshot.data!.species!;
                   final similarSpecies = snapshot.data!.similar;
                   final observation = _args?.observation;
-                  final similarNames = species.similarSpeciesNames;
-                  final hasSimilar =
-                      similarSpecies.isNotEmpty || similarNames.isNotEmpty;
+                  final String? comparePrimaryLabel =
+                      _args?.comparePrimaryLabel?.trim();
+                  final String? compareSecondaryLabel =
+                      _args?.compareSecondaryLabel?.trim();
+                  final String? compareSecondaryNormalized =
+                      compareSecondaryLabel == null ||
+                              compareSecondaryLabel.isEmpty
+                          ? null
+                          : _normalizeLabel(compareSecondaryLabel);
+                  final bool isCompareFlow = compareSecondaryNormalized != null;
+
+                  final similarNames = species.similarSpeciesNames
+                      .where((name) => name.trim().isNotEmpty)
+                      .toList();
+                  final List<String> similarLabels = similarSpecies.isNotEmpty
+                      ? similarSpecies.map((item) => item.displayName).toList()
+                      : similarNames;
+                  final Set<String> similarNormalized = similarLabels
+                      .map((label) => _normalizeLabel(label))
+                      .toSet();
                   final List<Widget> similarChips = [
-                    ...similarSpecies.map(
-                      (item) => Chip(
-                        label: Text(
-                          item.displayName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12.5,
-                          ),
-                        ),
-                        backgroundColor:
-                            Colors.white.withValues(alpha: 0.12),
-                      ),
-                    ),
-                    if (similarSpecies.isEmpty)
-                      ...similarNames.map(
-                        (name) => Chip(
-                          label: Text(
-                            name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12.5,
-                            ),
-                          ),
-                          backgroundColor:
-                              Colors.white.withValues(alpha: 0.12),
-                        ),
+                    ...similarLabels.map((label) {
+                      final bool highlight =
+                          compareSecondaryNormalized != null &&
+                          _normalizeLabel(label) == compareSecondaryNormalized;
+                      return _similarChip(label, highlight: highlight);
+                    }),
+                    if (isCompareFlow &&
+                        compareSecondaryLabel != null &&
+                        !similarNormalized
+                            .contains(compareSecondaryNormalized))
+                      _similarChip(
+                        compareSecondaryLabel,
+                        highlight: true,
                       ),
                   ];
+                  final bool hasSimilar = similarChips.isNotEmpty;
                   final description = species.shortDescription?.trim() ?? '';
                   final habitat = species.habitat?.trim() ?? '';
                   final season = species.season?.trim() ?? '';
+                  final Set<int> seasonMonths =
+                      season.isEmpty ? {} : _parseSeasonalityMonths(season);
+                  final String? ecologicalRole = _extractEcologicalRole(species);
                   final distributionNote = species.distributionNote.trim();
                   final edibilityWarning = species.edibilityWarning?.trim() ?? '';
 
@@ -163,13 +279,22 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                               ),
                             ),
                           ),
+                        if (isCompareFlow && compareSecondaryLabel != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: _CompareSummaryCard(
+                              primaryLabel:
+                                  comparePrimaryLabel ?? species.scientificName,
+                              secondaryLabel: compareSecondaryLabel,
+                            ),
+                          ),
                         const SizedBox(height: 16),
                         if (observation != null)
                           _ObservationSummaryCard(observation: observation),
                         if (description.isNotEmpty) ...[
                           const SizedBox(height: 16),
                           const Text(
-                            'Description',
+                            'Overview',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -187,7 +312,7 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                         ],
                         const SizedBox(height: 16),
                         const Text(
-                          'Key identifying features',
+                          'Field Guide+',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -195,65 +320,83 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        _BulletList(items: species.keyFeatures),
-                        if (habitat.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Habitat',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            habitat,
-                            style: const TextStyle(
-                              color: accentTextColor,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                        if (season.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Season',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            season,
-                            style: const TextStyle(
-                              color: accentTextColor,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Similar species',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _sectionTitle('Key Identifying Features'),
+                              const SizedBox(height: 6),
+                              _BulletList(items: species.keyFeatures),
+                              if (habitat.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                _sectionTitle('Habitat'),
+                                const SizedBox(height: 6),
+                                Text(
+                                  habitat,
+                                  style: const TextStyle(
+                                    color: accentTextColor,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                              if (ecologicalRole != null) ...[
+                                const SizedBox(height: 12),
+                                _sectionTitle('Ecological Role'),
+                                const SizedBox(height: 6),
+                                Text(
+                                  ecologicalRole!,
+                                  style: const TextStyle(
+                                    color: accentTextColor,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                              if (season.isNotEmpty || seasonMonths.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                _sectionTitle('Seasonality'),
+                                const SizedBox(height: 6),
+                                if (season.isNotEmpty)
+                                  Text(
+                                    season,
+                                    style: const TextStyle(
+                                      color: accentTextColor,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                const SizedBox(height: 6),
+                                _SeasonalityStrip(activeMonths: seasonMonths),
+                              ],
+                              const SizedBox(height: 12),
+                              _sectionTitle('Similar Species'),
+                              if (isCompareFlow && compareSecondaryLabel != null) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Comparing with $compareSecondaryLabel. Review key features and habitat differences.',
+                                  style: const TextStyle(
+                                    color: accentTextColor,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 6),
+                              !hasSimilar
+                                  ? const Text(
+                                      'No similar species listed.',
+                                      style: TextStyle(color: accentTextColor),
+                                    )
+                                  : Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: similarChips,
+                                    ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        !hasSimilar
-                            ? const Text(
-                                'No similar species listed.',
-                                style: TextStyle(color: accentTextColor),
-                              )
-                            : Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: similarChips,
-                              ),
                         const SizedBox(height: 16),
                         const Text(
                           'Distribution',
@@ -276,7 +419,19 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                                   height: 1.4,
                                 ),
                               ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'AI results are probabilistic and must not be used for edibility decisions.',
+                            style: TextStyle(color: accentTextColor, height: 1.4),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         Theme(
                           data: Theme.of(context).copyWith(
                             dividerColor: Colors.transparent,
@@ -323,7 +478,7 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                                       const SizedBox(height: 6),
                                     ],
                                     const Text(
-                                      'Do not consume based on app results.',
+                    '- ',
                                       style: TextStyle(color: Colors.white),
                                     ),
                                     const SizedBox(height: 6),
@@ -387,6 +542,154 @@ class _SpeciesDetailData {
     required this.species,
     required this.similar,
   });
+}
+
+class _SeasonalityStrip extends StatelessWidget {
+  final Set<int> activeMonths;
+
+  const _SeasonalityStrip({required this.activeMonths});
+
+  @override
+  Widget build(BuildContext context) {
+    const labels = [
+      'J',
+      'F',
+      'M',
+      'A',
+      'M',
+      'J',
+      'J',
+      'A',
+      'S',
+      'O',
+      'N',
+      'D',
+    ];
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: List.generate(labels.length, (index) {
+        final month = index + 1;
+        final bool active = activeMonths.contains(month);
+        final Color color = active
+            ? const Color(0xFF7CD39A)
+            : Colors.white.withValues(alpha: 0.3);
+        return Container(
+          width: 24,
+          height: 24,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: active
+                ? const Color(0xFF7CD39A).withValues(alpha: 0.25)
+                : Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: color),
+          ),
+          child: Text(
+            labels[index],
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _CompareSummaryCard extends StatelessWidget {
+  final String primaryLabel;
+  final String secondaryLabel;
+
+  const _CompareSummaryCard({
+    required this.primaryLabel,
+    required this.secondaryLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Compare Similar',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _CompareChipRow(
+            label: 'Primary',
+            value: primaryLabel,
+            color: const Color(0xFF7CD39A),
+          ),
+          const SizedBox(height: 6),
+          _CompareChipRow(
+            label: 'Secondary',
+            value: secondaryLabel,
+            color: const Color(0xFFFFC857),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompareChipRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _CompareChipRow({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xCCFFFFFF),
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: color.withValues(alpha: 0.7)),
+            ),
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _BulletList extends StatelessWidget {
@@ -472,7 +775,7 @@ class _ObservationSummaryCard extends StatelessWidget {
           if (location != null) ...[
             const SizedBox(height: 4),
             Text(
-              'Location: ${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}',
+              'Location: ${location.latitude.toStringAsFixed(3)}, ${location.longitude.toStringAsFixed(3)}',
               style: const TextStyle(color: Color(0xCCFFFFFF)),
             ),
           ],

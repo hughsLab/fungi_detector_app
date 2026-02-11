@@ -22,7 +22,7 @@ class AboutScreen extends StatelessWidget {
         child: ListView(
           children: const [
             Text(
-              'Tasmanian Fungi Identifier',
+              'Australian Fungi Identifier',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
@@ -31,7 +31,7 @@ class AboutScreen extends StatelessWidget {
             ),
             SizedBox(height: 8),
             Text(
-              'Offline identification support for Tasmanian fungi using on-device AI.',
+              'Offline identification support for Australian fungi using on-device AI.',
               style: TextStyle(
                 color: accentTextColor,
                 height: 1.4,
@@ -62,7 +62,7 @@ class AboutScreen extends StatelessWidget {
             ),
             SizedBox(height: 8),
             Text(
-              'Curated Tasmania fungi references and offline datasets will be listed here.',
+              'Curated Australian fungi references and offline datasets will be listed here.',
               style: TextStyle(color: accentTextColor, height: 1.4),
             ),
             SizedBox(height: 20),

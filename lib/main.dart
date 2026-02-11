@@ -9,7 +9,8 @@ import 'screens/about_screen.dart';
 import 'screens/detection_page.dart';
 import 'screens/detection_result_screen.dart';
 import 'screens/disclaimer_screen.dart';
-import 'screens/home_screen.dart';
+import 'screens/main_shell_screen.dart';
+import 'screens/map_screen.dart';
 import 'screens/observations_screen.dart';
 import 'screens/save_observation_screen.dart';
 import 'screens/settings_screen.dart';
@@ -19,6 +20,7 @@ import 'screens/species_detail_screen.dart';
 import 'screens/species_library_screen.dart';
 import 'screens/startup_screen.dart';
 import 'screens/welcome_screen.dart';
+import 'services/map_tile_cache_service.dart';
 
 const String _expectedAndroidPackageName = 'com.example.app1';
 
@@ -38,6 +40,7 @@ Future<void> main() async {
   debugPrint('FIREBASE_INIT: Firebase initialized OK');
   _logFirebaseOptions(DefaultFirebaseOptions.currentPlatform);
   await _logSanityDiagnostics();
+  await MapTileCacheService.instance.ensureInitialized();
   runApp(const RealtimeDetectionApp());
 }
 
@@ -57,13 +60,14 @@ class RealtimeDetectionApp extends StatelessWidget {
         '/welcome': (context) => const WelcomeScreen(),
         '/signup': (context) => const SignUpScreen(),
         '/signin': (context) => const SignInScreen(),
-        '/home': (context) => const HomeScreen(),
+        '/home': (context) => const MainShellScreen(),
         '/detect': (context) => const DetectionPage(),
         '/detection-result': (context) => const DetectionResultScreen(),
         '/species-library': (context) => const SpeciesLibraryScreen(),
         '/species-detail': (context) => const SpeciesDetailScreen(),
         '/save-observation': (context) => const SaveObservationScreen(),
         '/observations': (context) => const ObservationsScreen(),
+        '/map': (context) => const MapScreen(),
         '/settings': (context) => const SettingsScreen(),
         '/disclaimer': (context) => const DisclaimerScreen(),
         '/about': (context) => const AboutScreen(),
@@ -93,7 +97,7 @@ class AuthGate extends StatelessWidget {
           return const WelcomeScreen();
         }
 
-        return const HomeScreen();
+        return const MainShellScreen();
       },
     );
   }

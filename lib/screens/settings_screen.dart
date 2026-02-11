@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../repositories/observation_repository.dart';
+import '../services/map_tile_cache_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/forest_background.dart';
 
@@ -19,11 +20,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final SettingsService _settingsService = SettingsService.instance;
   final ObservationRepository _observationRepository =
       ObservationRepository.instance;
+  final MapTileCacheService _mapTileCacheService =
+      MapTileCacheService.instance;
 
   AppSettings? _settings;
   bool _loading = true;
   int? _modelSizeBytes;
   int? _storageBytes;
+  int? _tileCacheBytes;
 
   @override
   void initState() {
@@ -35,11 +39,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final settings = await _settingsService.loadSettings();
     final modelSize = await _loadModelSize();
     final storageSize = await _loadStorageUsage();
+    await _mapTileCacheService.ensureInitialized();
+    final tileCacheSize = await _mapTileCacheService.getCacheSizeBytes();
     if (!mounted) return;
     setState(() {
       _settings = settings;
       _modelSizeBytes = modelSize;
       _storageBytes = storageSize;
+      _tileCacheBytes = tileCacheSize;
       _loading = false;
     });
   }
@@ -89,8 +96,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _clearMapCache() async {
+    await _mapTileCacheService.clearCache();
+    final tileCacheSize = await _mapTileCacheService.getCacheSizeBytes();
+    if (!mounted) return;
+    setState(() {
+      _tileCacheBytes = tileCacheSize;
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Cached map tiles cleared.')),
+    );
+  }
+
   void _openDisclaimer() {
     Navigator.of(context).pushNamed('/disclaimer');
+  }
+
+  void _openAbout() {
+    Navigator.of(context).pushNamed('/about');
   }
 
   @override
@@ -111,14 +135,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ? const Center(child: CircularProgressIndicator())
             : ListView(
                 children: [
-                  const Text(
-                    'Detection preferences',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
+                  const _SectionHeader(title: 'Detection'),
                   const SizedBox(height: 12),
                   Text(
                     'Confidence threshold: ${(_settings!.confidenceThreshold * 100).toStringAsFixed(0)}%',
@@ -137,25 +154,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       );
                     },
                   ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: _settings!.locationTaggingEnabled,
-                    onChanged: (value) {
-                      _updateSettings(
-                        _settings!.copyWith(locationTaggingEnabled: value),
-                      );
-                    },
-                    title: const Text(
-                      'Location tagging',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    subtitle: const Text(
-                      'Store coarse lat/lon with observations',
-                      style: TextStyle(color: accentTextColor),
-                    ),
-                    activeColor: const Color(0xFF8FBFA1),
-                  ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   const Text(
                     'Camera performance preset',
                     style: TextStyle(color: Colors.white),
@@ -195,37 +194,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text(
-                    'Model info',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
+                  const _SectionHeader(title: 'Privacy'),
                   const SizedBox(height: 8),
-                  _InfoRow(
-                    label: 'Model version',
-                    value: 'v1.0 (YOLO11n)',
-                  ),
-                  _InfoRow(
-                    label: 'Model file',
-                    value: 'yolo11n_float32.tflite',
-                  ),
-                  _InfoRow(
-                    label: 'Model size',
-                    value: _modelSizeBytes == null
-                        ? 'Unknown'
-                        : _formatBytes(_modelSizeBytes!),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Storage',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _settings!.locationTaggingEnabled,
+                    onChanged: (value) {
+                      _updateSettings(
+                        _settings!.copyWith(locationTaggingEnabled: value),
+                      );
+                    },
+                    title: const Text(
+                      'Location tagging',
+                      style: TextStyle(color: Colors.white),
                     ),
+                    subtitle: const Text(
+                      'Store coarse lat/lon with observations',
+                      style: TextStyle(color: accentTextColor),
+                    ),
+                    activeColor: const Color(0xFF8FBFA1),
                   ),
                   const SizedBox(height: 8),
                   _InfoRow(
@@ -234,24 +221,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? 'Unknown'
                         : _formatBytes(_storageBytes!),
                   ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text(
-                      'Safety & Disclaimer',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    subtitle: const Text(
-                      'Review the required safety notice',
-                      style: TextStyle(color: accentTextColor),
-                    ),
-                    trailing: const Icon(
-                      Icons.chevron_right,
-                      color: Colors.white70,
-                    ),
-                    onTap: _openDisclaimer,
-                  ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
@@ -264,6 +234,132 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       child: const Text('Clear local data'),
                     ),
+                  ),
+                  const SizedBox(height: 20),
+                  const _SectionHeader(title: 'Map'),
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _settings!.mapTileCachingEnabled,
+                    onChanged: (value) {
+                      _updateSettings(
+                        _settings!.copyWith(mapTileCachingEnabled: value),
+                      );
+                    },
+                    title: const Text(
+                      'Map tile caching',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    subtitle: const Text(
+                      'Cache tiles you view for offline use',
+                      style: TextStyle(color: accentTextColor),
+                    ),
+                    activeColor: const Color(0xFF8FBFA1),
+                  ),
+                  const SizedBox(height: 8),
+                  _InfoRow(
+                    label: 'Map tile cache (approx.)',
+                    value: _tileCacheBytes == null
+                        ? 'Unknown'
+                        : _formatBytes(_tileCacheBytes!),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: _clearMapCache,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white54),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: const StadiumBorder(),
+                      ),
+                      child: const Text('Clear cached map tiles'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'Tiles are cached as you browse. Bulk downloading is intentionally disabled to respect tile provider terms.',
+                      style: TextStyle(color: accentTextColor, height: 1.4),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const _SectionHeader(title: 'Model Info'),
+                  const SizedBox(height: 8),
+                  const _InfoRow(
+                    label: 'Model',
+                    value: 'YOLOv11n custom-trained',
+                  ),
+                  const _InfoRow(
+                    label: 'Species set',
+                    value: 'Australia-wide species set',
+                  ),
+                  const _InfoRow(
+                    label: 'Inference',
+                    value: 'Offline inference',
+                  ),
+                  const _InfoRow(
+                    label: 'Model file',
+                    value: 'yolo11n_float32.tflite',
+                  ),
+                  _InfoRow(
+                    label: 'Model size',
+                    value: _modelSizeBytes == null
+                        ? 'Unknown'
+                        : _formatBytes(_modelSizeBytes!),
+                  ),
+                  const SizedBox(height: 20),
+                  const _SectionHeader(title: 'Safety'),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'AI results are probabilistic and must not be used for edibility decisions.',
+                      style: TextStyle(color: accentTextColor, height: 1.4),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'Safety Disclaimer',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    subtitle: const Text(
+                      'Review the required safety notice',
+                      style: TextStyle(color: accentTextColor),
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: Colors.white70,
+                    ),
+                    onTap: _openDisclaimer,
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'About',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    subtitle: const Text(
+                      'Credits and model info',
+                      style: TextStyle(color: accentTextColor),
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: Colors.white70,
+                    ),
+                    onTap: _openAbout,
                   ),
                 ],
               ),
@@ -301,6 +397,24 @@ class _InfoRow extends StatelessWidget {
           Text(label, style: const TextStyle(color: accentTextColor)),
           Text(value, style: const TextStyle(color: Colors.white)),
         ],
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+
+  const _SectionHeader({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: Colors.white,
       ),
     );
   }

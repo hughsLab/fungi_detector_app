@@ -386,6 +386,7 @@ class _DetectionPageState extends State<DetectionPage>
       final args = DetectionResultArgs(
         lockedLabel: label,
         top2Label: track.isAmbiguous ? track.top2Label : null,
+        top2ClassIndex: track.isAmbiguous ? track.top2ClassId : null,
         top1AvgConf: track.lockedClassId == null
             ? track.top1AvgConf
             : track.lockedAvgConf,

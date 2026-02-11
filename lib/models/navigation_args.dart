@@ -3,8 +3,15 @@ import 'observation.dart';
 class SpeciesDetailArgs {
   final String speciesId;
   final Observation? observation;
+  final String? comparePrimaryLabel;
+  final String? compareSecondaryLabel;
 
-  const SpeciesDetailArgs({required this.speciesId, this.observation});
+  const SpeciesDetailArgs({
+    required this.speciesId,
+    this.observation,
+    this.comparePrimaryLabel,
+    this.compareSecondaryLabel,
+  });
 }
 
 class SaveObservationArgs {
@@ -23,6 +30,7 @@ class DisclaimerArgs {
 class DetectionResultArgs {
   final String lockedLabel;
   final String? top2Label;
+  final int? top2ClassIndex;
   final double top1AvgConf;
   final double? top2AvgConf;
   final double top1VoteRatio;
@@ -40,6 +48,7 @@ class DetectionResultArgs {
   const DetectionResultArgs({
     required this.lockedLabel,
     required this.top2Label,
+    this.top2ClassIndex,
     required this.top1AvgConf,
     required this.top2AvgConf,
     required this.top1VoteRatio,

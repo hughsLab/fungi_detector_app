@@ -100,7 +100,7 @@ class _SpeciesLibraryScreenState extends State<SpeciesLibraryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Tasmania-only offline field guide',
+              'Australia-wide offline field guide',
               style: TextStyle(
                 fontSize: 14,
                 color: accentTextColor,
