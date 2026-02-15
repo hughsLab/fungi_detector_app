@@ -4,13 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../models/field_note.dart';
 import '../models/navigation_args.dart';
 import '../models/observation.dart';
 import '../models/species.dart';
+import '../repositories/field_notes_repository.dart';
 import '../repositories/observation_repository.dart';
 import '../repositories/species_repository.dart';
 import '../services/location_capture_service.dart';
+import '../services/location_label_service.dart';
 import '../services/settings_service.dart';
+import '../utils/formatting.dart';
 import '../utils/lichen_headline_gate.dart';
 import '../widgets/forest_background.dart';
 
@@ -24,10 +28,14 @@ class DetectionResultScreen extends StatefulWidget {
 class _DetectionResultScreenState extends State<DetectionResultScreen> {
   final ObservationRepository _observationRepository =
       ObservationRepository.instance;
+  final FieldNotesRepository _fieldNotesRepository =
+      FieldNotesRepository.instance;
   final SpeciesRepository _speciesRepository = SpeciesRepository.instance;
   final SettingsService _settingsService = SettingsService.instance;
   final LocationCaptureService _locationCaptureService =
       LocationCaptureService.instance;
+  final LocationLabelService _locationLabelService =
+      LocationLabelService.instance;
   final Uuid _uuid = const Uuid();
   bool _saving = false;
   bool _saved = false;
@@ -162,6 +170,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
       double? longitude;
       double? accuracyMeters;
       DateTime? capturedAt;
+      String? locationLabel;
       if (settings.locationTaggingEnabled) {
         capturedLocation =
             await _locationCaptureService.captureForObservation();
@@ -172,6 +181,11 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
           accuracyMeters = capturedLocation.accuracyMeters;
           capturedAt = capturedLocation.capturedAt;
           locationSource = ObservationLocationSource.deviceGps;
+          locationLabel = await _locationLabelService.labelFor(
+            latitude: latitude,
+            longitude: longitude,
+            mode: settings.locationLabelMode,
+          );
         }
       }
 
@@ -198,6 +212,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
         accuracyMeters: accuracyMeters,
         capturedAt: capturedAt,
         locationSource: locationSource,
+        locationLabel: locationLabel,
         notes: null,
       );
       await _observationRepository.saveObservation(observation);
@@ -291,6 +306,104 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Widget _buildFieldNotesPanel(String observationId) {
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: const Color(0xFF8FBFA1).withValues(alpha: 0.85),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'Field Notes',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pushNamed(
+                    '/field-note-editor',
+                    arguments: FieldNoteEditorArgs(
+                      prelinkedObservationId: observationId,
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.add, color: Colors.white),
+                label: const Text(
+                  'Add',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          StreamBuilder<List<FieldNote>>(
+            stream: _fieldNotesRepository.watchAllNotes(),
+            builder: (context, snapshot) {
+              final notes = (snapshot.data ?? const <FieldNote>[])
+                  .where(
+                    (note) =>
+                        note.links.observationIds.contains(observationId),
+                  )
+                  .toList();
+              if (notes.isEmpty) {
+                return const Text(
+                  'No notes linked to this observation yet.',
+                  style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 12.5),
+                );
+              }
+              return Column(
+                children: notes.map((note) {
+                  final title =
+                      note.title.trim().isEmpty ? 'Untitled note' : note.title;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    subtitle: Text(
+                      formatDateTime(note.updatedAt),
+                      style: const TextStyle(
+                        color: Color(0xCCFFFFFF),
+                        fontSize: 11.5,
+                      ),
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: Colors.white70,
+                    ),
+                    onTap: () {
+                      Navigator.of(context).pushNamed(
+                        '/field-note-editor',
+                        arguments: FieldNoteEditorArgs(noteId: note.id),
+                      );
+                    },
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -541,6 +654,8 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                         return _SpeciesSnapshotCard(species: species);
                       },
                     ),
+                    if (args.isSavedView && args.observationId != null)
+                      _buildFieldNotesPanel(args.observationId!),
                     if (!args.isSavedView || hasSecondaryCandidate)
                       Padding(
                         padding: const EdgeInsets.only(top: 12),

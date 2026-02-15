@@ -5,6 +5,7 @@ import 'map_screen.dart';
 import 'observations_screen.dart';
 import 'settings_screen.dart';
 import 'species_library_screen.dart';
+import '../models/navigation_args.dart';
 
 class MainShellScreen extends StatefulWidget {
   final int initialIndex;
@@ -17,28 +18,20 @@ class MainShellScreen extends StatefulWidget {
 
 class _MainShellScreenState extends State<MainShellScreen> {
   late int _currentIndex;
+  final GlobalKey<MapScreenState> _mapKey = GlobalKey<MapScreenState>();
+  late final List<Widget> _tabs;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
-  }
-
-  Widget _buildTab(int index) {
-    switch (index) {
-      case 0:
-        return const HomeScreen();
-      case 1:
-        return const ObservationsScreen();
-      case 2:
-        return const SpeciesLibraryScreen();
-      case 3:
-        return const MapScreen();
-      case 4:
-        return const SettingsScreen();
-      default:
-        return const HomeScreen();
-    }
+    _tabs = [
+      HomeScreen(onSelectTab: _onTabSelected),
+      ObservationsScreen(onMapFocusRequest: _handleMapFocus),
+      const SpeciesLibraryScreen(),
+      MapScreen(key: _mapKey),
+      const SettingsScreen(),
+    ];
   }
 
   void _onTabSelected(int index) {
@@ -48,13 +41,30 @@ class _MainShellScreenState extends State<MainShellScreen> {
     });
   }
 
+  void _handleMapFocus(MapFocusRequest request) {
+    if (_currentIndex != 3) {
+      setState(() {
+        _currentIndex = 3;
+      });
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _mapKey.currentState?.handleFocusRequest(request);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _buildTab(_currentIndex),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _tabs,
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
+        backgroundColor: const Color(0xFF0F3D2E),
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.white70,
         onTap: _onTabSelected,
         items: const [
           BottomNavigationBarItem(

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../models/field_note.dart';
 import '../models/navigation_args.dart';
 import '../models/observation.dart';
 import '../models/species.dart';
+import '../repositories/field_notes_repository.dart';
 import '../repositories/species_repository.dart';
 import '../utils/formatting.dart';
 import '../widgets/forest_background.dart';
@@ -16,6 +18,8 @@ class SpeciesDetailScreen extends StatefulWidget {
 
 class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
   final SpeciesRepository _repository = SpeciesRepository.instance;
+  final FieldNotesRepository _fieldNotesRepository =
+      FieldNotesRepository.instance;
   SpeciesDetailArgs? _args;
   Future<_SpeciesDetailData>? _dataFuture;
 
@@ -133,6 +137,91 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
 
   String _normalizeLabel(String value) {
     return value.trim().toLowerCase();
+  }
+
+  Widget _fieldNotesPanel(String speciesId) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'Field Notes',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pushNamed(
+                    '/field-note-editor',
+                    arguments:
+                        FieldNoteEditorArgs(prelinkedSpeciesId: speciesId),
+                  );
+                },
+                icon: const Icon(Icons.add, color: Colors.white),
+                label: const Text('Add',
+                    style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          StreamBuilder<List<FieldNote>>(
+            stream: _fieldNotesRepository.watchAllNotes(),
+            builder: (context, snapshot) {
+              final notes = (snapshot.data ?? const <FieldNote>[])
+                  .where((note) => note.links.speciesIds.contains(speciesId))
+                  .toList();
+              if (notes.isEmpty) {
+                return const Text(
+                  'No notes linked to this species yet.',
+                  style: TextStyle(color: Color(0xCCFFFFFF)),
+                );
+              }
+              return Column(
+                children: notes.map((note) {
+                  final title =
+                      note.title.trim().isEmpty ? 'Untitled note' : note.title;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    subtitle: Text(
+                      formatDateTime(note.updatedAt),
+                      style: const TextStyle(
+                        color: Color(0xCCFFFFFF),
+                        fontSize: 11.5,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right,
+                        color: Colors.white70),
+                    onTap: () {
+                      Navigator.of(context).pushNamed(
+                        '/field-note-editor',
+                        arguments: FieldNoteEditorArgs(noteId: note.id),
+                      );
+                    },
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _sectionTitle(String text) {
@@ -291,6 +380,8 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                         const SizedBox(height: 16),
                         if (observation != null)
                           _ObservationSummaryCard(observation: observation),
+                        const SizedBox(height: 16),
+                        _fieldNotesPanel(species.id),
                         if (description.isNotEmpty) ...[
                           const SizedBox(height: 16),
                           const Text(

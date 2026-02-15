@@ -9,6 +9,8 @@ import 'screens/about_screen.dart';
 import 'screens/detection_page.dart';
 import 'screens/detection_result_screen.dart';
 import 'screens/disclaimer_screen.dart';
+import 'screens/field_note_editor_screen.dart';
+import 'screens/field_notes_screen.dart';
 import 'screens/main_shell_screen.dart';
 import 'screens/map_screen.dart';
 import 'screens/observations_screen.dart';
@@ -65,6 +67,8 @@ class RealtimeDetectionApp extends StatelessWidget {
         '/detection-result': (context) => const DetectionResultScreen(),
         '/species-library': (context) => const SpeciesLibraryScreen(),
         '/species-detail': (context) => const SpeciesDetailScreen(),
+        '/field-notes': (context) => const FieldNotesScreen(),
+        '/field-note-editor': (context) => const FieldNoteEditorScreen(),
         '/save-observation': (context) => const SaveObservationScreen(),
         '/observations': (context) => const ObservationsScreen(),
         '/map': (context) => const MapScreen(),

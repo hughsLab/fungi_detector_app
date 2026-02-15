@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../repositories/field_notes_repository.dart';
 import '../repositories/observation_repository.dart';
+import '../services/attachment_storage_service.dart';
 import '../services/map_tile_cache_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/forest_background.dart';
@@ -20,6 +22,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final SettingsService _settingsService = SettingsService.instance;
   final ObservationRepository _observationRepository =
       ObservationRepository.instance;
+  final FieldNotesRepository _fieldNotesRepository =
+      FieldNotesRepository.instance;
+  final AttachmentStorageService _attachmentStorageService =
+      AttachmentStorageService.instance;
   final MapTileCacheService _mapTileCacheService =
       MapTileCacheService.instance;
 
@@ -27,6 +33,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _loading = true;
   int? _modelSizeBytes;
   int? _storageBytes;
+  int? _fieldNotesBytes;
+  int? _fieldNotesThumbBytes;
   int? _tileCacheBytes;
 
   @override
@@ -39,6 +47,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final settings = await _settingsService.loadSettings();
     final modelSize = await _loadModelSize();
     final storageSize = await _loadStorageUsage();
+    final fieldNotesBytes = await _fieldNotesRepository.getStorageBytes();
+    final fieldNotesThumbBytes =
+        await _attachmentStorageService.getThumbnailCacheBytes();
     await _mapTileCacheService.ensureInitialized();
     final tileCacheSize = await _mapTileCacheService.getCacheSizeBytes();
     if (!mounted) return;
@@ -46,6 +57,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _settings = settings;
       _modelSizeBytes = modelSize;
       _storageBytes = storageSize;
+      _fieldNotesBytes = fieldNotesBytes;
+      _fieldNotesThumbBytes = fieldNotesThumbBytes;
       _tileCacheBytes = tileCacheSize;
       _loading = false;
     });
@@ -106,6 +119,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Cached map tiles cleared.')),
+    );
+  }
+
+  Future<void> _clearFieldNoteThumbnails() async {
+    await _attachmentStorageService.clearThumbnails();
+    final fieldNotesBytes = await _fieldNotesRepository.getStorageBytes();
+    final thumbBytes = await _attachmentStorageService.getThumbnailCacheBytes();
+    if (!mounted) return;
+    setState(() {
+      _fieldNotesBytes = fieldNotesBytes;
+      _fieldNotesThumbBytes = thumbBytes;
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Field note thumbnails cleared.')),
     );
   }
 
@@ -214,6 +242,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     activeColor: const Color(0xFF8FBFA1),
                   ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Location label mode',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<LocationLabelMode>(
+                    value: _settings!.locationLabelMode,
+                    dropdownColor: const Color(0xFF1F4E3D),
+                    items: const [
+                      DropdownMenuItem(
+                        value: LocationLabelMode.locality,
+                        child: Text(
+                          'Locality name (offline dataset)',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      DropdownMenuItem(
+                        value: LocationLabelMode.coordinates,
+                        child: Text(
+                          'Coordinates only',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      _updateSettings(
+                        _settings!.copyWith(locationLabelMode: value),
+                      );
+                    },
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.08),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   _InfoRow(
                     label: 'Local usage (approx.)',
@@ -287,6 +355,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: const Text(
                       'Tiles are cached as you browse. Bulk downloading is intentionally disabled to respect tile provider terms.',
                       style: TextStyle(color: accentTextColor, height: 1.4),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const _SectionHeader(title: 'Field Notes'),
+                  const SizedBox(height: 8),
+                  _InfoRow(
+                    label: 'Field notes storage',
+                    value: _fieldNotesBytes == null
+                        ? 'Unknown'
+                        : _formatBytes(_fieldNotesBytes!),
+                  ),
+                  _InfoRow(
+                    label: 'Thumbnail cache',
+                    value: _fieldNotesThumbBytes == null
+                        ? 'Unknown'
+                        : _formatBytes(_fieldNotesThumbBytes!),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: _clearFieldNoteThumbnails,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white54),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: const StadiumBorder(),
+                      ),
+                      child: const Text('Clear thumbnails cache'),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: null,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white54,
+                        side: const BorderSide(color: Colors.white24),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: const StadiumBorder(),
+                      ),
+                      child: const Text('Export / backup (coming soon)'),
                     ),
                   ),
                   const SizedBox(height: 20),

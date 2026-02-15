@@ -4,9 +4,12 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+enum LocationLabelMode { locality, coordinates }
+
 class AppSettings {
   final double confidenceThreshold;
   final bool locationTaggingEnabled;
+  final LocationLabelMode locationLabelMode;
   final String cameraPerformancePreset;
   final bool disclaimerAcknowledged;
   final bool mapTileCachingEnabled;
@@ -14,6 +17,7 @@ class AppSettings {
   const AppSettings({
     required this.confidenceThreshold,
     required this.locationTaggingEnabled,
+    required this.locationLabelMode,
     required this.cameraPerformancePreset,
     required this.disclaimerAcknowledged,
     required this.mapTileCachingEnabled,
@@ -23,6 +27,7 @@ class AppSettings {
     return const AppSettings(
       confidenceThreshold: 0.6,
       locationTaggingEnabled: false,
+      locationLabelMode: LocationLabelMode.locality,
       cameraPerformancePreset: 'Medium',
       disclaimerAcknowledged: false,
       mapTileCachingEnabled: true,
@@ -32,6 +37,7 @@ class AppSettings {
   AppSettings copyWith({
     double? confidenceThreshold,
     bool? locationTaggingEnabled,
+    LocationLabelMode? locationLabelMode,
     String? cameraPerformancePreset,
     bool? disclaimerAcknowledged,
     bool? mapTileCachingEnabled,
@@ -40,6 +46,7 @@ class AppSettings {
       confidenceThreshold: confidenceThreshold ?? this.confidenceThreshold,
       locationTaggingEnabled:
           locationTaggingEnabled ?? this.locationTaggingEnabled,
+      locationLabelMode: locationLabelMode ?? this.locationLabelMode,
       cameraPerformancePreset:
           cameraPerformancePreset ?? this.cameraPerformancePreset,
       disclaimerAcknowledged:
@@ -50,12 +57,20 @@ class AppSettings {
   }
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
+    final String? rawMode = json['locationLabelMode']?.toString();
+    final LocationLabelMode parsedMode =
+        LocationLabelMode.values.firstWhere(
+          (mode) => mode.name == rawMode,
+          orElse: () => LocationLabelMode.locality,
+        );
+
     return AppSettings(
       confidenceThreshold:
           (json['confidenceThreshold'] as num?)?.toDouble() ??
               AppSettings.defaults().confidenceThreshold,
       locationTaggingEnabled:
           json['locationTaggingEnabled'] as bool? ?? false,
+      locationLabelMode: parsedMode,
       cameraPerformancePreset:
           json['cameraPerformancePreset']?.toString() ?? 'Medium',
       disclaimerAcknowledged:
@@ -69,6 +84,7 @@ class AppSettings {
     return {
       'confidenceThreshold': confidenceThreshold,
       'locationTaggingEnabled': locationTaggingEnabled,
+      'locationLabelMode': locationLabelMode.name,
       'cameraPerformancePreset': cameraPerformancePreset,
       'disclaimerAcknowledged': disclaimerAcknowledged,
       'mapTileCachingEnabled': mapTileCachingEnabled,

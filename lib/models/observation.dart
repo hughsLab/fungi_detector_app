@@ -21,6 +21,7 @@ class Observation {
   final double? accuracyMeters;
   final DateTime? capturedAt;
   final ObservationLocationSource locationSource;
+  final String? locationLabel;
   final String? notes;
 
   const Observation({
@@ -44,6 +45,7 @@ class Observation {
     this.accuracyMeters,
     this.capturedAt,
     this.locationSource = ObservationLocationSource.none,
+    this.locationLabel,
     this.notes,
   });
 
@@ -99,6 +101,9 @@ class Observation {
         _parseDouble(json['accuracyMeters']) ?? location?.accuracyMeters;
     final DateTime? capturedAt =
         _parseDateTime(json['capturedAt']) ?? location?.capturedAt;
+    final String? locationLabel =
+        json['locationLabel']?.toString() ??
+        json['location_label']?.toString();
     final ObservationLocationSource locationSource =
         _parseLocationSource(json['locationSource']) ??
         ((latitude != null && longitude != null)
@@ -145,6 +150,7 @@ class Observation {
       accuracyMeters: accuracyMeters,
       capturedAt: capturedAt,
       locationSource: locationSource,
+      locationLabel: locationLabel,
       notes: json['notes']?.toString(),
     );
   }
@@ -176,6 +182,7 @@ class Observation {
       'accuracyMeters': accuracyMeters,
       'capturedAt': capturedAt?.toIso8601String(),
       'locationSource': locationSource.name,
+      'locationLabel': locationLabel,
       'location': location?.toJson(),
       'notes': notes,
     };

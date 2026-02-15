@@ -1,4 +1,5 @@
 import 'observation.dart';
+import 'field_note.dart';
 
 class SpeciesDetailArgs {
   final String speciesId;
@@ -20,6 +21,56 @@ class SaveObservationArgs {
   const SaveObservationArgs({this.preselectedSpeciesId});
 }
 
+class MapFocusRequest {
+  final String? observationId;
+  final double lat;
+  final double lon;
+  final double zoom;
+  final String? label;
+
+  const MapFocusRequest({
+    required this.observationId,
+    required this.lat,
+    required this.lon,
+    this.zoom = 15,
+    this.label,
+  });
+}
+
+class MapPickLocationArgs {
+  final double? initialLat;
+  final double? initialLon;
+  final String? title;
+
+  const MapPickLocationArgs({this.initialLat, this.initialLon, this.title});
+}
+
+class MapPickResult {
+  final double lat;
+  final double lon;
+  final String? label;
+
+  const MapPickResult({
+    required this.lat,
+    required this.lon,
+    this.label,
+  });
+}
+
+class FieldNoteEditorArgs {
+  final String? noteId;
+  final String? prelinkedObservationId;
+  final String? prelinkedSpeciesId;
+  final LocationRef? prelinkedLocation;
+
+  const FieldNoteEditorArgs({
+    this.noteId,
+    this.prelinkedObservationId,
+    this.prelinkedSpeciesId,
+    this.prelinkedLocation,
+  });
+}
+
 class DisclaimerArgs {
   final String? nextRoute;
   final bool allowBack;
@@ -28,6 +79,7 @@ class DisclaimerArgs {
 }
 
 class DetectionResultArgs {
+  final String? observationId;
   final String lockedLabel;
   final String? top2Label;
   final int? top2ClassIndex;
@@ -46,6 +98,7 @@ class DetectionResultArgs {
   final bool isSavedView;
 
   const DetectionResultArgs({
+    required this.observationId,
     required this.lockedLabel,
     required this.top2Label,
     this.top2ClassIndex,

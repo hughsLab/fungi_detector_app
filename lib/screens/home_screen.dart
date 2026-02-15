@@ -4,7 +4,9 @@ import '../auth/google_auth_service.dart';
 import '../widgets/forest_background.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final ValueChanged<int>? onSelectTab;
+
+  const HomeScreen({super.key, this.onSelectTab});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -15,6 +17,23 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isSigningOut = false;
 
   void _goTo(BuildContext context, String route) {
+    final onSelectTab = widget.onSelectTab;
+    if (onSelectTab != null) {
+      switch (route) {
+        case '/observations':
+          onSelectTab(1);
+          return;
+        case '/species-library':
+          onSelectTab(2);
+          return;
+        case '/map':
+          onSelectTab(3);
+          return;
+        case '/settings':
+          onSelectTab(4);
+          return;
+      }
+    }
     Navigator.of(context).pushNamed(route);
   }
 
@@ -181,6 +200,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         subtitle: 'View mapped finds',
                         icon: Icons.map,
                         onTap: () => _goTo(context, '/map'),
+                      ),
+                      _HomeActionCard(
+                        title: 'Field Notes',
+                        subtitle: 'Offline notes and photos',
+                        icon: Icons.note_alt,
+                        onTap: () => _goTo(context, '/field-notes'),
                       ),
                       _HomeActionCard(
                         title: 'Settings',

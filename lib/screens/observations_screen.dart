@@ -2,16 +2,21 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../models/field_note.dart';
 import '../models/navigation_args.dart';
 import '../models/observation.dart';
 import '../models/species.dart';
+import '../repositories/field_notes_repository.dart';
 import '../repositories/observation_repository.dart';
 import '../repositories/species_repository.dart';
+import '../services/settings_service.dart';
 import '../utils/formatting.dart';
 import '../widgets/forest_background.dart';
 
 class ObservationsScreen extends StatefulWidget {
-  const ObservationsScreen({super.key});
+  final ValueChanged<MapFocusRequest>? onMapFocusRequest;
+
+  const ObservationsScreen({super.key, this.onMapFocusRequest});
 
   @override
   State<ObservationsScreen> createState() => _ObservationsScreenState();
@@ -21,6 +26,7 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
   final ObservationRepository _observationRepository =
       ObservationRepository.instance;
   final SpeciesRepository _speciesRepository = SpeciesRepository.instance;
+  final SettingsService _settingsService = SettingsService.instance;
   final TextEditingController _searchController = TextEditingController();
 
   List<Observation> _observations = [];
@@ -28,13 +34,17 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
   Set<String> _lichenSpeciesIds = <String>{};
   Set<String> _lichenNames = <String>{};
   bool _loading = true;
+  bool _locationTaggingEnabled = false;
   ObservationSort _sort = ObservationSort.date;
   double _minConfidence = 0.0;
   String _searchQuery = '';
+  late final VoidCallback _settingsListener;
 
   @override
   void initState() {
     super.initState();
+    _settingsListener = _handleSettingsChanged;
+    _settingsService.settingsNotifier.addListener(_settingsListener);
     _loadData();
     _searchController.addListener(_onSearchChanged);
   }
@@ -42,12 +52,14 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _settingsService.settingsNotifier.removeListener(_settingsListener);
     super.dispose();
   }
 
   Future<void> _loadData() async {
     final observations = await _observationRepository.loadObservations();
     final species = await _speciesRepository.loadSpecies();
+    final settings = await _settingsService.loadSettings();
     final nameMap = {for (final item in species) item.id: item.displayName};
     final lichenSpeciesIds = <String>{};
     final lichenNames = <String>{};
@@ -71,7 +83,19 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
       _speciesNames = nameMap;
       _lichenSpeciesIds = lichenSpeciesIds;
       _lichenNames = lichenNames;
+      _locationTaggingEnabled = settings.locationTaggingEnabled;
       _loading = false;
+    });
+  }
+
+  void _handleSettingsChanged() {
+    if (!mounted) return;
+    final settings = _settingsService.settingsNotifier.value;
+    if (settings.locationTaggingEnabled == _locationTaggingEnabled) {
+      return;
+    }
+    setState(() {
+      _locationTaggingEnabled = settings.locationTaggingEnabled;
     });
   }
 
@@ -179,6 +203,7 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
     Navigator.of(context).pushNamed(
       '/detection-result',
       arguments: DetectionResultArgs(
+        observationId: observation.id,
         lockedLabel: label,
         top2Label: observation.top2Label,
         top1AvgConf: observation.confidence ?? 0.0,
@@ -204,6 +229,35 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
     Navigator.of(
       context,
     ).pushNamed('/save-observation').then((_) => _loadData());
+  }
+
+  void _handleLocationTap(Observation observation) {
+    final double? latitude = observation.latitude;
+    final double? longitude = observation.longitude;
+    if (latitude == null || longitude == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No location recorded')),
+      );
+      return;
+    }
+    final request = MapFocusRequest(
+      observationId: observation.id,
+      lat: latitude,
+      lon: longitude,
+    );
+    if (widget.onMapFocusRequest != null) {
+      widget.onMapFocusRequest!(request);
+      return;
+    }
+    Navigator.of(context).pushNamed('/map', arguments: request);
+  }
+
+  String _locationLabelFor(Observation observation) {
+    final String? raw = observation.locationLabel?.trim();
+    if (raw != null && raw.isNotEmpty) {
+      return raw;
+    }
+    return _locationTaggingEnabled ? 'Unknown' : 'Location off';
   }
 
   @override
@@ -262,6 +316,12 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
             ? const Center(child: CircularProgressIndicator())
             : Column(
                 children: [
+                  _FieldNotesShortcut(
+                    onTap: () {
+                      Navigator.of(context).pushNamed('/field-notes');
+                    },
+                  ),
+                  const SizedBox(height: 12),
                   _ObservationFilterRow(
                     searchController: _searchController,
                     minConfidence: _minConfidence,
@@ -297,10 +357,14 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
                               return _ObservationCard(
                                 observation: observation,
                                 displayName: name,
+                                locationLabel: _locationLabelFor(observation),
+                                locationTaggingEnabled: _locationTaggingEnabled,
                                 confidenceColor: _confidenceColor(
                                   observation.confidence,
                                 ),
                                 onTap: () => _openDetail(observation),
+                                onLocationTap: () =>
+                                    _handleLocationTap(observation),
                               );
                             },
                           ),
@@ -363,24 +427,92 @@ class _ObservationFilterRow extends StatelessWidget {
   }
 }
 
+class _FieldNotesShortcut extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _FieldNotesShortcut({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.note_alt, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Field Notes',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Offline notes, photos, and links',
+                      style: TextStyle(
+                        color: Color(0xCCFFFFFF),
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.white70),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ObservationCard extends StatelessWidget {
   final Observation observation;
   final String displayName;
+  final String locationLabel;
+  final bool locationTaggingEnabled;
   final Color confidenceColor;
   final VoidCallback onTap;
+  final VoidCallback onLocationTap;
 
   const _ObservationCard({
     required this.observation,
     required this.displayName,
+    required this.locationLabel,
+    required this.locationTaggingEnabled,
     required this.confidenceColor,
     required this.onTap,
+    required this.onLocationTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final photoPath = observation.photoPath;
     final hasImage = photoPath != null && File(photoPath).existsSync();
-    final hasLocation = observation.location != null;
+    final bool hasLocation =
+        observation.latitude != null && observation.longitude != null;
+    final Color locationColor =
+        hasLocation ? const Color(0xFFE7F3E7) : const Color(0xCCFFFFFF);
 
     return Material(
       color: Colors.white.withValues(alpha: 0.08),
@@ -427,6 +559,41 @@ class _ObservationCard extends StatelessWidget {
                         fontSize: 12.5,
                       ),
                     ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on,
+                          color: hasLocation
+                              ? const Color(0xFF8FBFA1)
+                              : Colors.white38,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Tooltip(
+                            message: hasLocation
+                                ? 'View on map'
+                                : (locationTaggingEnabled
+                                    ? 'No location recorded'
+                                    : 'Location tagging is off'),
+                            child: InkWell(
+                              onTap: onLocationTap,
+                              child: Text(
+                                locationLabel,
+                                style: TextStyle(
+                                  color: locationColor,
+                                  fontSize: 12.5,
+                                  decoration: hasLocation
+                                      ? TextDecoration.underline
+                                      : TextDecoration.none,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -454,14 +621,6 @@ class _ObservationCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (hasLocation) ...[
-                    const SizedBox(height: 8),
-                    const Icon(
-                      Icons.location_on,
-                      color: Color(0xFF8FBFA1),
-                      size: 18,
-                    ),
-                  ],
                 ],
               ),
             ],
@@ -477,8 +636,10 @@ class _ObservationDetailSheet extends StatelessWidget {
   final String displayName;
   final Color confidenceColor;
   final VoidCallback onViewFull;
+  final FieldNotesRepository _fieldNotesRepository =
+      FieldNotesRepository.instance;
 
-  const _ObservationDetailSheet({
+  _ObservationDetailSheet({
     required this.observation,
     required this.displayName,
     required this.confidenceColor,
@@ -589,6 +750,89 @@ class _ObservationDetailSheet extends StatelessWidget {
                 label: 'Notes',
                 value: observation.notes!.trim(),
               ),
+            const SizedBox(height: 12),
+            const Text(
+              'Field Notes',
+              style: TextStyle(
+                color: Color(0xFFE7F3E7),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            StreamBuilder<List<FieldNote>>(
+              stream: _fieldNotesRepository.watchAllNotes(),
+              builder: (context, snapshot) {
+                final notes = (snapshot.data ?? const <FieldNote>[])
+                    .where((note) =>
+                        note.links.observationIds.contains(observation.id))
+                    .toList();
+                if (notes.isEmpty) {
+                  return const Text(
+                    'No linked field notes.',
+                    style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 12.5),
+                  );
+                }
+                return Column(
+                  children: notes.map((note) {
+                    final title = note.title.trim().isEmpty
+                        ? 'Untitled note'
+                        : note.title;
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      title: Text(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                        ),
+                      ),
+                      subtitle: Text(
+                        formatDateTime(note.updatedAt),
+                        style: const TextStyle(
+                          color: Color(0xCCFFFFFF),
+                          fontSize: 11.5,
+                        ),
+                      ),
+                      trailing: const Icon(
+                        Icons.chevron_right,
+                        color: Colors.white70,
+                        size: 18,
+                      ),
+                      onTap: () {
+                        Navigator.of(context).pushNamed(
+                          '/field-note-editor',
+                          arguments: FieldNoteEditorArgs(noteId: note.id),
+                        );
+                      },
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pushNamed(
+                    '/field-note-editor',
+                    arguments: FieldNoteEditorArgs(
+                      prelinkedObservationId: observation.id,
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.note_add),
+                label: const Text('Add note'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: const StadiumBorder(),
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,

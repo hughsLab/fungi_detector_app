@@ -22,7 +22,10 @@ dependencies:
   flutter_map_tile_caching: ^9.0.1
   url_launcher: ^6.3.0
   geolocator: ^13.0.2
+  geocoder_offline: ^0.2.1
   uuid: ^4.5.1
+  image_picker: ^1.0.8
+  file_picker: ^8.1.2
 
 dev_dependencies:
   flutter_test:
@@ -35,3 +38,4 @@ flutter:
     - assets/models/
     - assets/images/
     - assets/data/
+    - assets/data/au_localities.csv

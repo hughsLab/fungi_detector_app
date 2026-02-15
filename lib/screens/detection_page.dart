@@ -384,6 +384,7 @@ class _DetectionPageState extends State<DetectionPage>
           ? _speciesIdForLabel(label)
           : classIndex.toString();
       final args = DetectionResultArgs(
+        observationId: null,
         lockedLabel: label,
         top2Label: track.isAmbiguous ? track.top2Label : null,
         top2ClassIndex: track.isAmbiguous ? track.top2ClassId : null,

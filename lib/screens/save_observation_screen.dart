@@ -7,6 +7,7 @@ import '../models/species.dart';
 import '../repositories/observation_repository.dart';
 import '../repositories/species_repository.dart';
 import '../services/location_capture_service.dart';
+import '../services/location_label_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/forest_background.dart';
 
@@ -24,6 +25,8 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
   final SettingsService _settingsService = SettingsService.instance;
   final LocationCaptureService _locationCaptureService =
       LocationCaptureService.instance;
+  final LocationLabelService _locationLabelService =
+      LocationLabelService.instance;
   final Uuid _uuid = const Uuid();
 
   final TextEditingController _notesController = TextEditingController();
@@ -33,6 +36,7 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
   bool _includeConfidence = false;
   double _confidenceValue = 0.6;
   bool _locationEnabled = false;
+  LocationLabelMode _locationLabelMode = LocationLabelMode.locality;
   bool _loading = true;
   bool _saving = false;
   bool _initialized = false;
@@ -67,6 +71,7 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
           preselected ?? (species.isNotEmpty ? species.first : null);
       _confidenceValue = settings.confidenceThreshold;
       _locationEnabled = settings.locationTaggingEnabled;
+      _locationLabelMode = settings.locationLabelMode;
       _loading = false;
     });
   }
@@ -90,6 +95,7 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
       double? longitude;
       double? accuracyMeters;
       DateTime? capturedAt;
+      String? locationLabel;
       if (_locationEnabled) {
         capturedLocation =
             await _locationCaptureService.captureForObservation();
@@ -100,6 +106,11 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
           accuracyMeters = capturedLocation.accuracyMeters;
           capturedAt = capturedLocation.capturedAt;
           locationSource = ObservationLocationSource.deviceGps;
+          locationLabel = await _locationLabelService.labelFor(
+            latitude: latitude,
+            longitude: longitude,
+            mode: _locationLabelMode,
+          );
         }
       }
 
@@ -118,6 +129,7 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
         accuracyMeters: accuracyMeters,
         capturedAt: capturedAt,
         locationSource: locationSource,
+        locationLabel: locationLabel,
         notes: _notesController.text.trim().isEmpty
             ? null
             : _notesController.text.trim(),
