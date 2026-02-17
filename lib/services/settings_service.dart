@@ -13,6 +13,7 @@ class AppSettings {
   final String cameraPerformancePreset;
   final bool disclaimerAcknowledged;
   final bool mapTileCachingEnabled;
+  final int mapTileCacheMaxSizeMb;
 
   const AppSettings({
     required this.confidenceThreshold,
@@ -21,6 +22,7 @@ class AppSettings {
     required this.cameraPerformancePreset,
     required this.disclaimerAcknowledged,
     required this.mapTileCachingEnabled,
+    required this.mapTileCacheMaxSizeMb,
   });
 
   factory AppSettings.defaults() {
@@ -31,6 +33,7 @@ class AppSettings {
       cameraPerformancePreset: 'Medium',
       disclaimerAcknowledged: false,
       mapTileCachingEnabled: true,
+      mapTileCacheMaxSizeMb: 250,
     );
   }
 
@@ -41,6 +44,7 @@ class AppSettings {
     String? cameraPerformancePreset,
     bool? disclaimerAcknowledged,
     bool? mapTileCachingEnabled,
+    int? mapTileCacheMaxSizeMb,
   }) {
     return AppSettings(
       confidenceThreshold: confidenceThreshold ?? this.confidenceThreshold,
@@ -53,30 +57,30 @@ class AppSettings {
           disclaimerAcknowledged ?? this.disclaimerAcknowledged,
       mapTileCachingEnabled:
           mapTileCachingEnabled ?? this.mapTileCachingEnabled,
+      mapTileCacheMaxSizeMb:
+          mapTileCacheMaxSizeMb ?? this.mapTileCacheMaxSizeMb,
     );
   }
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
     final String? rawMode = json['locationLabelMode']?.toString();
-    final LocationLabelMode parsedMode =
-        LocationLabelMode.values.firstWhere(
-          (mode) => mode.name == rawMode,
-          orElse: () => LocationLabelMode.locality,
-        );
+    final LocationLabelMode parsedMode = LocationLabelMode.values.firstWhere(
+      (mode) => mode.name == rawMode,
+      orElse: () => LocationLabelMode.locality,
+    );
 
     return AppSettings(
       confidenceThreshold:
           (json['confidenceThreshold'] as num?)?.toDouble() ??
-              AppSettings.defaults().confidenceThreshold,
-      locationTaggingEnabled:
-          json['locationTaggingEnabled'] as bool? ?? false,
+          AppSettings.defaults().confidenceThreshold,
+      locationTaggingEnabled: json['locationTaggingEnabled'] as bool? ?? false,
       locationLabelMode: parsedMode,
       cameraPerformancePreset:
           json['cameraPerformancePreset']?.toString() ?? 'Medium',
-      disclaimerAcknowledged:
-          json['disclaimerAcknowledged'] as bool? ?? false,
-      mapTileCachingEnabled:
-          json['mapTileCachingEnabled'] as bool? ?? true,
+      disclaimerAcknowledged: json['disclaimerAcknowledged'] as bool? ?? false,
+      mapTileCachingEnabled: json['mapTileCachingEnabled'] as bool? ?? true,
+      mapTileCacheMaxSizeMb:
+          (json['mapTileCacheMaxSizeMb'] as num?)?.toInt() ?? 250,
     );
   }
 
@@ -88,6 +92,7 @@ class AppSettings {
       'cameraPerformancePreset': cameraPerformancePreset,
       'disclaimerAcknowledged': disclaimerAcknowledged,
       'mapTileCachingEnabled': mapTileCachingEnabled,
+      'mapTileCacheMaxSizeMb': mapTileCacheMaxSizeMb,
     };
   }
 }

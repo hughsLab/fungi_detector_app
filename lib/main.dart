@@ -22,7 +22,10 @@ import 'screens/species_detail_screen.dart';
 import 'screens/species_library_screen.dart';
 import 'screens/startup_screen.dart';
 import 'screens/welcome_screen.dart';
+import 'services/auth_service.dart';
 import 'services/map_tile_cache_service.dart';
+import 'services/settings_service.dart';
+import 'services/sync_manager.dart';
 
 const String _expectedAndroidPackageName = 'com.example.app1';
 
@@ -36,13 +39,18 @@ Future<void> main() async {
     FlutterError.presentError(details);
   };
   debugPrint('FIREBASE_INIT: initializing Firebase');
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   debugPrint('FIREBASE_INIT: Firebase initialized OK');
   _logFirebaseOptions(DefaultFirebaseOptions.currentPlatform);
   await _logSanityDiagnostics();
-  await MapTileCacheService.instance.ensureInitialized();
+  await AuthService.instance.initialize();
+  await SyncManager.instance.initialize();
+  final settings = await SettingsService.instance.loadSettings();
+  final int mapCacheCapMb = settings.mapTileCacheMaxSizeMb;
+  await MapTileCacheService.instance.ensureInitialized(
+    cacheSoftLimitMb: mapCacheCapMb,
+    maxDatabaseSizeKiB: mapCacheCapMb * 1024,
+  );
   runApp(const RealtimeDetectionApp());
 }
 
@@ -80,28 +88,51 @@ class RealtimeDetectionApp extends StatelessWidget {
   }
 }
 
-class AuthGate extends StatelessWidget {
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
   @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  late final Future<void> _initializeFuture;
+  final AuthService _authService = AuthService.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeFuture = _authService.initialize();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+    return FutureBuilder<void>(
+      future: _initializeFuture,
+      builder: (context, initSnapshot) {
+        if (initSnapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
+            body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        final user = snapshot.data;
-        if (user == null) {
-          return const WelcomeScreen();
-        }
+        return StreamBuilder<AppAuthState>(
+          stream: _authService.authStateChanges(),
+          initialData: _authService.currentState,
+          builder: (context, authSnapshot) {
+            if (authSnapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
 
-        return const MainShellScreen();
+            final authState = authSnapshot.data;
+            if (authState == null || !authState.isAuthenticated) {
+              return const WelcomeScreen();
+            }
+            return const MainShellScreen();
+          },
+        );
       },
     );
   }
@@ -121,9 +152,7 @@ void _logFirebaseOptions(FirebaseOptions options) {
 }
 
 Future<void> _logSanityDiagnostics() async {
-  debugPrint(
-    'SANITY: platform=${defaultTargetPlatform.name} kIsWeb=$kIsWeb',
-  );
+  debugPrint('SANITY: platform=${defaultTargetPlatform.name} kIsWeb=$kIsWeb');
   final currentUser = FirebaseAuth.instance.currentUser;
   debugPrint(
     'SANITY: currentUser uid=${currentUser?.uid} email=${currentUser?.email}',

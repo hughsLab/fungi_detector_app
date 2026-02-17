@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../models/observation.dart';
+import '../services/sync_manager.dart';
 
 abstract class ObservationsRepository {
   Future<void> saveObservation(Observation observation);
@@ -53,6 +55,12 @@ class ObservationRepository implements ObservationsRepository {
     final observations = await loadObservations();
     observations.add(observation);
     await saveObservations(observations);
+    try {
+      await SyncManager.instance.enqueueObservationUpsert(observation);
+    } catch (e, st) {
+      debugPrint('SYNC_QUEUE: observation enqueue failed: $e');
+      debugPrintStack(stackTrace: st, label: 'SYNC_QUEUE');
+    }
   }
 
   Future<void> addObservation(Observation observation) async {
@@ -65,6 +73,12 @@ class ObservationRepository implements ObservationsRepository {
       await file.writeAsString('[]');
     }
     await _emitLocationUpdate(const []);
+    try {
+      await SyncManager.instance.enqueueObservationsClear();
+    } catch (e, st) {
+      debugPrint('SYNC_QUEUE: observations clear enqueue failed: $e');
+      debugPrintStack(stackTrace: st, label: 'SYNC_QUEUE');
+    }
   }
 
   @override
@@ -83,9 +97,7 @@ class ObservationRepository implements ObservationsRepository {
     yield* _locationStreamController.stream;
   }
 
-  Future<void> _emitLocationUpdate([
-    List<Observation>? observations,
-  ]) async {
+  Future<void> _emitLocationUpdate([List<Observation>? observations]) async {
     final list = observations ?? await loadObservations();
     final withLocation = list.where((item) => item.location != null).toList();
     if (!_locationStreamController.isClosed) {

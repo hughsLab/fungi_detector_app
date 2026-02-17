@@ -2,9 +2,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../services/auth_service.dart';
+
 class EmailAuthService {
   EmailAuthService({FirebaseAuth? firebaseAuth})
-      : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
+    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
 
   final FirebaseAuth _firebaseAuth;
 
@@ -26,6 +28,7 @@ class EmailAuthService {
         'EMAIL_AUTH: signIn success uid=${result.user?.uid} '
         'email=${result.user?.email}',
       );
+      await AuthService.instance.cacheFirebaseUserSession(result.user);
       return result;
     } on FirebaseAuthException catch (e, st) {
       debugPrint(
@@ -61,6 +64,7 @@ class EmailAuthService {
         'EMAIL_AUTH: signUp success uid=${result.user?.uid} '
         'email=${result.user?.email}',
       );
+      await AuthService.instance.cacheFirebaseUserSession(result.user);
       return result;
     } on FirebaseAuthException catch (e, st) {
       debugPrint(

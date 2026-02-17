@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../models/field_note.dart';
 import '../services/attachment_storage_service.dart';
+import '../services/sync_manager.dart';
 
 enum FieldNotesSearchFilter {
   all,
@@ -72,6 +74,12 @@ class FieldNotesRepository {
       notes.add(note);
     }
     await saveNotes(notes);
+    try {
+      await SyncManager.instance.enqueueFieldNoteUpsert(note);
+    } catch (e, st) {
+      debugPrint('SYNC_QUEUE: field note enqueue failed: $e');
+      debugPrintStack(stackTrace: st, label: 'SYNC_QUEUE');
+    }
   }
 
   Future<void> deleteNote(
@@ -81,6 +89,12 @@ class FieldNotesRepository {
     final notes = await loadNotes();
     notes.removeWhere((note) => note.id == noteId);
     await saveNotes(notes);
+    try {
+      await SyncManager.instance.enqueueFieldNoteDelete(noteId);
+    } catch (e, st) {
+      debugPrint('SYNC_QUEUE: field note delete enqueue failed: $e');
+      debugPrintStack(stackTrace: st, label: 'SYNC_QUEUE');
+    }
     if (deleteAttachments) {
       await AttachmentStorageService.instance.deleteNoteFolder(noteId);
     }
@@ -132,9 +146,7 @@ class FieldNotesRepository {
   Future<List<FieldNote>> getNotesForObservation(String observationId) async {
     final notes = await loadNotes();
     return notes
-        .where(
-          (note) => note.links.observationIds.contains(observationId),
-        )
+        .where((note) => note.links.observationIds.contains(observationId))
         .toList();
   }
 
@@ -155,10 +167,7 @@ class FieldNotesRepository {
     const distance = Distance();
     return notes.where((note) {
       for (final location in note.links.locations) {
-        final meters = distance(
-          target,
-          LatLng(location.lat, location.lon),
-        );
+        final meters = distance(target, LatLng(location.lat, location.lon));
         if (meters <= radiusMeters) {
           return true;
         }

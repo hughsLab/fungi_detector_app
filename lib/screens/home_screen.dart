@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../auth/google_auth_service.dart';
+import '../services/auth_service.dart';
 import '../widgets/forest_background.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -13,7 +13,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final GoogleAuthService _authService = GoogleAuthService();
+  final AuthService _authService = AuthService.instance;
   bool _isSigningOut = false;
 
   void _goTo(BuildContext context, String route) {
@@ -22,15 +22,6 @@ class _HomeScreenState extends State<HomeScreen> {
       switch (route) {
         case '/observations':
           onSelectTab(1);
-          return;
-        case '/species-library':
-          onSelectTab(2);
-          return;
-        case '/map':
-          onSelectTab(3);
-          return;
-        case '/settings':
-          onSelectTab(4);
           return;
       }
     }
@@ -98,10 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ),
                               )
-                            : const Icon(
-                                Icons.logout,
-                                color: Colors.white,
-                              ),
+                            : const Icon(Icons.logout, color: Colors.white),
                       ),
                     ],
                   ),
@@ -137,10 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(width: 8),
                       const Text(
                         'On-device AI ready',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: accentTextColor,
-                        ),
+                        style: TextStyle(fontSize: 14, color: accentTextColor),
                       ),
                     ],
                   ),
@@ -284,10 +269,7 @@ class _HomeActionCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right,
-                color: Colors.white70,
-              ),
+              const Icon(Icons.chevron_right, color: Colors.white70),
             ],
           ),
         ),

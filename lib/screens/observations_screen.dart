@@ -235,9 +235,9 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
     final double? latitude = observation.latitude;
     final double? longitude = observation.longitude;
     if (latitude == null || longitude == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No location recorded')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No location recorded')));
       return;
     }
     final request = MapFocusRequest(
@@ -252,12 +252,26 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
     Navigator.of(context).pushNamed('/map', arguments: request);
   }
 
-  String _locationLabelFor(Observation observation) {
+  String _locationTextFor(Observation observation) {
+    final double? latitude = observation.latitude;
+    final double? longitude = observation.longitude;
     final String? raw = observation.locationLabel?.trim();
+    final String? coords = (latitude != null && longitude != null)
+        ? '${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}'
+        : null;
+
+    if (raw != null && raw.isNotEmpty && coords != null) {
+      return '$raw ($coords)';
+    }
     if (raw != null && raw.isNotEmpty) {
       return raw;
     }
-    return _locationTaggingEnabled ? 'Unknown' : 'Location off';
+    if (coords != null) {
+      return coords;
+    }
+    return _locationTaggingEnabled
+        ? 'No location recorded'
+        : 'Location tagging is off';
   }
 
   @override
@@ -357,14 +371,12 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
                               return _ObservationCard(
                                 observation: observation,
                                 displayName: name,
-                                locationLabel: _locationLabelFor(observation),
-                                locationTaggingEnabled: _locationTaggingEnabled,
+                                locationText: _locationTextFor(observation),
                                 confidenceColor: _confidenceColor(
                                   observation.confidence,
                                 ),
                                 onTap: () => _openDetail(observation),
-                                onLocationTap: () =>
-                                    _handleLocationTap(observation),
+                                onMapTap: () => _handleLocationTap(observation),
                               );
                             },
                           ),
@@ -489,20 +501,18 @@ class _FieldNotesShortcut extends StatelessWidget {
 class _ObservationCard extends StatelessWidget {
   final Observation observation;
   final String displayName;
-  final String locationLabel;
-  final bool locationTaggingEnabled;
+  final String locationText;
   final Color confidenceColor;
   final VoidCallback onTap;
-  final VoidCallback onLocationTap;
+  final VoidCallback onMapTap;
 
   const _ObservationCard({
     required this.observation,
     required this.displayName,
-    required this.locationLabel,
-    required this.locationTaggingEnabled,
+    required this.locationText,
     required this.confidenceColor,
     required this.onTap,
-    required this.onLocationTap,
+    required this.onMapTap,
   });
 
   @override
@@ -511,8 +521,9 @@ class _ObservationCard extends StatelessWidget {
     final hasImage = photoPath != null && File(photoPath).existsSync();
     final bool hasLocation =
         observation.latitude != null && observation.longitude != null;
-    final Color locationColor =
-        hasLocation ? const Color(0xFFE7F3E7) : const Color(0xCCFFFFFF);
+    final Color locationColor = hasLocation
+        ? const Color(0xFFE7F3E7)
+        : const Color(0xCCFFFFFF);
 
     return Material(
       color: Colors.white.withValues(alpha: 0.08),
@@ -572,23 +583,37 @@ class _ObservationCard extends StatelessWidget {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Tooltip(
-                            message: hasLocation
-                                ? 'View on map'
-                                : (locationTaggingEnabled
-                                    ? 'No location recorded'
-                                    : 'Location tagging is off'),
-                            child: InkWell(
-                              onTap: onLocationTap,
-                              child: Text(
-                                locationLabel,
-                                style: TextStyle(
-                                  color: locationColor,
-                                  fontSize: 12.5,
-                                  decoration: hasLocation
-                                      ? TextDecoration.underline
-                                      : TextDecoration.none,
-                                ),
+                            message: locationText,
+                            child: Text(
+                              locationText,
+                              style: TextStyle(
+                                color: locationColor,
+                                fontSize: 12.5,
                               ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          height: 28,
+                          child: OutlinedButton.icon(
+                            onPressed: hasLocation ? onMapTap : null,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: BorderSide(
+                                color: hasLocation
+                                    ? Colors.white54
+                                    : Colors.white24,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 0,
+                              ),
+                            ),
+                            icon: const Icon(Icons.map, size: 14),
+                            label: const Text(
+                              'Map',
+                              style: TextStyle(fontSize: 11.5),
                             ),
                           ),
                         ),
@@ -660,7 +685,6 @@ class _ObservationDetailSheet extends StatelessWidget {
     final String votePercent = voteRatio == null
         ? 'Not recorded'
         : '${(voteRatio * 100).toStringAsFixed(1)}%';
-    final int windowFrames = observation.windowFrameCount ?? 0;
     final int windowMs = observation.windowDurationMs ?? 0;
     final String windowDuration = windowMs == 0
         ? 'Not recorded'
@@ -688,10 +712,7 @@ class _ObservationDetailSheet extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               formatDateTime(observation.timestamp),
-              style: const TextStyle(
-                color: accentTextColor,
-                fontSize: 12.5,
-              ),
+              style: const TextStyle(color: accentTextColor, fontSize: 12.5),
             ),
             const SizedBox(height: 12),
             Container(
@@ -703,7 +724,7 @@ class _ObservationDetailSheet extends StatelessWidget {
               child: hasImage
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.file(File(photoPath!), fit: BoxFit.cover),
+                      child: Image.file(File(photoPath), fit: BoxFit.cover),
                     )
                   : const Center(
                       child: Icon(
@@ -724,10 +745,7 @@ class _ObservationDetailSheet extends StatelessWidget {
                 value: '$top2Label - $top2Value',
               ),
             const SizedBox(height: 8),
-            _ObservationDetailRow(
-              label: 'Vote ratio',
-              value: votePercent,
-            ),
+            _ObservationDetailRow(label: 'Vote ratio', value: votePercent),
             _ObservationDetailRow(
               label: 'Stability window',
               value: stabilityWindow == 0
@@ -764,8 +782,10 @@ class _ObservationDetailSheet extends StatelessWidget {
               stream: _fieldNotesRepository.watchAllNotes(),
               builder: (context, snapshot) {
                 final notes = (snapshot.data ?? const <FieldNote>[])
-                    .where((note) =>
-                        note.links.observationIds.contains(observation.id))
+                    .where(
+                      (note) =>
+                          note.links.observationIds.contains(observation.id),
+                    )
                     .toList();
                 if (notes.isEmpty) {
                   return const Text(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../auth/google_auth_service.dart';
+import '../services/auth_service.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -12,6 +13,12 @@ class WelcomeScreen extends StatefulWidget {
 class _WelcomeScreenState extends State<WelcomeScreen> {
   final GoogleAuthService _authService = GoogleAuthService();
   bool _isSigningIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _notifyOfflineIfNeeded();
+  }
 
   void _goTo(BuildContext context, String route) {
     Navigator.of(context).pushReplacementNamed(route);
@@ -29,6 +36,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   Future<void> _handleGoogleSignIn() async {
     if (_isSigningIn) return;
+    if (!await AuthService.instance.ensureLoginPossibleOrNotify()) {
+      return;
+    }
     setState(() => _isSigningIn = true);
     try {
       final credential = await _authService.signInWithGoogleDebug();
@@ -51,6 +61,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     }
   }
 
+  Future<void> _notifyOfflineIfNeeded() async {
+    await AuthService.instance.maybeNotifyOfflineNoCachedSession();
+  }
+
   @override
   Widget build(BuildContext context) {
     const accentTextColor = Color(0xDFFFFFFF);
@@ -70,10 +84,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  Color(0x551F4E3D),
-                  Color(0xB31F4E3D),
-                ],
+                colors: [Color(0x551F4E3D), Color(0xB31F4E3D)],
               ),
             ),
           ),
@@ -87,14 +98,17 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     vertical: 16,
                   ),
                   child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
                     child: Align(
                       alignment: Alignment.topCenter,
                       child: SizedBox(
                         height: useSpacer ? constraints.maxHeight : null,
                         child: Column(
-                          mainAxisSize:
-                              useSpacer ? MainAxisSize.max : MainAxisSize.min,
+                          mainAxisSize: useSpacer
+                              ? MainAxisSize.max
+                              : MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             SizedBox(
@@ -149,8 +163,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                               child: SizedBox(
                                 height: 54,
                                 child: TextButton(
-                                  onPressed:
-                                      _isSigningIn ? null : _handleGoogleSignIn,
+                                  onPressed: _isSigningIn
+                                      ? null
+                                      : _handleGoogleSignIn,
                                   style: TextButton.styleFrom(
                                     padding: EdgeInsets.zero,
                                     tapTargetSize:
@@ -174,8 +189,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                             strokeWidth: 2,
                                             valueColor:
                                                 AlwaysStoppedAnimation<Color>(
-                                              Colors.white,
-                                            ),
+                                                  Colors.white,
+                                                ),
                                           ),
                                         ),
                                     ],
@@ -192,12 +207,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                   backgroundColor: buttonColor,
                                   foregroundColor: Colors.white,
                                   elevation: 0,
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
                                   shape: const StadiumBorder(),
                                 ),
-                              child: const Text(
-                                'Sign In With Email',
+                                child: const Text(
+                                  'Sign In With Email',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
@@ -213,8 +229,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: Colors.white,
                                   side: const BorderSide(color: Colors.white70),
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 14),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
                                   shape: const StadiumBorder(),
                                 ),
                                 child: const Text(

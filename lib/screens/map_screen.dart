@@ -13,6 +13,7 @@ import '../models/observation.dart';
 import '../repositories/field_notes_repository.dart';
 import '../repositories/observation_repository.dart';
 import '../repositories/species_repository.dart';
+import '../services/location_capture_service.dart';
 import '../services/map_tile_cache_service.dart';
 import '../services/settings_service.dart';
 import '../utils/formatting.dart';
@@ -32,6 +33,8 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       FieldNotesRepository.instance;
   final SpeciesRepository _speciesRepository = SpeciesRepository.instance;
   final MapTileCacheService _tileCacheService = MapTileCacheService.instance;
+  final LocationCaptureService _locationCaptureService =
+      LocationCaptureService.instance;
   final SettingsService _settingsService = SettingsService.instance;
   final MapController _mapController = MapController();
   final Uuid _uuid = const Uuid();
@@ -39,6 +42,11 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   bool _loading = true;
   bool _locationEnabled = false;
   bool _tileCachingEnabled = true;
+  int _tileCacheLimitMb = 250;
+  bool _offlineDownloading = false;
+  bool _offlineCancelling = false;
+  double _offlineRadiusKm = 3.0;
+  OfflineDownloadUpdate? _offlineDownloadUpdate;
   Map<String, String> _speciesNames = {};
   TileProvider? _tileProvider;
   List<Observation> _observationsCache = const [];
@@ -90,39 +98,54 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _loadData() async {
-    await _tileCacheService.ensureInitialized();
     final settings = await _settingsService.loadSettings();
+    await _tileCacheService.ensureInitialized(
+      cacheSoftLimitMb: settings.mapTileCacheMaxSizeMb,
+      maxDatabaseSizeKiB: settings.mapTileCacheMaxSizeMb * 1024,
+    );
     final species = await _speciesRepository.loadSpecies();
     final names = {for (final item in species) item.id: item.displayName};
     if (!mounted) return;
     setState(() {
       _locationEnabled = settings.locationTaggingEnabled;
       _tileCachingEnabled = settings.mapTileCachingEnabled;
+      _tileCacheLimitMb = settings.mapTileCacheMaxSizeMb;
       _speciesNames = names;
-      _tileProvider =
-          _tileCacheService.tileProvider(cachingEnabled: _tileCachingEnabled);
+      _tileProvider = _tileCacheService.tileProvider(
+        cachingEnabled: _tileCachingEnabled,
+      );
       _loading = false;
     });
   }
 
-  void _handleSettingsChanged() {
+  void _handleSettingsChanged() async {
     if (!mounted) return;
     final settings = _settingsService.settingsNotifier.value;
     final bool cachingChanged =
         settings.mapTileCachingEnabled != _tileCachingEnabled;
     final bool locationChanged =
         settings.locationTaggingEnabled != _locationEnabled;
+    final bool cacheLimitChanged =
+        settings.mapTileCacheMaxSizeMb != _tileCacheLimitMb;
 
-    if (!cachingChanged && !locationChanged) {
+    if (!cachingChanged && !locationChanged && !cacheLimitChanged) {
       return;
     }
 
+    if (cacheLimitChanged) {
+      await _tileCacheService.configureCacheLimitMb(
+        settings.mapTileCacheMaxSizeMb,
+      );
+    }
+    if (!mounted) return;
     setState(() {
       _locationEnabled = settings.locationTaggingEnabled;
       _tileCachingEnabled = settings.mapTileCachingEnabled;
-      if (cachingChanged) {
-        _tileProvider =
-            _tileCacheService.tileProvider(cachingEnabled: _tileCachingEnabled);
+      _tileCacheLimitMb = settings.mapTileCacheMaxSizeMb;
+      if (cachingChanged || cacheLimitChanged) {
+        _tileProvider = _tileCacheService.tileProvider(
+          cachingEnabled: _tileCachingEnabled,
+        );
       }
     });
   }
@@ -134,12 +157,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     double zoom = 15,
   }) {
     handleFocusRequest(
-      MapFocusRequest(
-        observationId: id,
-        lat: lat,
-        lon: lon,
-        zoom: zoom,
-      ),
+      MapFocusRequest(observationId: id, lat: lat, lon: lon, zoom: zoom),
     );
   }
 
@@ -185,10 +203,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _performFocus(MapFocusRequest request) async {
-    await _animateTo(
-      LatLng(request.lat, request.lon),
-      request.zoom,
-    );
+    await _animateTo(LatLng(request.lat, request.lon), request.zoom);
     final String? observationId = request.observationId;
     if (observationId != null) {
       _temporaryFocusLocation = null;
@@ -206,11 +221,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     }
     _temporaryFocusLocation = LatLng(request.lat, request.lon);
     if (mounted) {
-      _showLocationSheet(
-        request.lat,
-        request.lon,
-        label: request.label,
-      );
+      _showLocationSheet(request.lat, request.lon, label: request.label);
     }
   }
 
@@ -230,10 +241,10 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
     controller.addListener(() {
       final double t = curve.value;
-      final double lat = lerpDouble(start.latitude, target.latitude, t) ??
-          target.latitude;
-      final double lon = lerpDouble(start.longitude, target.longitude, t) ??
-          target.longitude;
+      final double lat =
+          lerpDouble(start.latitude, target.latitude, t) ?? target.latitude;
+      final double lon =
+          lerpDouble(start.longitude, target.longitude, t) ?? target.longitude;
       final double currentZoom = lerpDouble(startZoom, zoom, t) ?? zoom;
       _mapController.move(LatLng(lat, lon), currentZoom);
     });
@@ -334,8 +345,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   Future<bool> _tryLaunch(Uri uri) async {
     try {
-      final result =
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final result = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!result) {
         _showMessage('Unable to open external maps.');
       }
@@ -348,8 +358,9 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _openNoteEditor({
@@ -377,10 +388,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     final target = LatLng(lat, lon);
     return notes.where((note) {
       for (final location in note.links.locations) {
-        final meters = distance(
-          target,
-          LatLng(location.lat, location.lon),
-        );
+        final meters = distance(target, LatLng(location.lat, location.lon));
         if (meters <= radiusMeters) {
           return true;
         }
@@ -421,11 +429,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _showLocationSheet(
-    double lat,
-    double lon, {
-    String? label,
-  }) {
+  void _showLocationSheet(double lat, double lon, {String? label}) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF1F4E3D),
@@ -590,7 +594,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   child: hasImage
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.file(File(photoPath!), fit: BoxFit.cover),
+                          child: Image.file(File(photoPath), fit: BoxFit.cover),
                         )
                       : const Center(
                           child: Icon(
@@ -632,15 +636,18 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   builder: (context, snapshot) {
                     final allNotes = snapshot.data ?? const <FieldNote>[];
                     final observationNotes = allNotes
-                        .where((note) => note.links.observationIds
-                            .contains(observation.id))
+                        .where(
+                          (note) => note.links.observationIds.contains(
+                            observation.id,
+                          ),
+                        )
                         .toList();
                     final double? lat = observation.latitude;
                     final double? lon = observation.longitude;
                     final List<FieldNote> locationNotes =
                         (lat != null && lon != null)
-                            ? _notesNearLocation(allNotes, lat, lon)
-                            : const <FieldNote>[];
+                        ? _notesNearLocation(allNotes, lat, lon)
+                        : const <FieldNote>[];
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -676,10 +683,10 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                                 },
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: Colors.white,
-                                  side:
-                                      const BorderSide(color: Colors.white54),
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 10),
+                                  side: const BorderSide(color: Colors.white54),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                  ),
                                   shape: const StadiumBorder(),
                                 ),
                                 child: const Text('Add note for observation'),
@@ -770,6 +777,373 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     );
   }
 
+  Future<void> _openOfflineActionsSheet() async {
+    double selectedRadiusKm = _offlineRadiusKm;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF1F4E3D),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Offline map download',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Cache cap: $_tileCacheLimitMb MB',
+                      style: const TextStyle(
+                        color: Color(0xCCFFFFFF),
+                        fontSize: 12.5,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Region radius',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<double>(
+                      value: selectedRadiusKm,
+                      dropdownColor: const Color(0xFF1F4E3D),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 2,
+                          child: Text(
+                            '2 km',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 3,
+                          child: Text(
+                            '3 km',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 5,
+                          child: Text(
+                            '5 km',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setModalState(() {
+                          selectedRadiusKm = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.08),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _offlineDownloading
+                            ? null
+                            : () {
+                                Navigator.of(context).pop();
+                                _offlineRadiusKm = selectedRadiusKm;
+                                _startDownloadAroundCurrentLocation(
+                                  radiusKm: selectedRadiusKm,
+                                );
+                              },
+                        icon: const Icon(Icons.my_location),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF8FBFA1),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: const StadiumBorder(),
+                        ),
+                        label: const Text('Download around current GPS'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _offlineDownloading
+                            ? null
+                            : () {
+                                Navigator.of(context).pop();
+                                _offlineRadiusKm = selectedRadiusKm;
+                                _startDownloadAroundObservations(
+                                  radiusKm: selectedRadiusKm,
+                                );
+                              },
+                        icon: const Icon(Icons.pin_drop),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Colors.white54),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: const StadiumBorder(),
+                        ),
+                        label: const Text('Download around saved observations'),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Uses OpenStreetMap tiles; keep download regions modest.',
+                      style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _startDownloadAroundCurrentLocation({
+    required double radiusKm,
+  }) async {
+    final captured = await _locationCaptureService.captureForObservation();
+    if (captured == null) {
+      _showMessage(
+        _locationCaptureService.lastErrorMessage ??
+            'Unable to get current location for offline download.',
+      );
+      return;
+    }
+    await _runOfflineDownload([
+      OfflineDownloadRegionRequest(
+        label: 'Current location',
+        center: LatLng(captured.latitude, captured.longitude),
+        radiusKm: radiusKm,
+      ),
+    ]);
+  }
+
+  Future<void> _startDownloadAroundObservations({
+    required double radiusKm,
+  }) async {
+    final requests = <OfflineDownloadRegionRequest>[];
+    final seen = <String>{};
+
+    for (final observation in _observationsCache) {
+      final location = observation.location;
+      if (location == null) {
+        continue;
+      }
+
+      final key =
+          '${location.latitude.toStringAsFixed(4)}:${location.longitude.toStringAsFixed(4)}';
+      if (!seen.add(key)) {
+        continue;
+      }
+
+      requests.add(
+        OfflineDownloadRegionRequest(
+          label: _displayNameFor(observation),
+          center: LatLng(location.latitude, location.longitude),
+          radiusKm: radiusKm,
+        ),
+      );
+
+      if (requests.length >= 25) {
+        break;
+      }
+    }
+
+    if (requests.isEmpty) {
+      _showMessage('No saved observation locations are available yet.');
+      return;
+    }
+
+    await _runOfflineDownload(requests);
+  }
+
+  Future<void> _runOfflineDownload(
+    List<OfflineDownloadRegionRequest> requests,
+  ) async {
+    if (_offlineDownloading) {
+      _showMessage('An offline download is already in progress.');
+      return;
+    }
+    if (requests.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _offlineDownloading = true;
+      _offlineCancelling = false;
+      _offlineDownloadUpdate = null;
+    });
+
+    try {
+      await for (final update in _tileCacheService.downloadRegions(requests)) {
+        if (!mounted) return;
+        setState(() {
+          _offlineDownloadUpdate = update;
+        });
+      }
+      if (!mounted) return;
+
+      final int pruned = _offlineDownloadUpdate?.prunedTiles ?? 0;
+      if (_offlineCancelling) {
+        _showMessage('Offline download cancelled.');
+      } else if (pruned > 0) {
+        _showMessage(
+          'Offline download complete. Pruned $pruned old tiles to stay within cache limit.',
+        );
+      } else {
+        _showMessage('Offline download complete.');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage('Offline download failed: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _offlineDownloading = false;
+          _offlineCancelling = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _cancelOfflineDownload() async {
+    if (!_offlineDownloading || _offlineCancelling) {
+      return;
+    }
+    setState(() {
+      _offlineCancelling = true;
+    });
+    await _tileCacheService.cancelActiveDownload();
+  }
+
+  Widget _offlineDownloadStatusCard() {
+    final update = _offlineDownloadUpdate;
+    if (!_offlineDownloading && update == null) {
+      return const SizedBox.shrink();
+    }
+
+    final regionProgress = update?.regionProgress;
+    final double overall =
+        update?.overallProgressFraction ?? (_offlineDownloading ? 0 : 1);
+    final String heading = _offlineDownloading
+        ? (_offlineCancelling
+              ? 'Stopping offline download...'
+              : 'Downloading offline tiles...')
+        : (update?.isComplete ?? false)
+        ? 'Offline tiles ready'
+        : 'Offline download finished';
+    final String regionLabel = update == null || update.totalRegions <= 0
+        ? ''
+        : 'Region ${update.regionIndex}/${update.totalRegions}: ${update.label}';
+    final String details = regionProgress == null
+        ? (update?.message ?? '')
+        : '${regionProgress.attemptedTiles}/${regionProgress.maxTiles} tiles (${regionProgress.percentageProgress.toStringAsFixed(0)}%)';
+
+    return Positioned(
+      left: 14,
+      right: 14,
+      bottom: 20,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1F4E3D).withValues(alpha: 0.94),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    heading,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                if (_offlineDownloading)
+                  TextButton(
+                    onPressed: _offlineCancelling
+                        ? null
+                        : _cancelOfflineDownload,
+                    child: const Text('Cancel'),
+                  )
+                else
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _offlineDownloadUpdate = null;
+                      });
+                    },
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.white70,
+                      size: 18,
+                    ),
+                  ),
+              ],
+            ),
+            if (regionLabel.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  regionLabel,
+                  style: const TextStyle(
+                    color: Color(0xCCFFFFFF),
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            if (details.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  details,
+                  style: const TextStyle(
+                    color: Color(0xCCFFFFFF),
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            LinearProgressIndicator(
+              value: _offlineDownloading ? overall.clamp(0, 1) : 1,
+              backgroundColor: Colors.white24,
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                Color(0xFF8FBFA1),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const accentTextColor = Color(0xCCFFFFFF);
@@ -777,9 +1151,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
     if (_loading) {
       _mapReady = false;
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final bool showLocationDisabled =
@@ -879,6 +1251,21 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                             style: TextStyle(color: accentTextColor),
                             textAlign: TextAlign.center,
                           ),
+                          const SizedBox(height: 16),
+                          OutlinedButton.icon(
+                            onPressed: _openOfflineActionsSheet,
+                            icon: const Icon(Icons.download_for_offline),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white54),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 10,
+                              ),
+                              shape: const StadiumBorder(),
+                            ),
+                            label: const Text('Download offline map region'),
+                          ),
                         ],
                       ),
                     ),
@@ -888,20 +1275,21 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 final ordered = [...observations];
                 ordered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
                 _observationsCache = ordered;
-                final markers = _buildMarkers(
-                  ordered,
-                  interactive: !pickMode,
-                );
-                final Observation? first =
-                    ordered.isEmpty ? null : ordered.first;
+                final markers = _buildMarkers(ordered, interactive: !pickMode);
+                final Observation? first = ordered.isEmpty
+                    ? null
+                    : ordered.first;
                 final ObservationLocation? firstLocation = first?.location;
                 final double? pickLat = _pickArgs?.initialLat;
                 final double? pickLon = _pickArgs?.initialLon;
                 final LatLng center = (pickLat != null && pickLon != null)
                     ? LatLng(pickLat, pickLon)
                     : (firstLocation == null
-                        ? const LatLng(-25.2744, 133.7751)
-                        : LatLng(firstLocation.latitude, firstLocation.longitude));
+                          ? const LatLng(-25.2744, 133.7751)
+                          : LatLng(
+                              firstLocation.latitude,
+                              firstLocation.longitude,
+                            ));
 
                 _mapReady = true;
                 _maybeHandlePendingFocus();
@@ -956,16 +1344,29 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                       mapController: _mapController,
                       children: [
                         TileLayer(
-                          urlTemplate:
-                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          // Responsible caching only: no bulk download. Respect
-                          // OSM Tile Usage Policy https://operations.osmfoundation.org/policies/tiles/
-                          userAgentPackageName: 'realtime_detection_app',
+                          urlTemplate: MapTileCacheService.tileUrlTemplate,
+                          userAgentPackageName:
+                              MapTileCacheService.tileUserAgentPackageName,
                           tileProvider: _tileProvider ?? NetworkTileProvider(),
                         ),
                         MarkerLayer(markers: overlayMarkers),
                       ],
                     ),
+                    if (!pickMode)
+                      Positioned(
+                        right: 16,
+                        top: 16,
+                        child: FloatingActionButton.small(
+                          heroTag: 'map-offline-download',
+                          onPressed: _openOfflineActionsSheet,
+                          backgroundColor: const Color(
+                            0xFF1F4E3D,
+                          ).withValues(alpha: 0.94),
+                          foregroundColor: Colors.white,
+                          child: const Icon(Icons.download_for_offline),
+                        ),
+                      ),
+                    if (!pickMode) _offlineDownloadStatusCard(),
                     if (pickMode)
                       Positioned(
                         left: 16,
@@ -974,8 +1375,9 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1F4E3D)
-                                .withValues(alpha: 0.92),
+                            color: const Color(
+                              0xFF1F4E3D,
+                            ).withValues(alpha: 0.92),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
                               color: Colors.white.withValues(alpha: 0.2),
@@ -1019,8 +1421,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                                           );
                                         },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        const Color(0xFF8FBFA1),
+                                    backgroundColor: const Color(0xFF8FBFA1),
                                     foregroundColor: Colors.white,
                                     elevation: 0,
                                     padding: const EdgeInsets.symmetric(

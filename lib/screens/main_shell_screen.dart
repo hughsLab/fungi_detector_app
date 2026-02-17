@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'home_screen.dart';
-import 'map_screen.dart';
 import 'observations_screen.dart';
-import 'settings_screen.dart';
-import 'species_library_screen.dart';
-import '../models/navigation_args.dart';
 
 class MainShellScreen extends StatefulWidget {
   final int initialIndex;
@@ -18,19 +14,16 @@ class MainShellScreen extends StatefulWidget {
 
 class _MainShellScreenState extends State<MainShellScreen> {
   late int _currentIndex;
-  final GlobalKey<MapScreenState> _mapKey = GlobalKey<MapScreenState>();
   late final List<Widget> _tabs;
 
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialIndex;
+    _currentIndex = widget.initialIndex.clamp(0, 2);
     _tabs = [
       HomeScreen(onSelectTab: _onTabSelected),
-      ObservationsScreen(onMapFocusRequest: _handleMapFocus),
-      const SpeciesLibraryScreen(),
-      MapScreen(key: _mapKey),
-      const SettingsScreen(),
+      const ObservationsScreen(),
+      HomeScreen(onSelectTab: _onTabSelected),
     ];
   }
 
@@ -41,24 +34,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
     });
   }
 
-  void _handleMapFocus(MapFocusRequest request) {
-    if (_currentIndex != 3) {
-      setState(() {
-        _currentIndex = 3;
-      });
-    }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _mapKey.currentState?.handleFocusRequest(request);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _tabs,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _tabs),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
@@ -75,18 +54,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
             icon: Icon(Icons.collections_bookmark),
             label: 'Observations',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book),
-            label: 'Library',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map),
-            label: 'Map',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
         ],
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../auth/email_auth_service.dart';
+import '../services/auth_service.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -16,8 +17,7 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _isSigningIn = false;
   bool _isResetting = false;
 
-  static final RegExp _emailRegex =
-      RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+  static final RegExp _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
   void _goTo(BuildContext context, String route) {
     Navigator.of(context).pushReplacementNamed(route);
@@ -59,6 +59,9 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Future<void> _handleEmailSignIn() async {
     if (_isSigningIn) return;
+    if (!await AuthService.instance.ensureLoginPossibleOrNotify()) {
+      return;
+    }
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     if (!_validateEmail(email) || !_validatePassword(password)) {
@@ -73,7 +76,9 @@ class _SignInScreenState extends State<SignInScreen> {
       if (!mounted) return;
       final userEmail = credential.user?.email;
       _showToast(
-        userEmail == null ? 'Signed in successfully.' : 'Signed in as $userEmail',
+        userEmail == null
+            ? 'Signed in successfully.'
+            : 'Signed in as $userEmail',
       );
       _goTo(context, '/home');
     } catch (error) {
@@ -88,6 +93,9 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Future<void> _handlePasswordReset() async {
     if (_isResetting) return;
+    if (!await AuthService.instance.ensureLoginPossibleOrNotify()) {
+      return;
+    }
     final email = _emailController.text.trim();
     if (!_validateEmail(email)) {
       return;
@@ -145,7 +153,9 @@ class _SignInScreenState extends State<SignInScreen> {
                 return SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 28),
                   child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
                     child: Align(
                       alignment: const Alignment(-1.0, -0.2),
                       child: Column(
@@ -234,14 +244,16 @@ class _SignInScreenState extends State<SignInScreen> {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed:
-                                  _isSigningIn ? null : _handleEmailSignIn,
+                              onPressed: _isSigningIn
+                                  ? null
+                                  : _handleEmailSignIn,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: buttonColor,
                                 foregroundColor: Colors.white,
                                 elevation: 0,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
                                 shape: const StadiumBorder(),
                               ),
                               child: Text(
@@ -261,8 +273,9 @@ class _SignInScreenState extends State<SignInScreen> {
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.white,
                                 side: const BorderSide(color: Colors.white70),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
                                 shape: const StadiumBorder(),
                               ),
                               child: const Text(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../auth/email_auth_service.dart';
+import '../services/auth_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -17,8 +18,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       TextEditingController();
   bool _isSigningUp = false;
 
-  static final RegExp _emailRegex =
-      RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+  static final RegExp _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
   void _goTo(BuildContext context, String route) {
     Navigator.of(context).pushReplacementNamed(route);
@@ -68,6 +68,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   Future<void> _handleEmailSignUp() async {
     if (_isSigningUp) return;
+    if (!await AuthService.instance.ensureLoginPossibleOrNotify()) {
+      return;
+    }
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
@@ -153,7 +156,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 return SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 28),
                   child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
                     child: Align(
                       alignment: const Alignment(-1.0, -0.2),
                       child: Column(
@@ -257,14 +262,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed:
-                                  _isSigningUp ? null : _handleEmailSignUp,
+                              onPressed: _isSigningUp
+                                  ? null
+                                  : _handleEmailSignUp,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: buttonColor,
                                 foregroundColor: Colors.white,
                                 elevation: 0,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
                                 shape: const StadiumBorder(),
                               ),
                               child: Text(
@@ -284,8 +291,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.white,
                                 side: const BorderSide(color: Colors.white70),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
                                 shape: const StadiumBorder(),
                               ),
                               child: const Text(

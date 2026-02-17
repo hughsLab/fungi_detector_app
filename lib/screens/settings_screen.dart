@@ -26,8 +26,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       FieldNotesRepository.instance;
   final AttachmentStorageService _attachmentStorageService =
       AttachmentStorageService.instance;
-  final MapTileCacheService _mapTileCacheService =
-      MapTileCacheService.instance;
+  final MapTileCacheService _mapTileCacheService = MapTileCacheService.instance;
 
   AppSettings? _settings;
   bool _loading = true;
@@ -36,6 +35,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int? _fieldNotesBytes;
   int? _fieldNotesThumbBytes;
   int? _tileCacheBytes;
+  int? _tileCacheTileCount;
+  int? _tileCacheHits;
+  int? _tileCacheMisses;
 
   @override
   void initState() {
@@ -48,10 +50,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final modelSize = await _loadModelSize();
     final storageSize = await _loadStorageUsage();
     final fieldNotesBytes = await _fieldNotesRepository.getStorageBytes();
-    final fieldNotesThumbBytes =
-        await _attachmentStorageService.getThumbnailCacheBytes();
-    await _mapTileCacheService.ensureInitialized();
-    final tileCacheSize = await _mapTileCacheService.getCacheSizeBytes();
+    final fieldNotesThumbBytes = await _attachmentStorageService
+        .getThumbnailCacheBytes();
+    await _mapTileCacheService.ensureInitialized(
+      cacheSoftLimitMb: settings.mapTileCacheMaxSizeMb,
+      maxDatabaseSizeKiB: settings.mapTileCacheMaxSizeMb * 1024,
+    );
+    final tileStats = await _mapTileCacheService.getCacheStats();
     if (!mounted) return;
     setState(() {
       _settings = settings;
@@ -59,15 +64,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _storageBytes = storageSize;
       _fieldNotesBytes = fieldNotesBytes;
       _fieldNotesThumbBytes = fieldNotesThumbBytes;
-      _tileCacheBytes = tileCacheSize;
+      _tileCacheBytes = tileStats.sizeBytes;
+      _tileCacheTileCount = tileStats.tileCount;
+      _tileCacheHits = tileStats.hits;
+      _tileCacheMisses = tileStats.misses;
       _loading = false;
     });
   }
 
   Future<int?> _loadModelSize() async {
     try {
-      final data =
-          await rootBundle.load('assets/models/yolo11n_float32.tflite');
+      final data = await rootBundle.load(
+        'assets/models/yolo11n_float32.tflite',
+      );
       return data.lengthInBytes;
     } catch (_) {
       return null;
@@ -104,22 +113,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _storageBytes = storageSize;
     });
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Local data cleared.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Local data cleared.')));
   }
 
   Future<void> _clearMapCache() async {
     await _mapTileCacheService.clearCache();
-    final tileCacheSize = await _mapTileCacheService.getCacheSizeBytes();
+    final tileStats = await _mapTileCacheService.getCacheStats();
     if (!mounted) return;
     setState(() {
-      _tileCacheBytes = tileCacheSize;
+      _tileCacheBytes = tileStats.sizeBytes;
+      _tileCacheTileCount = tileStats.tileCount;
+      _tileCacheHits = tileStats.hits;
+      _tileCacheMisses = tileStats.misses;
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Cached map tiles cleared.')));
+  }
+
+  Future<void> _pruneMapCache() async {
+    final removed = await _mapTileCacheService.pruneCacheToSoftLimit();
+    final tileStats = await _mapTileCacheService.getCacheStats();
+    if (!mounted) return;
+    setState(() {
+      _tileCacheBytes = tileStats.sizeBytes;
+      _tileCacheTileCount = tileStats.tileCount;
+      _tileCacheHits = tileStats.hits;
+      _tileCacheMisses = tileStats.misses;
     });
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Cached map tiles cleared.')),
+      SnackBar(
+        content: Text(
+          removed > 0
+              ? 'Pruned $removed old tiles to stay under cache limit.'
+              : 'Cache is already within the configured limit.',
+        ),
+      ),
     );
+  }
+
+  Future<void> _updateMapCacheLimit(int limitMb) async {
+    final current = _settings;
+    if (current == null) {
+      return;
+    }
+    final updated = current.copyWith(mapTileCacheMaxSizeMb: limitMb);
+    await _updateSettings(updated);
+    await _mapTileCacheService.configureCacheLimitMb(limitMb);
+    final tileStats = await _mapTileCacheService.getCacheStats();
+    if (!mounted) return;
+    setState(() {
+      _tileCacheBytes = tileStats.sizeBytes;
+      _tileCacheTileCount = tileStats.tileCount;
+      _tileCacheHits = tileStats.hits;
+      _tileCacheMisses = tileStats.misses;
+    });
   }
 
   Future<void> _clearFieldNoteThumbnails() async {
@@ -194,16 +246,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     items: const [
                       DropdownMenuItem(
                         value: 'Low',
-                        child: Text('Low', style: TextStyle(color: Colors.white)),
+                        child: Text(
+                          'Low',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                       DropdownMenuItem(
                         value: 'Medium',
-                        child:
-                            Text('Medium', style: TextStyle(color: Colors.white)),
+                        child: Text(
+                          'Medium',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                       DropdownMenuItem(
                         value: 'High',
-                        child: Text('High', style: TextStyle(color: Colors.white)),
+                        child: Text(
+                          'High',
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
                     ],
                     onChanged: (value) {
@@ -325,13 +385,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     activeColor: const Color(0xFF8FBFA1),
                   ),
                   const SizedBox(height: 8),
+                  const Text(
+                    'Cache size cap',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<int>(
+                    value: _settings!.mapTileCacheMaxSizeMb,
+                    dropdownColor: const Color(0xFF1F4E3D),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 250,
+                        child: Text(
+                          '250 MB',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      DropdownMenuItem(
+                        value: 500,
+                        child: Text(
+                          '500 MB',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      _updateMapCacheLimit(value);
+                    },
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.08),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   _InfoRow(
                     label: 'Map tile cache (approx.)',
                     value: _tileCacheBytes == null
                         ? 'Unknown'
                         : _formatBytes(_tileCacheBytes!),
                   ),
+                  _InfoRow(
+                    label: 'Cached tiles',
+                    value: _tileCacheTileCount?.toString() ?? 'Unknown',
+                  ),
+                  _InfoRow(
+                    label: 'Cache hits / misses',
+                    value: (_tileCacheHits == null || _tileCacheMisses == null)
+                        ? 'Unknown'
+                        : '${_tileCacheHits!} / ${_tileCacheMisses!}',
+                  ),
                   const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: _pruneMapCache,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white54),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: const StadiumBorder(),
+                      ),
+                      child: const Text('Prune cache to size limit'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
@@ -353,7 +475,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Text(
-                      'Tiles are cached as you browse. Bulk downloading is intentionally disabled to respect tile provider terms.',
+                      'Tiles are cached while browsing and can also be downloaded in the map screen for offline use.',
                       style: TextStyle(color: accentTextColor, height: 1.4),
                     ),
                   ),

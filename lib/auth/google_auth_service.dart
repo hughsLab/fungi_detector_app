@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../config/app_secrets.dart';
+import '../services/auth_service.dart';
 
 class GoogleAuthService {
   GoogleAuthService({
@@ -11,10 +12,10 @@ class GoogleAuthService {
     GoogleSignIn? googleSignIn,
     String? clientId,
     String? serverClientId,
-  })  : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-        _googleSignIn = googleSignIn ?? GoogleSignIn.instance,
-        _clientId = clientId ?? (kIsWeb ? AppSecrets.googleWebClientId : null),
-        _serverClientId = serverClientId ?? _defaultServerClientId();
+  }) : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
+       _googleSignIn = googleSignIn ?? GoogleSignIn.instance,
+       _clientId = clientId ?? (kIsWeb ? AppSecrets.googleWebClientId : null),
+       _serverClientId = serverClientId ?? _defaultServerClientId();
 
   final FirebaseAuth _firebaseAuth;
   final GoogleSignIn _googleSignIn;
@@ -92,6 +93,7 @@ class GoogleAuthService {
         'GOOGLE_AUTH: Firebase sign-in success uid=${result.user?.uid} '
         'email=${result.user?.email}',
       );
+      await AuthService.instance.cacheFirebaseUserSession(result.user);
       return result;
     } on FirebaseAuthException catch (e, st) {
       debugPrint(
@@ -117,10 +119,8 @@ class GoogleAuthService {
   Future<void> signOut() async {
     debugPrint('GOOGLE_AUTH: signOut started');
     await _ensureInitialized();
-    await Future.wait([
-      _googleSignIn.signOut(),
-      _firebaseAuth.signOut(),
-    ]);
+    await _googleSignIn.signOut();
+    await AuthService.instance.signOut();
     debugPrint('GOOGLE_AUTH: signOut completed');
   }
 
@@ -182,17 +182,15 @@ class GoogleAuthService {
       return error.description ?? 'Google sign-in failed. Please try again.';
     }
     if (error is StateError) {
-      return error.message ?? 'Missing configuration for Google sign-in.';
+      return error.message;
     }
     return 'Sign-in failed. Please try again.';
   }
 
   Future<String?> _tryGetAccessToken(GoogleSignInAccount googleUser) async {
     try {
-      final authorization =
-          await googleUser.authorizationClient.authorizationForScopes(
-        const ['email'],
-      );
+      final authorization = await googleUser.authorizationClient
+          .authorizationForScopes(const ['email']);
       return authorization?.accessToken;
     } catch (e, st) {
       debugPrint('GOOGLE_AUTH: access token fetch failed: $e');
