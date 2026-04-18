@@ -6,7 +6,7 @@ import 'observations_screen.dart';
 class MainShellScreen extends StatefulWidget {
   final int initialIndex;
 
-  const MainShellScreen({super.key, this.initialIndex = 0});
+  const MainShellScreen({super.key, this.initialIndex = 2});
 
   @override
   State<MainShellScreen> createState() => _MainShellScreenState();
@@ -14,20 +14,23 @@ class MainShellScreen extends StatefulWidget {
 
 class _MainShellScreenState extends State<MainShellScreen> {
   late int _currentIndex;
-  late final List<Widget> _tabs;
+  late final List<Widget> _shellTabs;
 
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialIndex.clamp(0, 2);
-    _tabs = [
-      HomeScreen(onSelectTab: _onTabSelected),
+    _currentIndex = widget.initialIndex.clamp(1, 2);
+    _shellTabs = [
       const ObservationsScreen(),
       HomeScreen(onSelectTab: _onTabSelected),
     ];
   }
 
   void _onTabSelected(int index) {
+    if (index == 0) {
+      Navigator.of(context).pushNamed('/detect');
+      return;
+    }
     if (index == _currentIndex) return;
     setState(() {
       _currentIndex = index;
@@ -37,7 +40,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _tabs),
+      body: IndexedStack(index: _currentIndex - 1, children: _shellTabs),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,

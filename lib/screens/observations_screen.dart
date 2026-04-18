@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
 import '../models/field_note.dart';
@@ -12,6 +10,7 @@ import '../repositories/species_repository.dart';
 import '../services/settings_service.dart';
 import '../utils/formatting.dart';
 import '../widgets/forest_background.dart';
+import '../widgets/local_image_preview.dart';
 
 class ObservationsScreen extends StatefulWidget {
   final ValueChanged<MapFocusRequest>? onMapFocusRequest;
@@ -33,6 +32,7 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
   Map<String, String> _speciesNames = {};
   Set<String> _lichenSpeciesIds = <String>{};
   Set<String> _lichenNames = <String>{};
+  List<Observation> _visibleObservations = const [];
   bool _loading = true;
   bool _locationTaggingEnabled = false;
   ObservationSort _sort = ObservationSort.date;
@@ -57,9 +57,12 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
   }
 
   Future<void> _loadData() async {
-    final observations = await _observationRepository.loadObservations();
-    final species = await _speciesRepository.loadSpecies();
-    final settings = await _settingsService.loadSettings();
+    final observationsFuture = _observationRepository.loadObservations();
+    final speciesFuture = _speciesRepository.loadSpecies();
+    final settingsFuture = _settingsService.loadSettings();
+    final observations = await observationsFuture;
+    final species = await speciesFuture;
+    final settings = await settingsFuture;
     final nameMap = {for (final item in species) item.id: item.displayName};
     final lichenSpeciesIds = <String>{};
     final lichenNames = <String>{};
@@ -83,6 +86,10 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
       _speciesNames = nameMap;
       _lichenSpeciesIds = lichenSpeciesIds;
       _lichenNames = lichenNames;
+      _visibleObservations = _buildVisibleObservations(
+        observations: observations,
+        speciesNames: nameMap,
+      );
       _locationTaggingEnabled = settings.locationTaggingEnabled;
       _loading = false;
     });
@@ -104,6 +111,7 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
     if (query == _searchQuery) return;
     setState(() {
       _searchQuery = query;
+      _visibleObservations = _buildVisibleObservations();
     });
   }
 
@@ -123,23 +131,24 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
     return combined.contains('lichen');
   }
 
-  List<Observation> get _sortedObservations {
-    final list = [..._observations];
+  List<Observation> _buildVisibleObservations({
+    List<Observation>? observations,
+    Map<String, String>? speciesNames,
+  }) {
+    final Map<String, String> names = speciesNames ?? _speciesNames;
+    final List<Observation> list = [...(observations ?? _observations)];
     if (_sort == ObservationSort.speciesName) {
       list.sort((a, b) {
-        final nameA = _displayNameFor(a);
-        final nameB = _displayNameFor(b);
+        final nameA = _displayNameForWithNames(a, names);
+        final nameB = _displayNameForWithNames(b, names);
         return nameA.compareTo(nameB);
       });
     } else {
       list.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     }
-    return list;
-  }
 
-  List<Observation> get _filteredObservations {
     final query = _searchQuery.trim().toLowerCase();
-    return _sortedObservations.where((observation) {
+    return list.where((observation) {
       final confidence = observation.confidence ?? 0.0;
       if (confidence < _minConfidence) {
         return false;
@@ -147,9 +156,20 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
       if (query.isEmpty) {
         return true;
       }
-      final name = _displayNameFor(observation).toLowerCase();
+      final name = _displayNameForWithNames(observation, names).toLowerCase();
       return name.contains(query);
-    }).toList();
+    }).toList(growable: false);
+  }
+
+  String _displayNameForWithNames(
+    Observation observation,
+    Map<String, String> speciesNames,
+  ) {
+    final label = observation.label.trim();
+    if (label.isNotEmpty) {
+      return label;
+    }
+    return speciesNames[observation.speciesId] ?? 'Unknown';
   }
 
   String _displayNameFor(Observation observation) {
@@ -184,6 +204,12 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
           observation: observation,
           displayName: _displayNameFor(observation),
           confidenceColor: _confidenceColor(observation.confidence),
+          onOpenMap: observation.location == null
+              ? null
+              : () {
+                  Navigator.of(context).pop();
+                  _handleLocationTap(observation);
+                },
           onViewFull: () {
             Navigator.of(context).pop();
             _openFullDetail(observation);
@@ -219,6 +245,9 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
             : observation.speciesId,
         classIndex: observation.classIndex,
         photoPath: observation.photoPath,
+        latitude: observation.latitude,
+        longitude: observation.longitude,
+        locationLabel: observation.locationLabel,
         isLichen: isLichen,
         isSavedView: true,
       ),
@@ -310,6 +339,7 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
                 if (value == null) return;
                 setState(() {
                   _sort = value;
+                  _visibleObservations = _buildVisibleObservations();
                 });
               },
             ),
@@ -342,6 +372,7 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
                     onConfidenceChanged: (value) {
                       setState(() {
                         _minConfidence = value;
+                        _visibleObservations = _buildVisibleObservations();
                       });
                     },
                   ),
@@ -354,7 +385,7 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
                               style: TextStyle(color: accentTextColor),
                             ),
                           )
-                        : _filteredObservations.isEmpty
+                        : _visibleObservations.isEmpty
                         ? const Center(
                             child: Text(
                               'No observations match your filters.',
@@ -362,11 +393,11 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
                             ),
                           )
                         : ListView.separated(
-                            itemCount: _filteredObservations.length,
+                            itemCount: _visibleObservations.length,
                             separatorBuilder: (_, __) =>
                                 const SizedBox(height: 10),
                             itemBuilder: (context, index) {
-                              final observation = _filteredObservations[index];
+                              final observation = _visibleObservations[index];
                               final name = _displayNameFor(observation);
                               return _ObservationCard(
                                 observation: observation,
@@ -517,8 +548,6 @@ class _ObservationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final photoPath = observation.photoPath;
-    final hasImage = photoPath != null && File(photoPath).existsSync();
     final bool hasLocation =
         observation.latitude != null && observation.longitude != null;
     final Color locationColor = hasLocation
@@ -542,12 +571,15 @@ class _ObservationCard extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: hasImage
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.file(File(photoPath), fit: BoxFit.cover),
-                      )
-                    : const Icon(Icons.local_florist, color: Colors.white70),
+                child: LocalImagePreview(
+                  path: observation.photoPath,
+                  borderRadius: BorderRadius.circular(12),
+                  cacheWidth: 160,
+                  placeholder: const Icon(
+                    Icons.local_florist,
+                    color: Colors.white70,
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -660,6 +692,7 @@ class _ObservationDetailSheet extends StatelessWidget {
   final Observation observation;
   final String displayName;
   final Color confidenceColor;
+  final VoidCallback? onOpenMap;
   final VoidCallback onViewFull;
   final FieldNotesRepository _fieldNotesRepository =
       FieldNotesRepository.instance;
@@ -668,6 +701,7 @@ class _ObservationDetailSheet extends StatelessWidget {
     required this.observation,
     required this.displayName,
     required this.confidenceColor,
+    required this.onOpenMap,
     required this.onViewFull,
   });
 
@@ -691,9 +725,6 @@ class _ObservationDetailSheet extends StatelessWidget {
         : '${(windowMs / 1000).toStringAsFixed(1)}s';
     final int stabilityWins = observation.stabilityWinCount ?? 0;
     final int stabilityWindow = observation.stabilityWindowSize ?? 0;
-
-    final photoPath = observation.photoPath;
-    final hasImage = photoPath != null && File(photoPath).existsSync();
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -721,17 +752,17 @@ class _ObservationDetailSheet extends StatelessWidget {
                 color: Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: hasImage
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.file(File(photoPath), fit: BoxFit.cover),
-                    )
-                  : const Center(
-                      child: Icon(
-                        Icons.image_not_supported,
-                        color: Colors.white70,
-                      ),
-                    ),
+              child: LocalImagePreview(
+                path: observation.photoPath,
+                borderRadius: BorderRadius.circular(12),
+                cacheWidth: 640,
+                placeholder: const Center(
+                  child: Icon(
+                    Icons.image_not_supported,
+                    color: Colors.white70,
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             _ObservationDetailRow(
@@ -762,6 +793,23 @@ class _ObservationDetailSheet extends StatelessWidget {
                 value:
                     '${location.latitude.toStringAsFixed(3)}, ${location.longitude.toStringAsFixed(3)}',
               ),
+            if (onOpenMap != null) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: onOpenMap,
+                  icon: const Icon(Icons.map),
+                  label: const Text('Open on map'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: const StadiumBorder(),
+                  ),
+                ),
+              ),
+            ],
             if (observation.notes != null &&
                 observation.notes!.trim().isNotEmpty)
               _ObservationDetailRow(

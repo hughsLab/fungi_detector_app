@@ -18,6 +18,7 @@ import '../services/map_tile_cache_service.dart';
 import '../services/settings_service.dart';
 import '../utils/formatting.dart';
 import '../widgets/forest_background.dart';
+import '../widgets/local_image_preview.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -317,6 +318,9 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             : observation.speciesId,
         classIndex: observation.classIndex,
         photoPath: observation.photoPath,
+        latitude: observation.latitude,
+        longitude: observation.longitude,
+        locationLabel: observation.locationLabel,
         isLichen: observation.isLichen ?? false,
         isSavedView: true,
       ),
@@ -532,8 +536,6 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         final name = _displayNameFor(observation);
         final confidence = observation.confidence;
         final color = _confidenceColor(confidence);
-        final photoPath = observation.photoPath;
-        final hasImage = photoPath != null && File(photoPath).existsSync();
         final notes = (observation.notes ?? '').trim();
         final hasNotes = notes.isNotEmpty;
 
@@ -591,17 +593,17 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                     color: Colors.white.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: hasImage
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.file(File(photoPath), fit: BoxFit.cover),
-                        )
-                      : const Center(
-                          child: Icon(
-                            Icons.image_not_supported,
-                            color: Colors.white70,
-                          ),
-                        ),
+                  child: LocalImagePreview(
+                    path: observation.photoPath,
+                    borderRadius: BorderRadius.circular(12),
+                    cacheWidth: 640,
+                    placeholder: const Center(
+                      child: Icon(
+                        Icons.image_not_supported,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(

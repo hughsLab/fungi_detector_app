@@ -94,6 +94,9 @@ class DetectionResultArgs {
   final String? speciesId;
   final int? classIndex;
   final String? photoPath;
+  final double? latitude;
+  final double? longitude;
+  final String? locationLabel;
   final bool isLichen;
   final bool isSavedView;
 
@@ -113,6 +116,9 @@ class DetectionResultArgs {
     required this.speciesId,
     required this.classIndex,
     this.photoPath,
+    this.latitude,
+    this.longitude,
+    this.locationLabel,
     required this.isLichen,
     this.isSavedView = false,
   });

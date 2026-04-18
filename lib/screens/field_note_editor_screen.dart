@@ -19,6 +19,7 @@ import '../services/location_label_service.dart';
 import '../services/settings_service.dart';
 import '../utils/formatting.dart';
 import '../widgets/forest_background.dart';
+import '../widgets/local_image_preview.dart';
 
 class FieldNoteEditorScreen extends StatefulWidget {
   const FieldNoteEditorScreen({super.key});
@@ -371,9 +372,6 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
               final observation = _observations[index];
               final name = _speciesNames[observation.speciesId] ??
                   observation.label.trim();
-              final photoPath = observation.photoPath;
-              final hasImage =
-                  photoPath != null && File(photoPath).existsSync();
               return Material(
                 color: Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
@@ -391,19 +389,15 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
                             color: Colors.white.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: hasImage
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Image.file(
-                                    File(photoPath!),
-                                    fit: BoxFit.cover,
-                                    cacheWidth: 120,
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.local_florist,
-                                  color: Colors.white70,
-                                ),
+                          child: LocalImagePreview(
+                            path: observation.photoPath,
+                            borderRadius: BorderRadius.circular(10),
+                            cacheWidth: 120,
+                            placeholder: const Icon(
+                              Icons.local_florist,
+                              color: Colors.white70,
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -677,7 +671,6 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
   Widget _attachmentTile(NoteAttachment attachment) {
     final bool isImage = attachment.type == NoteAttachmentType.image;
     final String path = attachment.thumbnailPath ?? attachment.filePath;
-    final bool exists = File(path).existsSync();
     return Stack(
       children: [
         Container(
@@ -688,13 +681,14 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
           ),
-          child: isImage && exists
-              ? ClipRRect(
+          child: isImage
+              ? LocalImagePreview(
+                  path: path,
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    File(path),
-                    fit: BoxFit.cover,
-                    cacheWidth: 220,
+                  cacheWidth: 220,
+                  placeholder: const Icon(
+                    Icons.insert_drive_file,
+                    color: Colors.white70,
                   ),
                 )
               : const Icon(Icons.insert_drive_file, color: Colors.white70),

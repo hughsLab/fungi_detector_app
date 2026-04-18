@@ -17,6 +17,7 @@ import '../services/settings_service.dart';
 import '../utils/formatting.dart';
 import '../utils/lichen_headline_gate.dart';
 import '../widgets/forest_background.dart';
+import '../widgets/local_image_preview.dart';
 
 class DetectionResultScreen extends StatefulWidget {
   const DetectionResultScreen({super.key});
@@ -308,6 +309,24 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  void _openObservationOnMap(DetectionResultArgs args) {
+    final double? lat = args.latitude;
+    final double? lon = args.longitude;
+    if (lat == null || lon == null) {
+      _showMessage('No location recorded for this observation.');
+      return;
+    }
+    Navigator.of(context).pushNamed(
+      '/map',
+      arguments: MapFocusRequest(
+        observationId: args.observationId,
+        lat: lat,
+        lon: lon,
+        label: args.locationLabel ?? args.lockedLabel,
+      ),
+    );
+  }
+
   Widget _buildFieldNotesPanel(String observationId) {
     return Container(
       margin: const EdgeInsets.only(top: 12),
@@ -460,6 +479,8 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
     final bool canOpenSpeciesProfile =
         selectedSpeciesId != null &&
         headlineDecision.headlineRankLevel == HeadlineRankLevel.species;
+    final bool canOpenMap =
+        args.latitude != null && args.longitude != null;
     final _StabilityBadgeData stability =
         _stabilityFromVoteRatio(args.top1VoteRatio);
 
@@ -741,6 +762,23 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                   ),
                 ),
               ),
+            if (args.isSavedView && canOpenMap) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _openObservationOnMap(args),
+                  icon: const Icon(Icons.map),
+                  label: const Text('Open on map'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: const StadiumBorder(),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             if (!args.isSavedView) ...[
               SizedBox(
@@ -1027,9 +1065,8 @@ class _PhotoPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String? path = photoPath;
-    final bool hasImage = path != null && File(path).existsSync();
-    if (!hasImage) {
+    final String? path = photoPath?.trim();
+    if (path == null || path.isEmpty) {
       return const _ResultCard(
         child: Text(
           'Captured photo not available for this result.',
@@ -1055,7 +1092,19 @@ class _PhotoPreviewCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             child: AspectRatio(
               aspectRatio: 4 / 3,
-              child: Image.file(File(path), fit: BoxFit.cover),
+              child: LocalImagePreview(
+                path: path,
+                cacheWidth: 960,
+                placeholder: const ColoredBox(
+                  color: Color(0x14000000),
+                  child: Center(
+                    child: Icon(
+                      Icons.image_not_supported,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
