@@ -5,6 +5,7 @@ class Observation {
   final String speciesId;
   final int? classIndex;
   final String label;
+  final String? colloquialName;
   final double? confidence;
   final String? top2Label;
   final double? top2Confidence;
@@ -29,6 +30,7 @@ class Observation {
     required this.speciesId,
     required this.classIndex,
     required this.label,
+    this.colloquialName,
     required this.confidence,
     this.top2Label,
     this.top2Confidence,
@@ -117,6 +119,7 @@ class Observation {
       label: json['label']?.toString() ??
           json['speciesName']?.toString() ??
           '',
+      colloquialName: json['colloquialName']?.toString(),
       confidence: json['confidence'] == null
           ? null
           : (json['confidence'] as num).toDouble(),
@@ -162,6 +165,7 @@ class Observation {
       'speciesId': speciesId,
       'classIndex': classIndex,
       'label': label,
+      'colloquialName': colloquialName,
       'speciesName': speciesName,
       'confidence': confidence,
       'top2Label': top2Label,

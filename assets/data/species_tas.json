@@ -15,7 +15,8 @@
         "species": "Aleuria aurantia"
       },
       "commonName": null,
-      "shortDescription": "Aleuria aurantia is a widespread ascomycete fungus in the order Pezizales. The bright orange, cup-shaped ascocarps often resemble orange peels strewn on the ground, giving this species its common name.",
+      "colloquialName": "orange peel fungus",
+      "shortDescription": "Aleuria aurantia, commonly known as theorange peel fungus is a widespread ascomycete fungus in the order Pezizales. The bright orange, cup-shaped ascocarps often resemble orange peels strewn on the ground, giving this species its common name.",
       "keyFeatures": [],
       "habitat": "",
       "season": "",
@@ -49,6 +50,7 @@
         "species": "Amanita muscaria"
       },
       "commonName": null,
+      "colloquialName": "fly agaric",
       "shortDescription": "Amanita muscaria, commonly known as the fly agaric or fly amanita, is a basidiomycete fungus of the genus Amanita. Its common name derives from its traditional use as an insecticide. It is a distinctive, large white-gill…",
       "keyFeatures": [],
       "habitat": "",
@@ -83,6 +85,7 @@
         "species": "Amanita xanthocephala"
       },
       "commonName": null,
+      "colloquialName": "vermilion grisette",
       "shortDescription": "Amanita xanthocephala, known as the vermilion grisette, pretty grisette or vermilion amanita is a colourful mushroom of the genus Amanita. It is found in Australia in association with Eucalyptus and may be toxic to human…",
       "keyFeatures": [],
       "habitat": "",
@@ -117,6 +120,7 @@
         "species": "Anthracophyllum archeri"
       },
       "commonName": null,
+      "colloquialName": "orange fan",
       "shortDescription": "Anthracophyllum archeri, commonly known as the orange fan, is a saprobic basidiomycete in the genus Anthracophyllum and the family Omphalotaceae. It is small and rust coloured, and grows in groups on rotting wood.",
       "keyFeatures": [],
       "habitat": "",
@@ -151,6 +155,7 @@
         "species": "Apioperdon pyriforme"
       },
       "commonName": null,
+      "colloquialName": "pear-shaped puffball",
       "shortDescription": "Apioperdon pyriforme, commonly known as the pear-shaped puffball or stump puffball, is a species of fungus. It is often called Lycoperdon pyriforme, but was transferred to Apioperdon in 2017. It is the only species in th…",
       "keyFeatures": [],
       "habitat": "",
@@ -185,6 +190,7 @@
         "species": "Armillaria luteobubalina"
       },
       "commonName": null,
+      "colloquialName": "Australian honey fungus",
       "shortDescription": "Armillaria luteobubalina, commonly known as the Australian honey fungus, is a species of root rot fungus in the family Physalacriaceae.",
       "keyFeatures": [],
       "habitat": "",
@@ -219,6 +225,7 @@
         "species": "Armillaria novae-zelandiae"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Armillaria novae-zelandiae is a species of mushroom-forming fungus in the family Physalacriaceae. This plant pathogen species is one of four Armillaria species that have been identified in Aotearoa New Zealand, alongside…",
       "keyFeatures": [],
       "habitat": "",
@@ -253,6 +260,7 @@
         "species": "Ascocoryne sarcoides"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Ascocoryne sarcoides is a species of fungus in the family Helotiaceae. The species name is derived from the Greek sarkodes (fleshy). Formerly known as Coryne sarcoides, its taxonomical history has been complicated by the…",
       "keyFeatures": [],
       "habitat": "",
@@ -287,6 +295,7 @@
         "species": "Aseroe rubra"
       },
       "commonName": null,
+      "colloquialName": "anemone stinkhorn",
       "shortDescription": "Aseroe rubra, commonly known as the anemone stinkhorn, sea anemone fungus and starfish fungus, is a common and widespread basidiomycete fungus recognizable for its foul odour of carrion and its sea anemone shape when mat…",
       "keyFeatures": [],
       "habitat": "",
@@ -321,6 +330,7 @@
         "species": "Tyromyces pulcherrimus"
       },
       "commonName": null,
+      "colloquialName": "strawberry bracket",
       "shortDescription": "Tyromyces pulcherrimus, commonly known as the strawberry bracket, is a species of poroid fungus in the family Polyporaceae. It is readily recognisable by its reddish fruit bodies with pores on the cap underside. The fung…",
       "keyFeatures": [],
       "habitat": "",
@@ -355,6 +365,7 @@
         "species": "Austropaxillus infundibuliformis"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Austropaxillus infundibuliformis is a species of fungus in the family Serpulaceae. A mycorrhizal species, it grows in the eucalypt forests of southeastern Australia. It is readily recognised by its tawny yellow colour, l…",
       "keyFeatures": [],
       "habitat": "",
@@ -389,6 +400,7 @@
         "species": "Baeomyces heteromorphus"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Baeomyces heteromorphus is a species of terricolous (ground-dwelling) lichen in the family Baeomycetaceae. It has an Australasian distribution. Characteristics of the lichen include its greenish-grey thallus, the pink to…",
       "keyFeatures": [],
       "habitat": "",
@@ -423,6 +435,7 @@
         "species": "Boletellus obscurecoccineus"
       },
       "commonName": null,
+      "colloquialName": "rhubarb bolete",
       "shortDescription": "Boletellus obscurecoccineus, known as the rhubarb bolete, is a species of fungus in the family Boletaceae, found in Australia, New Guinea, Java, Borneo, Japan, Korea, and Taiwan. It is a distinctive and colourful bolete …",
       "keyFeatures": [],
       "habitat": "",
@@ -457,6 +470,7 @@
         "species": "Byssomerulius corium"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Byssomerulius corium is a common species of crust fungus in the family Irpicaceae. The fungus was first described as Thelephora corium by Christiaan Hendrik Persoon in 1801. Erast Parmasto made it the type species of his…",
       "keyFeatures": [],
       "habitat": "",
@@ -491,6 +505,7 @@
         "species": "Calycina citrina"
       },
       "commonName": null,
+      "colloquialName": "yellow fairy cups",
       "shortDescription": "Calycina citrina, commonly known as yellow fairy cups or lemon discos, is a species of fungus in the family Pezizellaceae. The fungus produces tiny yellow cups up to 3 mm in diameter, often without stalks, that fruit in …",
       "keyFeatures": [],
       "habitat": "",
@@ -525,6 +540,7 @@
         "species": null
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Cantharellus concinnus is a species of fungus in the genus Cantharellus. It is found in Australia, where it fruits in groups or clusters on the ground in mixed forests of Casuarina and Eucalyptus.",
       "keyFeatures": [],
       "habitat": "",
@@ -559,6 +575,7 @@
         "species": "Cerrena zonata"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Cerrena zonata is a species of poroid fungus in the genus Cerrena.",
       "keyFeatures": [],
       "habitat": "",
@@ -593,6 +610,7 @@
         "species": "Chlorociboria aeruginascens"
       },
       "commonName": null,
+      "colloquialName": "blue stain",
       "shortDescription": "Chlorociboria aeruginascens is a saprobic species of mushroom, commonly known as the blue stain, green elfcup or the green wood cup because of its characteristic small, green, saucer-shaped fruit bodies. The actual fruit…",
       "keyFeatures": [],
       "habitat": "",
@@ -627,6 +645,7 @@
         "species": "Cladia aggregata"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -661,6 +680,7 @@
         "species": "Cladonia confusa"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Cladonia confusa is a species of lichen, native to and found in New Zealand, Australia, Africa and South America. It is one of many species of the genus Cladonia, collectively often referred to as fuzzy reindeer lichen. …",
       "keyFeatures": [],
       "habitat": "",
@@ -695,6 +715,7 @@
         "species": "Cladonia fimbriata"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Cladonia fimbriata or the trumpet cup lichen is a species cup lichen belonging to the family Cladoniaceae.",
       "keyFeatures": [],
       "habitat": "",
@@ -729,6 +750,7 @@
         "species": "Cladonia floerkeana"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Cladonia floerkeana is a species of fruticose lichen in the family Cladoniaceae. The species produces distinctive bright red spore-bearing structures (apothecia) on thin, upright stalks (podetia) that can be variably bra…",
       "keyFeatures": [],
       "habitat": "",
@@ -763,6 +785,7 @@
         "species": "Cladonia pleurota"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Cladonia pleurota is a species of fruticose, cup lichen in the family Cladoniaceae. It was first formally described as a new species by German lichenologist Heinrich Gustav Flörke in 1808 as Capitularia pleurota. Ludwig …",
       "keyFeatures": [],
       "habitat": "",
@@ -797,6 +820,7 @@
         "species": "Cladonia scabriuscula"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -831,6 +855,7 @@
         "species": "Clavaria zollingeri"
       },
       "commonName": null,
+      "colloquialName": "violet coral",
       "shortDescription": "Clavaria zollingeri, commonly known as the violet coral or the magenta coral, is a widely distributed species of fungus. It produces striking tubular, purple to pinkish-violet fruit bodies that grow up to 10 cm (4 in) ta…",
       "keyFeatures": [],
       "habitat": "",
@@ -865,6 +890,7 @@
         "species": "Clavulina subrugosa"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -899,6 +925,7 @@
         "species": "Clavulinopsis amoena"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Clavulinopsis amoena is a clavarioid fungus in the family Clavariaceae. It forms slender, cylindrical, golden-yellow fruiting bodies that grow on the ground among plant litter. It was originally described from Indonesia …",
       "keyFeatures": [],
       "habitat": "",
@@ -933,6 +960,7 @@
         "species": "Clavulinopsis corallinorosacea"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -967,6 +995,7 @@
         "species": "Clavulinopsis sulcata"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Clavulinopsis sulcata is a clavarioid fungus in the family Clavariaceae and is the type species of the genus Clavulinopsis. It forms very long, slender, cylindrical pinkish or orange fruiting bodies that grow on the grou…",
       "keyFeatures": [],
       "habitat": "",
@@ -1001,6 +1030,7 @@
         "species": null
       },
       "commonName": null,
+      "colloquialName": "blewit",
       "shortDescription": "Collybia nuda, commonly known as the blewit or wood blewit and previously described as Lepista nuda and Clitocybe nuda, is a species of fungi. Described by Pierre Bulliard in 1790, it was also known as Tricholoma nudum f…",
       "keyFeatures": [],
       "habitat": "",
@@ -1035,6 +1065,7 @@
         "species": "Coprinellus disseminatus"
       },
       "commonName": null,
+      "colloquialName": "fairy inkcap",
       "shortDescription": "Coprinellus disseminatus, formerly known as Coprinus disseminatus and commonly known as the fairy inkcap, fairy bonnet, or trooping crumble cap, is a species of agaric fungus in the family Psathyrellaceae. It can be foun…",
       "keyFeatures": [],
       "habitat": "",
@@ -1069,6 +1100,7 @@
         "species": "Coprinus comatus"
       },
       "commonName": null,
+      "colloquialName": "shaggy ink cap",
       "shortDescription": "Coprinus comatus, commonly known as the shaggy ink cap, lawyer's wig, or shaggy mane, is a species of fungus. The young fruit bodies first appear as white cylinders emerging from the ground, then the bell-shaped caps ope…",
       "keyFeatures": [],
       "habitat": "",
@@ -1103,6 +1135,7 @@
         "species": "Cortinarius archeri"
       },
       "commonName": null,
+      "colloquialName": "purple emperor",
       "shortDescription": "Cortinarius archeri, commonly known as the purple emperor, or the emperor cortinar, is a species of mushroom in the genus Cortinarius native to Australia. The distinctive mushrooms have bright purple caps that glisten wi…",
       "keyFeatures": [],
       "habitat": "",
@@ -1137,6 +1170,7 @@
         "species": "Cortinarius austrovenetus"
       },
       "commonName": null,
+      "colloquialName": "green skin-head",
       "shortDescription": "Cortinarius austrovenetus, alternately known as Dermocybe austroveneta and commonly known as the green skin-head but also known as green dermocybe is an inedible brightly coloured green gilled fungus that naturally occur…",
       "keyFeatures": [],
       "habitat": "",
@@ -1171,6 +1205,7 @@
         "species": "Cortinarius rotundisporus"
       },
       "commonName": null,
+      "colloquialName": "elegant blue webcap",
       "shortDescription": "Cortinarius rotundisporus, also known as the elegant blue webcap, is a basidiomycete mushroom of the genus Cortinarius found in southern Australia, where it is found in eucalypt forests and rainforests. The cap of the fr…",
       "keyFeatures": [],
       "habitat": "",
@@ -1205,6 +1240,7 @@
         "species": "Cortinarius sinapicolor"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Cortinarius sinapicolor is a species of fungus in the family Cortinariaceae native to Australia.",
       "keyFeatures": [],
       "habitat": "",
@@ -1239,6 +1275,7 @@
         "species": "Crepidotus nephrodes"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -1273,6 +1310,7 @@
         "species": "Crepidotus variabilis"
       },
       "commonName": null,
+      "colloquialName": "variable oysterling",
       "shortDescription": "Crepidotus variabilis is a species of saprophytic fungi in the family Crepidotaceae. It is commonly known as a variable oysterling in the United Kingdom and is seen there in autumn. May occur solitary, but more often in …",
       "keyFeatures": [],
       "habitat": "",
@@ -1307,6 +1345,7 @@
         "species": "Cruentomycena viscidocruenta"
       },
       "commonName": null,
+      "colloquialName": "ruby bonnet",
       "shortDescription": "Cruentomycena viscidocruenta, commonly known as the ruby bonnet, is a species of agaric fungus in the family Mycenaceae. It is found in moist forested areas of Australia and New Zealand, often in small groups on rotting …",
       "keyFeatures": [],
       "habitat": "",
@@ -1341,6 +1380,7 @@
         "species": "Cyclocybe parasitica"
       },
       "commonName": null,
+      "colloquialName": "tawaka",
       "shortDescription": "Cyclocybe parasitica, also known as tawaka in Māori language or poplar mushroom, is a species of gilled mushroom in the genus Cyclocybe found in Australasia.",
       "keyFeatures": [],
       "habitat": "",
@@ -1375,6 +1415,7 @@
         "species": "Cyptotrama asprata"
       },
       "commonName": null,
+      "colloquialName": "golden-scruffy collybia",
       "shortDescription": "Cyptotrama asprata, commonly known as the golden-scruffy collybia or spiny woodknight is a saprobic species of mushroom in the family Physalacriaceae. This fungus has had a varied taxonomical history, having been placed …",
       "keyFeatures": [],
       "habitat": "",
@@ -1409,6 +1450,7 @@
         "species": "Cyttaria gunnii"
       },
       "commonName": null,
+      "colloquialName": "myrtle orange",
       "shortDescription": "Cyttaria gunnii, commonly known as the myrtle orange or beech orange, is an orange-white coloured and edible ascomycete fungus native to Australia. It is a specific parasite of myrtle beech trees.",
       "keyFeatures": [],
       "habitat": "",
@@ -1443,6 +1485,7 @@
         "species": "Descolea recedens"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -1477,6 +1520,7 @@
         "species": "Dibaeis arcuata"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -1511,6 +1555,7 @@
         "species": "Drechmeria gunnii"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -1545,6 +1590,7 @@
         "species": "Favolaschia claudopus"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -1579,6 +1625,7 @@
         "species": "Fistulina spiculifera"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -1613,6 +1660,7 @@
         "species": "Fistulinella mollis"
       },
       "commonName": null,
+      "colloquialName": "marshmallow bolete",
       "shortDescription": "Fistulinella mollis, commonly known as the marshmallow bolete, is a bolete fungus in the family Boletaceae found in Australia.",
       "keyFeatures": [],
       "habitat": "",
@@ -1647,6 +1695,7 @@
         "species": "Flammulina velutipes"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Flammulina velutipes, the velvet foot, velvet stem, velvet shank or wild enoki, is a species of gilled mushroom in the family Physalacriaceae. The species occurs in Europe and North America.",
       "keyFeatures": [],
       "habitat": "",
@@ -1681,6 +1730,7 @@
         "species": "Flavoparmelia rutidota"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -1715,6 +1765,7 @@
         "species": "Galerina hypnorum"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Galerina hypnorum is a species of agaric fungus in the family Hymenogastraceae.",
       "keyFeatures": [],
       "habitat": "",
@@ -1749,6 +1800,7 @@
         "species": "Galerina patagonica"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Galerina patagonica is a species of agaric fungus in the family Hymenogastraceae. First described by mycologist Rolf Singer in 1953, it has a Gondwanan distribution, and is found in Australia, New Zealand, and Patagonia,…",
       "keyFeatures": [],
       "habitat": "",
@@ -1783,6 +1835,7 @@
         "species": "Ganoderma australe"
       },
       "commonName": null,
+      "colloquialName": "bracket fungi",
       "shortDescription": "Ganoderma australe is a fungal plant pathogen in the genus Ganoderma. It is a species of basidiomycete fungi in the family Polyporaceae. Members are also known as bracket fungi, or polypores.",
       "keyFeatures": [],
       "habitat": "",
@@ -1817,6 +1870,7 @@
         "species": "Geastrum saccatum"
       },
       "commonName": null,
+      "colloquialName": "sessile earthstar",
       "shortDescription": "Geastrum saccatum, commonly known as the sessile earthstar or rounded earthstar, or star of the land, is a species of mushroom belonging to the genus Geastrum. The opening of the outer layer of the fruiting body in the c…",
       "keyFeatures": [],
       "habitat": "",
@@ -1851,6 +1905,7 @@
         "species": "Geastrum triplex"
       },
       "commonName": null,
+      "colloquialName": "collared earthstar",
       "shortDescription": "Geastrum triplex is a species of fungus commonly known as the collared earthstar, the saucered earthstar, or the triple earthstar—and less commonly by the alternative species name Geastrum indicum. It is the largest memb…",
       "keyFeatures": [],
       "habitat": "",
@@ -1885,6 +1940,7 @@
         "species": "Gliophorus graminicolor"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Gliophorus graminicolor is a species of agaric fungus in the family Hygrophoraceae. It is found in Australia and New Zealand. In 1995, Australian mycologists Tom May and Alec Wood transferred the species to Hygrocybe, bu…",
       "keyFeatures": [],
       "habitat": "",
@@ -1919,6 +1975,7 @@
         "species": null
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -1953,6 +2010,7 @@
         "species": "Gymnopilus allantopus"
       },
       "commonName": null,
+      "colloquialName": "golden wood fungus",
       "shortDescription": "Gymnopilus allantopus is a species of mushroom in the family Hymenogastraceae. It is commonly known as the golden wood fungus.",
       "keyFeatures": [],
       "habitat": "",
@@ -1987,6 +2045,7 @@
         "species": "Gymnopilus ferruginosus"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Gymnopilus ferruginosus is a species of mushroom in the family Hymenogastraceae.",
       "keyFeatures": [],
       "habitat": "",
@@ -2021,6 +2080,7 @@
         "species": "Gymnopilus junonius"
       },
       "commonName": null,
+      "colloquialName": "spectacular rustgill",
       "shortDescription": "Gymnopilus junonius is a type of mushroom-forming fungus in the family Hymenogastraceae. Commonly known as the spectacular rustgill, this large orange mushroom is typically found growing on tree stumps, logs, or tree bas…",
       "keyFeatures": [],
       "habitat": "",
@@ -2055,6 +2115,7 @@
         "species": "Hericium coralloides"
       },
       "commonName": null,
+      "colloquialName": "coral tooth fungus",
       "shortDescription": "Hericium coralloides is a saprotrophic fungus, commonly known as coral tooth fungus or comb coral mushroom.",
       "keyFeatures": [],
       "habitat": "",
@@ -2089,6 +2150,7 @@
         "species": "Heterotextus peziziformis"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -2123,6 +2185,7 @@
         "species": "Humidicutis mavis"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Humidicutis mavis is a gilled fungus of the waxcap family. It is found in Australia, Borneo, and New Zealand where the translucent white fungi grows from the ground to a height of 80 mm and a width of 50 mm.",
       "keyFeatures": [],
       "habitat": "",
@@ -2157,6 +2220,7 @@
         "species": "Hygrocybe astatogala"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Hygrocybe astatogala is a mushroom of the waxcap genus Hygrocybe. It is found in Madagascar, Australia, Central Africa, the Philippines and New Zealand, it was first described scientifically as Bertrandia astatogala by F…",
       "keyFeatures": [],
       "habitat": "",
@@ -2191,6 +2255,7 @@
         "species": "Hygrocybe miniata"
       },
       "commonName": null,
+      "colloquialName": "vermilion waxcap",
       "shortDescription": "Hygrocybe miniata, commonly known as the vermilion waxcap or miniature waxy cap, is a small, bright red or red-orange mushroom of the waxcap genus Hygrocybe. It is a cosmopolitan species, that is found worldwide. In Euro…",
       "keyFeatures": [],
       "habitat": "",
@@ -2225,6 +2290,7 @@
         "species": "Hypholoma australianum"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -2259,6 +2325,7 @@
         "species": "Hypholoma brunneum"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Hypholoma brunneum is a species of mushroom in the family Strophariaceae. It was discovered by a famous scientist Lev Levich Evgenivich in the 1940s. It was originally described in 1899 by George Edward Massee as Flammul…",
       "keyFeatures": [],
       "habitat": "",
@@ -2293,6 +2360,7 @@
         "species": "Hypholoma fasciculare"
       },
       "commonName": null,
+      "colloquialName": "sulphur tuft",
       "shortDescription": "Hypholoma fasciculare, commonly known as the sulphur tuft or clustered woodlover, is a common woodland mushroom, often in evidence when hardly any other mushrooms are to be found. This saprotrophic small gill fungus grow…",
       "keyFeatures": [],
       "habitat": "",
@@ -2327,6 +2395,7 @@
         "species": "Laccaria fraterna"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Laccaria fraterna is a species of Laccaria that grows on Eucalyptus and Acacia trees.",
       "keyFeatures": [],
       "habitat": "",
@@ -2361,6 +2430,7 @@
         "species": "Laccaria laccata"
       },
       "commonName": null,
+      "colloquialName": "deceiver",
       "shortDescription": "Laccaria laccata, commonly known as the deceiver, lackluster laccaria, or waxy laccaria, is a species of fungus. It is a small but highly variable mushroom, and can look quite washed out, colorless and drab, but when you…",
       "keyFeatures": [],
       "habitat": "",
@@ -2395,6 +2465,7 @@
         "species": "Lactarius deliciosus"
       },
       "commonName": null,
+      "colloquialName": "delicious milk cap",
       "shortDescription": "Lactarius deliciosus, commonly known as the delicious milk cap, saffron milk cap, or red pine mushroom, is one of the best-known members of the large milk-cap genus Lactarius in the order Russulales. It is native to Euro…",
       "keyFeatures": [],
       "habitat": "",
@@ -2429,6 +2500,7 @@
         "species": "Lactarius eucalypti"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Lactarius eucalypti is a species of milk-cap fungus in the family Russulaceae. Found in Australia, it was described as new to science in 1987 by Orson K. Miller, Jr. and Roger N. Hilton. The mushroom grows on the ground …",
       "keyFeatures": [],
       "habitat": "",
@@ -2463,6 +2535,7 @@
         "species": "Laetiporus portentosus"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Laetiporus portentosus is a species of polypore fungus in the family Fomitopsidaceae, found in South America, Australia, and in the North Island and northern South Island of New Zealand.",
       "keyFeatures": [],
       "habitat": "",
@@ -2497,6 +2570,7 @@
         "species": "Leotia lubrica"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Leotia lubrica, commonly referred to as a jelly baby, is a species of fungus in the family Leotiaceae. L. lubrica was first validly described by Giovanni Antonio Scopoli, but it was later transferred to Leotia by Christi…",
       "keyFeatures": [],
       "habitat": "",
@@ -2531,6 +2605,7 @@
         "species": "Leratiomyces ceres"
       },
       "commonName": null,
+      "colloquialName": "chip cherry",
       "shortDescription": "Leratiomyces ceres, commonly known as the chip cherry or redlead roundhead, is a mushroom which has a bright red to orange cap and dark purple-brown spore deposit. The name Stropharia aurantiaca has been used extensively…",
       "keyFeatures": [],
       "habitat": "",
@@ -2565,6 +2640,7 @@
         "species": "Clitocybe eucalyptorum"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -2599,6 +2675,7 @@
         "species": "Lichenomphalia chromacea"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Lichenomphalia chromacea is a species of basidiolichen in the family Hygrophoraceae. It is found in southern Australia. The yellow-orange fruiting bodies of the species are mushroom-like, with a cap width of typically le…",
       "keyFeatures": [],
       "habitat": "",
@@ -2633,6 +2710,7 @@
         "species": "Lycoperdon perlatum"
       },
       "commonName": null,
+      "colloquialName": "common puffball",
       "shortDescription": "Lycoperdon perlatum, popularly known as the common puffball, warted puffball, gem-studded puffball or devil's snuff-box, is a species of puffball fungus in the family Agaricaceae. It is a medium-sized puffball with a rou…",
       "keyFeatures": [],
       "habitat": "",
@@ -2667,6 +2745,7 @@
         "species": "Macrolepiota clelandii"
       },
       "commonName": null,
+      "colloquialName": "slender parasol",
       "shortDescription": "Macrolepiota clelandii, commonly known as the slender parasol or graceful parasol, is a species of mushroom-forming fungus in the family Agaricaceae. The species is found in Australia and New Zealand, where it fruits sin…",
       "keyFeatures": [],
       "habitat": "",
@@ -2701,6 +2780,7 @@
         "species": "Marasmius elegans"
       },
       "commonName": null,
+      "colloquialName": "velvet parachute",
       "shortDescription": "Marasmius elegans, commonly known as the velvet parachute, is a species of fungus in the family Marasmiaceae. It has a reddish-brown cap, and a whitish stipe with white hairs at the base. It can be found in eucalypt fore…",
       "keyFeatures": [],
       "habitat": "",
@@ -2735,6 +2815,7 @@
         "species": "Mycena austrofilopes"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Mycena austrofilopes is a species of mushroom in the family Mycenaceae. It has been found growing in leaf litter under Eucalyptus trees in Victoria, Australia.",
       "keyFeatures": [],
       "habitat": "",
@@ -2769,6 +2850,7 @@
         "species": "Mycena clarkeana"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Mycena clarkeana is a species of bonnet fungus in the genus Mycena. Originally endemic to Australia, it can now be found in New Zealand also.",
       "keyFeatures": [],
       "habitat": "",
@@ -2803,6 +2885,7 @@
         "species": "Mycena cystidiosa"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Mycena cystidiosa is a species of mushroom in the family Mycenaceae. Described as new to science in 1964, it is known only from New Zealand and Australia. The fruit bodies have a broadly conical small white cap up to 12 …",
       "keyFeatures": [],
       "habitat": "",
@@ -2837,6 +2920,7 @@
         "species": "Mycena epipterygia"
       },
       "commonName": null,
+      "colloquialName": "yellowleg bonnet",
       "shortDescription": "Mycena epipterygia is a species of fungus in the family Mycenaceae of mushrooms commonly found in Europe. It is commonly known as yellowleg bonnet or yellow-stemmed mycena. Mycena nivicola has been suggested as a separat…",
       "keyFeatures": [],
       "habitat": "",
@@ -2871,6 +2955,7 @@
         "species": "Mycena interrupta"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Mycena interrupta is a species of mushroom. It has a Gondwanan distribution pattern, being found in Australia, New Zealand, New Caledonia and Chile. In Australia, it is found in Victoria, Tasmania, New South Wales, South…",
       "keyFeatures": [],
       "habitat": "",
@@ -2905,6 +2990,7 @@
         "species": "Mycena kuurkacea"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Mycena kuurkacea is a species of mushroom in the family Mycenaceae. It was first described in 2003 by Australian mycologist Cheryl A. Grgurinovic based on specimens found in New South Wales, Australia. Fruit bodies were …",
       "keyFeatures": [],
       "habitat": "",
@@ -2939,6 +3025,7 @@
         "species": "Mycena mulawaestris"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -2973,6 +3060,7 @@
         "species": "Mycena nargan"
       },
       "commonName": null,
+      "colloquialName": "Nargan's bonnet",
       "shortDescription": "Mycena nargan, commonly known as the Nargan's bonnet, is a species of fungus in the family Mycenaceae, and the sole member of the section Nargan in the genus Mycena. Reported as a new species in 1995, it is known predomi…",
       "keyFeatures": [],
       "habitat": "",
@@ -3007,6 +3095,7 @@
         "species": "Mycena subgalericulata"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -3041,6 +3130,7 @@
         "species": "Mycena vinacea"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Mycena vinacea is a species of mushroom in the family Mycenaceae. Found in Australia, it was first described scientifically by John Burton Cleland in 1931.",
       "keyFeatures": [],
       "habitat": "",
@@ -3075,6 +3165,7 @@
         "species": "Omphalotus nidiformis"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Omphalotus nidiformis, or ghost fungus, is a gilled basidiomycete mushroom most notable for its bioluminescent properties. It is known to be found primarily in southern Australia and Tasmania, but was reported from India…",
       "keyFeatures": [],
       "habitat": "",
@@ -3109,6 +3200,7 @@
         "species": "Hymenopellis gigaspora"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -3143,6 +3235,7 @@
         "species": "Panellus stipticus"
       },
       "commonName": null,
+      "colloquialName": "bitter oyster",
       "shortDescription": "Panellus stipticus, commonly known as the bitter oyster, the astringent panus, the luminescent panellus, or the stiptic fungus, is a species of fungus in the family Mycenaceae. It is the type species of the genus Panellu…",
       "keyFeatures": [],
       "habitat": "",
@@ -3177,6 +3270,7 @@
         "species": "Phaeohelotium baileyanum"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -3211,6 +3305,7 @@
         "species": "Phellodon niger"
       },
       "commonName": null,
+      "colloquialName": "black tooth",
       "shortDescription": "Phellodon niger, commonly known as the black tooth, is a species of tooth fungus in the family Bankeraceae, and the type species of the genus Phellodon. It was originally described by Elias Magnus Fries in 1815 as a spec…",
       "keyFeatures": [],
       "habitat": "",
@@ -3245,6 +3340,7 @@
         "species": "Phlebia subceracea"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -3279,6 +3375,7 @@
         "species": "Picipes melanopus"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Picipes melanopus is a species of mushroom in the family Polyporaceae. It can be found growing on dead wood, or from a submerged sclerotium, from spring through fall.",
       "keyFeatures": [],
       "habitat": "",
@@ -3313,6 +3410,7 @@
         "species": "Podoscypha petalodes"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Podoscypha petalodes is a widely distributed species of fungus in the family Meruliaceae. The fungus produces a rosette-like fruit bodies with a shape suggestive of its common names wine glass fungus, and ruffled paper f…",
       "keyFeatures": [],
       "habitat": "",
@@ -3347,6 +3445,7 @@
         "species": "Podoserpula pusio"
       },
       "commonName": null,
+      "colloquialName": "pagoda fungus",
       "shortDescription": "Podoserpula pusio, commonly known as the pagoda fungus, is a species of fungus in the family Amylocorticiaceae. It is the type species of the genus Podoserpula.",
       "keyFeatures": [],
       "habitat": "",
@@ -3381,6 +3480,7 @@
         "species": "Porpolomopsis lewelliniae"
       },
       "commonName": null,
+      "colloquialName": "mauve splitting wax-cap",
       "shortDescription": "Porpolomopsis lewelliniae, commonly known as the mauve splitting wax-cap, is a gilled fungus of the waxcap family found in wet forests of eastern Australia and New Zealand. The small mauve- or lilac-coloured mushrooms ar…",
       "keyFeatures": [],
       "habitat": "",
@@ -3415,6 +3515,7 @@
         "species": "Oligoporus pelliculosus"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -3449,6 +3550,7 @@
         "species": "Protostropharia semiglobata"
       },
       "commonName": null,
+      "colloquialName": "hemispherical stropharia",
       "shortDescription": "Protostropharia semiglobata, commonly known as the hemispherical stropharia, the dung roundhead, or the halfglobe mushroom, is an agaric fungus of the family Strophariaceae. The mushrooms have hemispherical straw yellow …",
       "keyFeatures": [],
       "habitat": "",
@@ -3483,6 +3585,7 @@
         "species": "Psathyrella echinata"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -3517,6 +3620,7 @@
         "species": "Pseudocyphellaria glabra"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Pseudocyphellaria glabra is a species of corticolous (bark-dwelling), foliose lichen in the family Peltigeraceae. It has a pale-green upper thallus surface, a white medulla and white pseudocyphellae.",
       "keyFeatures": [],
       "habitat": "",
@@ -3551,6 +3655,7 @@
         "species": "Pseudohydnum gelatinosum"
       },
       "commonName": null,
+      "colloquialName": "toothed jelly fungus",
       "shortDescription": "Pseudohydnum gelatinosum, commonly known as the toothed jelly fungus, cat's tongue, or jelly tooth, is a species of fungus in the order Auriculariales. Its common names refer to its gelatinous consistency and hydnoid (to…",
       "keyFeatures": [],
       "habitat": "",
@@ -3585,6 +3690,7 @@
         "species": "Psilocybe subaeruginosa"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Psilocybe subaeruginosa is a species of agaric fungus in the family Hymenogastraceae described in 1927 and known from Australia and New Zealand. As a blueing member of the genus Psilocybe it contains the psychoactive com…",
       "keyFeatures": [],
       "habitat": "",
@@ -3619,6 +3725,7 @@
         "species": "Pulchrocladia retipora"
       },
       "commonName": null,
+      "colloquialName": "coral lichen",
       "shortDescription": "Pulchrocladia retipora, commonly known as the coral lichen, is a species of fruticose lichen in the family Cladoniaceae. Found predominantly in Australasia, its habitats range from the Australian Capital Territory to New…",
       "keyFeatures": [],
       "habitat": "",
@@ -3653,6 +3760,7 @@
         "species": "Ramaria filicicola"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -3687,6 +3795,7 @@
         "species": "Ramaria lorithamnus"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -3721,6 +3830,7 @@
         "species": "Rhizocarpon geographicum"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Rhizocarpon geographicum is a species of lichen, which grows on rocks in mountainous areas of low air pollution. Each lichen is a flat patch bordered by a black line of fungal hyphae. These patches grow adjacent to each …",
       "keyFeatures": [],
       "habitat": "",
@@ -3755,6 +3865,7 @@
         "species": null
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -3789,6 +3900,7 @@
         "species": "Rickenella fibula"
       },
       "commonName": null,
+      "colloquialName": "orange moss navel",
       "shortDescription": "Rickenella fibula or Omphalina fibula, and commonly known as the orange moss navel is a species of fungus belonging to the genus Rickenella.",
       "keyFeatures": [],
       "habitat": "",
@@ -3823,6 +3935,7 @@
         "species": "Roridomyces austrororidus"
       },
       "commonName": null,
+      "colloquialName": "austro dripping bonnet",
       "shortDescription": "Roridomyces austrororidus, commonly known as the austro dripping bonnet, is a species of agaric fungus in the family Mycenaceae. Described as new to science in 1962 by American mycologist Rolf Singer, it is found in Sout…",
       "keyFeatures": [],
       "habitat": "",
@@ -3857,6 +3970,7 @@
         "species": "Russula lenkunya"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Russula lenkunya is a mushroom in the genus Russula. Found in South Australia, it was first described scientifically by mycologist Cheryl Grgurinovic in 1997.",
       "keyFeatures": [],
       "habitat": "",
@@ -3891,6 +4005,7 @@
         "species": "Russula persanguinea"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Russula persanguinea is a species of agaric fungus in the family Russulaceae. Described as new to science by John Burton Cleland in 1933, it is found in Australia, where it grows singly or in small groups on the ground i…",
       "keyFeatures": [],
       "habitat": "",
@@ -3925,6 +4040,7 @@
         "species": "Ryvardenia campyla"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -3959,6 +4075,7 @@
         "species": "Sanguinoderma rude"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -3993,6 +4110,7 @@
         "species": "Scleroderma cepa"
       },
       "commonName": null,
+      "colloquialName": "smooth earthball",
       "shortDescription": "Scleroderma cepa, commonly known as the smooth earthball or onion earthball, is a species of gasteroid fungus up to 6 centimetres in width. It has a worldwide distribution and is poisonous.",
       "keyFeatures": [],
       "habitat": "",
@@ -4027,6 +4145,7 @@
         "species": "Panellus longinquus"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Panellus longinquus is a saprotrophic fungus in the family Porotheleaceae, known for its delicate, pink to grey fruiting bodies. It grows on decaying wood in temperate forests and is distributed across the Southern Hemis…",
       "keyFeatures": [],
       "habitat": "",
@@ -4061,6 +4180,7 @@
         "species": "Singerocybe clitocyboides"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Singerocybe clitoboides is a species of fungus in the genus Singerocybe. It is endemic to Australia and New Zealand.",
       "keyFeatures": [],
       "habitat": "",
@@ -4095,6 +4215,7 @@
         "species": "Stereocaulon ramulosum"
       },
       "commonName": null,
+      "colloquialName": "snow lichen",
       "shortDescription": "Stereocaulon ramulosum, commonly known as snow lichen, is a terricolous fruticose lichen belonging to the family Stereocaulaceae. It has cosmopolitan distribution. In the Australasian region, it is common in eastern Aust…",
       "keyFeatures": [],
       "habitat": "",
@@ -4129,6 +4250,7 @@
         "species": "Stereum hirsutum"
       },
       "commonName": null,
+      "colloquialName": "false turkey tail",
       "shortDescription": "Stereum hirsutum, commonly known as the false turkey tail, hairy stereum, or hairy curtain crust, is a species of fungus and a plant pathogen that infects coniferous and deciduous trees.",
       "keyFeatures": [],
       "habitat": "",
@@ -4163,6 +4285,7 @@
         "species": "Xylobolus illudens"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -4197,6 +4320,7 @@
         "species": "Stereum ostrea"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Stereum ostrea, also called false turkey-tail and golden curtain crust, is a basidiomycete fungus in the genus Stereum. It is a plant pathogen and a wood decay fungus. The name ostrea, from the word 'oyster', describes i…",
       "keyFeatures": [],
       "habitat": "",
@@ -4231,6 +4355,7 @@
         "species": "Stereum versicolor"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -4265,6 +4390,7 @@
         "species": "Niorma chrysophthalma"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Teloschistes chrysophthalmus, sometimes referred to as the gold-eye lichen or golden-eye, is a fruticose lichen with branching lobes. Their sexual structures, apothecia, are bright-orange with spiny projections situated …",
       "keyFeatures": [],
       "habitat": "",
@@ -4299,6 +4425,7 @@
         "species": "Trametes coccinea"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -4333,6 +4460,7 @@
         "species": "Trametes versicolor"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Trametes versicolor – also known as Coriolus versicolor and Polyporus versicolor – is a common polypore mushroom found throughout the world. Owing to its shape being similar to that of a wild turkey's tail feathers, T. v…",
       "keyFeatures": [],
       "habitat": "",
@@ -4367,6 +4495,7 @@
         "species": "Tremella fuciformis"
       },
       "commonName": null,
+      "colloquialName": "snow fungus",
       "shortDescription": "Tremella fuciformis is a species of fungus commonly known as snow fungus, snow ear, silver ear fungus, white jelly mushroom, and white cloud ears. It produces white, frond-like, gelatinous fruit bodies.",
       "keyFeatures": [],
       "habitat": "",
@@ -4401,6 +4530,7 @@
         "species": "Tremella mesenterica"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Tremella mesenterica is a common jelly fungus in the family Tremellaceae of the Agaricomycotina. The gelatinous, orange-yellow fruit body of the fungus, which can grow up to 7.5 cm (3 in) diameter, has a convoluted or lo…",
       "keyFeatures": [],
       "habitat": "",
@@ -4435,6 +4565,7 @@
         "species": "Tricholoma terreum"
       },
       "commonName": null,
+      "colloquialName": "grey knight",
       "shortDescription": "Tricholoma terreum, commonly known as the grey knight or dirty tricholoma, is a grey-capped mushroom of the large genus Tricholoma. It is found in coniferous woodlands in Europe and North America, and has also been encou…",
       "keyFeatures": [],
       "habitat": "",
@@ -4469,6 +4600,7 @@
         "species": "Tubaria rufofulva"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Tubaria rufofulva is a species of agaric fungus in the family Tubariaceae. Found in Australia, it was originally described in 1927 by John Burton Cleland as a species of Pholiota. The fungus was transferred to the genus …",
       "keyFeatures": [],
       "habitat": "",
@@ -4503,6 +4635,7 @@
         "species": "Plectania campylospora"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -4537,6 +4670,7 @@
         "species": "Usnea barbata"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -4571,6 +4705,7 @@
         "species": "Usnea cornuta"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "",
       "keyFeatures": [],
       "habitat": "",
@@ -4605,6 +4740,7 @@
         "species": "Usnea hirta"
       },
       "commonName": null,
+      "colloquialName": null,
       "shortDescription": "Usnea hirta is a species of beard lichen in the family Parmeliaceae. It was one of 80 lichen species first formally described by Carl Linnaeus in his 1753 work Species Plantarum. Friedrich Heinrich Wiggers transferred it…",
       "keyFeatures": [],
       "habitat": "",
@@ -4639,6 +4775,7 @@
         "species": "Xanthoria parietina"
       },
       "commonName": null,
+      "colloquialName": "yellow wall lichen",
       "shortDescription": "Xanthoria parietina is a common and widespread lichen-forming fungus in the family Teloschistaceae. Commonly known as the yellow wall lichen, common orange lichen, or maritime sunburst lichen, this leafy lichen is known …",
       "keyFeatures": [],
       "habitat": "",

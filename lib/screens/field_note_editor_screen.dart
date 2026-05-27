@@ -1,23 +1,13 @@
-
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/field_note.dart';
 import '../models/navigation_args.dart';
-import '../models/observation.dart';
-import '../models/species.dart';
 import '../repositories/field_notes_repository.dart';
-import '../repositories/observation_repository.dart';
-import '../repositories/species_repository.dart';
 import '../services/attachment_storage_service.dart';
-import '../services/location_capture_service.dart';
-import '../services/location_label_service.dart';
-import '../services/settings_service.dart';
-import '../utils/formatting.dart';
 import '../widgets/forest_background.dart';
 import '../widgets/local_image_preview.dart';
 
@@ -30,32 +20,19 @@ class FieldNoteEditorScreen extends StatefulWidget {
 
 class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
   final FieldNotesRepository _repository = FieldNotesRepository.instance;
-  final ObservationRepository _observationRepository =
-      ObservationRepository.instance;
-  final SpeciesRepository _speciesRepository = SpeciesRepository.instance;
   final AttachmentStorageService _attachmentStorage =
       AttachmentStorageService.instance;
-  final SettingsService _settingsService = SettingsService.instance;
-  final LocationCaptureService _locationCaptureService =
-      LocationCaptureService.instance;
-  final LocationLabelService _locationLabelService =
-      LocationLabelService.instance;
   final ImagePicker _imagePicker = ImagePicker();
   final Uuid _uuid = const Uuid();
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _bodyController = TextEditingController();
-  final TextEditingController _tagsController = TextEditingController();
 
   final Map<String, NoteAttachment> _attachmentById = {};
   final Set<String> _newAttachmentIds = {};
   final Set<String> _attachmentsToDelete = {};
 
   List<NoteAttachment> _attachments = [];
-  List<Observation> _observations = [];
-  List<Species> _species = [];
-  Map<String, String> _speciesNames = {};
-  AppSettings? _settings;
   NoteLinks _links = NoteLinks.empty();
 
   bool _loading = true;
@@ -82,7 +59,6 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
   void dispose() {
     _titleController.dispose();
     _bodyController.dispose();
-    _tagsController.dispose();
     _cleanupUnsavedAttachments();
     super.dispose();
   }
@@ -103,17 +79,10 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
   }
 
   Future<void> _loadInitialData(FieldNoteEditorArgs? args) async {
-    final settings = await _settingsService.loadSettings();
-    final observations = await _observationRepository.loadObservations();
-    final species = await _speciesRepository.loadSpecies();
     FieldNote? note;
     if (args?.noteId != null) {
       note = await _repository.getNoteById(args!.noteId!);
     }
-
-    final Map<String, String> speciesNames = {
-      for (final item in species) item.id: item.displayName,
-    };
 
     if (note != null) {
       _isNew = false;
@@ -121,7 +90,6 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
       _originalNote = note;
       _titleController.text = note.title;
       _bodyController.text = note.body;
-      _tagsController.text = note.tags.join(', ');
       _attachments = [...note.attachments];
       for (final attachment in note.attachments) {
         _attachmentById[attachment.id] = attachment;
@@ -144,29 +112,20 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
     }
     final String? preSpecies = args?.prelinkedSpeciesId;
     if (preSpecies != null && !_links.speciesIds.contains(preSpecies)) {
-      _links = _links.copyWith(
-        speciesIds: [..._links.speciesIds, preSpecies],
-      );
+      _links = _links.copyWith(speciesIds: [..._links.speciesIds, preSpecies]);
     }
     final LocationRef? preLocation = args?.prelinkedLocation;
-    if (preLocation != null) {
-      final allow = await _confirmLocationOverride(settings: settings);
-      if (allow) {
-        _links = _links.copyWith(
-          locations: [..._links.locations, preLocation],
-        );
-      }
+    if (preLocation != null &&
+        !_links.locations.any((item) => item.id == preLocation.id)) {
+      _links = _links.copyWith(locations: [..._links.locations, preLocation]);
     }
 
     if (!mounted) return;
     setState(() {
-      _settings = settings;
-      _observations = observations;
-      _species = species;
-      _speciesNames = speciesNames;
       _loading = false;
     });
   }
+
   Future<void> _saveNote() async {
     if (_saving) return;
     setState(() => _saving = true);
@@ -175,12 +134,6 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
       final now = DateTime.now();
       final title = _titleController.text.trim();
       final body = _bodyController.text.trim();
-      final tags = _tagsController.text
-          .split(',')
-          .map((tag) => tag.trim())
-          .where((tag) => tag.isNotEmpty)
-          .toSet()
-          .toList();
 
       final note = FieldNote(
         id: _noteId,
@@ -188,7 +141,7 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
         body: body,
         createdAt: _originalNote?.createdAt ?? now,
         updatedAt: now,
-        tags: tags,
+        tags: _originalNote?.tags ?? const <String>[],
         attachments: _attachments,
         links: _links,
         isPinned: _isPinned,
@@ -207,9 +160,9 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save note: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to save note: $e')));
     } finally {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -283,22 +236,6 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
     });
   }
 
-  Future<void> _addFile() async {
-    final result = await FilePicker.platform.pickFiles();
-    if (result == null || result.files.isEmpty) return;
-    final String? path = result.files.single.path;
-    if (path == null) return;
-    final attachment = await _attachmentStorage.saveFileToNoteFolder(
-      _noteId,
-      File(path),
-    );
-    _attachmentById[attachment.id] = attachment;
-    _newAttachmentIds.add(attachment.id);
-    setState(() {
-      _attachments = [..._attachments, attachment];
-    });
-  }
-
   void _removeAttachment(NoteAttachment attachment) {
     setState(() {
       _attachments = _attachments
@@ -308,7 +245,7 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
     });
   }
 
-  void _showAttachmentSheet() {
+  void _showPhotoSheet() {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF1F4E3D),
@@ -322,8 +259,10 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.photo_camera, color: Colors.white),
-                title: const Text('Take photo',
-                    style: TextStyle(color: Colors.white)),
+                title: const Text(
+                  'Take photo',
+                  style: TextStyle(color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.of(context).pop();
                   _addImage(ImageSource.camera);
@@ -331,20 +270,13 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
               ),
               ListTile(
                 leading: const Icon(Icons.photo, color: Colors.white),
-                title: const Text('Pick image',
-                    style: TextStyle(color: Colors.white)),
+                title: const Text(
+                  'Pick image',
+                  style: TextStyle(color: Colors.white),
+                ),
                 onTap: () {
                   Navigator.of(context).pop();
                   _addImage(ImageSource.gallery);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.attach_file, color: Colors.white),
-                title: const Text('Pick file',
-                    style: TextStyle(color: Colors.white)),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _addFile();
                 },
               ),
             ],
@@ -353,321 +285,7 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
       },
     );
   }
-  Future<void> _linkObservation() async {
-    if (_observations.isEmpty) return;
-    final selected = await showModalBottomSheet<Observation>(
-      context: context,
-      backgroundColor: const Color(0xFF1F4E3D),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      isScrollControlled: true,
-      builder: (context) {
-        return SafeArea(
-          child: ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: _observations.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (context, index) {
-              final observation = _observations[index];
-              final name = _speciesNames[observation.speciesId] ??
-                  observation.label.trim();
-              return Material(
-                color: Colors.white.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-                child: InkWell(
-                  onTap: () => Navigator.of(context).pop(observation),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(10),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: LocalImagePreview(
-                            path: observation.photoPath,
-                            borderRadius: BorderRadius.circular(10),
-                            cacheWidth: 120,
-                            placeholder: const Icon(
-                              Icons.local_florist,
-                              color: Colors.white70,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                name.isEmpty ? 'Unknown' : name,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                formatDateTime(observation.timestamp),
-                                style: const TextStyle(
-                                  color: Color(0xCCFFFFFF),
-                                  fontSize: 12.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-    if (selected == null) return;
-    if (_links.observationIds.contains(selected.id)) return;
-    setState(() {
-      _links = _links.copyWith(
-        observationIds: [..._links.observationIds, selected.id],
-      );
-    });
-  }
 
-  Future<void> _linkSpecies() async {
-    if (_species.isEmpty) return;
-    final selected = await showModalBottomSheet<Species>(
-      context: context,
-      backgroundColor: const Color(0xFF1F4E3D),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      isScrollControlled: true,
-      builder: (context) {
-        String query = '';
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            final filtered = _species.where((item) {
-              if (query.isEmpty) return true;
-              final normalized = query.trim().toLowerCase();
-              final common = item.commonName?.toLowerCase() ?? '';
-              return item.scientificName.toLowerCase().contains(normalized) ||
-                  common.contains(normalized);
-            }).toList();
-            return SafeArea(
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: TextField(
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: 'Search species',
-                        hintStyle: const TextStyle(color: Color(0xCCFFFFFF)),
-                        prefixIcon: const Icon(Icons.search,
-                            color: Color(0xCCFFFFFF)),
-                        filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.08),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      onChanged: (value) {
-                        setSheetState(() {
-                          query = value;
-                        });
-                      },
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final item = filtered[index];
-                        return Material(
-                          color: Colors.white.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(12),
-                          child: InkWell(
-                            onTap: () => Navigator.of(context).pop(item),
-                            borderRadius: BorderRadius.circular(12),
-                            child: Padding(
-                              padding: const EdgeInsets.all(10),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.scientificName,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  if (item.commonName != null &&
-                                      item.commonName!.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 4),
-                                      child: Text(
-                                        item.commonName!,
-                                        style: const TextStyle(
-                                          color: Color(0xCCFFFFFF),
-                                          fontSize: 12.5,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-    if (selected == null) return;
-    if (_links.speciesIds.contains(selected.id)) return;
-    setState(() {
-      _links = _links.copyWith(
-        speciesIds: [..._links.speciesIds, selected.id],
-      );
-    });
-  }
-
-  Future<bool> _confirmLocationOverride({AppSettings? settings}) async {
-    final resolved = settings ?? _settings;
-    if (resolved == null || resolved.locationTaggingEnabled) {
-      return true;
-    }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Location tagging is off'),
-          content: const Text(
-            'Location tagging is disabled in Settings. Add a location anyway?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Add location'),
-            ),
-          ],
-        );
-      },
-    );
-    return confirmed ?? false;
-  }
-
-  Future<void> _addCurrentLocation() async {
-    final ok = await _confirmLocationOverride();
-    if (!ok) return;
-    final captured = await _locationCaptureService.captureForObservation();
-    if (captured == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _locationCaptureService.lastErrorMessage ??
-                'Unable to capture location.',
-          ),
-        ),
-      );
-      return;
-    }
-    final settings = _settings ?? await _settingsService.loadSettings();
-    final label = await _locationLabelService.labelFor(
-      latitude: captured.latitude,
-      longitude: captured.longitude,
-      mode: settings.locationLabelMode,
-    );
-    final location = LocationRef(
-      id: _uuid.v4(),
-      lat: captured.latitude,
-      lon: captured.longitude,
-      label: label,
-      accuracyMeters: captured.accuracyMeters,
-      capturedAt: captured.capturedAt,
-    );
-    setState(() {
-      _links = _links.copyWith(
-        locations: [..._links.locations, location],
-      );
-    });
-  }
-
-  Future<void> _pickLocationOnMap() async {
-    final ok = await _confirmLocationOverride();
-    if (!ok) return;
-    final result = await Navigator.of(context).pushNamed(
-      '/map',
-      arguments: const MapPickLocationArgs(
-        title: 'Pick note location',
-      ),
-    );
-    if (result is! MapPickResult) return;
-    final settings = _settings ?? await _settingsService.loadSettings();
-    final label = result.label ??
-        await _locationLabelService.labelFor(
-          latitude: result.lat,
-          longitude: result.lon,
-          mode: settings.locationLabelMode,
-        );
-    final location = LocationRef(
-      id: _uuid.v4(),
-      lat: result.lat,
-      lon: result.lon,
-      label: label,
-      accuracyMeters: null,
-      capturedAt: DateTime.now(),
-    );
-    setState(() {
-      _links = _links.copyWith(
-        locations: [..._links.locations, location],
-      );
-    });
-  }
-
-  void _openLocation(LocationRef location) {
-    Navigator.of(context).pushNamed(
-      '/map',
-      arguments: MapFocusRequest(
-        observationId: null,
-        lat: location.lat,
-        lon: location.lon,
-        zoom: 15,
-        label: location.label,
-      ),
-    );
-  }
-
-  void _removeLocation(LocationRef location) {
-    setState(() {
-      _links = _links.copyWith(
-        locations:
-            _links.locations.where((item) => item.id != location.id).toList(),
-      );
-    });
-  }
   Widget _attachmentTile(NoteAttachment attachment) {
     final bool isImage = attachment.type == NoteAttachmentType.image;
     final String path = attachment.thumbnailPath ?? attachment.filePath;
@@ -677,9 +295,9 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
           width: 92,
           height: 92,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: const Color(0xFFEAE4D7),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+            border: Border.all(color: const Color(0xFFCAD4C2)),
           ),
           child: isImage
               ? LocalImagePreview(
@@ -687,11 +305,11 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
                   borderRadius: BorderRadius.circular(12),
                   cacheWidth: 220,
                   placeholder: const Icon(
-                    Icons.insert_drive_file,
-                    color: Colors.white70,
+                    Icons.image_not_supported_outlined,
+                    color: Color(0xFF4A5D54),
                   ),
                 )
-              : const Icon(Icons.insert_drive_file, color: Colors.white70),
+              : const Icon(Icons.insert_drive_file, color: Color(0xFF4A5D54)),
         ),
         Positioned(
           top: 4,
@@ -704,11 +322,7 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
                 color: Colors.black.withValues(alpha: 0.6),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.close,
-                size: 14,
-                color: Colors.white,
-              ),
+              child: const Icon(Icons.close, size: 14, color: Colors.white),
             ),
           ),
         ),
@@ -716,23 +330,25 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
     );
   }
 
-  Widget _linkChip(String label, VoidCallback onRemove) {
-    return Chip(
-      label: Text(
-        label,
-        style: const TextStyle(color: Colors.white, fontSize: 12.5),
+  InputDecoration _paperFieldDecoration({
+    required String hintText,
+    bool isTitle = false,
+  }) {
+    return InputDecoration(
+      hintText: hintText,
+      hintStyle: TextStyle(
+        color: const Color(0xFF3D5349).withValues(alpha: 0.6),
+        fontSize: isTitle ? 20 : 16,
       ),
-      deleteIcon: const Icon(Icons.close, size: 18),
-      onDeleted: onRemove,
-      backgroundColor: Colors.white.withValues(alpha: 0.12),
-      side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+      border: InputBorder.none,
+      enabledBorder: InputBorder.none,
+      focusedBorder: InputBorder.none,
+      contentPadding: EdgeInsets.zero,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    const accentTextColor = Color(0xCCFFFFFF);
-
     if (_loading) {
       return const Scaffold(
         backgroundColor: Color(0xFF1F4E3D),
@@ -769,322 +385,123 @@ class _FieldNoteEditorScreenState extends State<FieldNoteEditorScreen> {
             ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _saving ? null : _saveNote,
-        backgroundColor: const Color(0xFF8FBFA1),
-        foregroundColor: Colors.white,
-        label: Text(_saving ? 'Saving...' : 'Save'),
-        icon: const Icon(Icons.save),
-      ),
       body: ForestBackground(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
         includeTopSafeArea: false,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: _titleController,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: 'Title',
-                  labelStyle: const TextStyle(color: accentTextColor),
-                  filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.08),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4F0E4),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: const Color(0xFFE0DBC8)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x3322302A),
+                        blurRadius: 12,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
                   ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _bodyController,
-                maxLines: 6,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: 'Note body',
-                  labelStyle: const TextStyle(color: accentTextColor),
-                  filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.08),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _tagsController,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: 'Tags (comma separated)',
-                  labelStyle: const TextStyle(color: accentTextColor),
-                  filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.08),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  const Text(
-                    'Attachments',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                    ),
-                  ),
-                  const Spacer(),
-                  TextButton.icon(
-                    onPressed: _showAttachmentSheet,
-                    icon: const Icon(Icons.add, color: Colors.white),
-                    label: const Text(
-                      'Add',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              _attachments.isEmpty
-                  ? const Text(
-                      'No attachments yet.',
-                      style: TextStyle(color: accentTextColor),
-                    )
-                  : Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children:
-                          _attachments.map(_attachmentTile).toList(),
-                    ),
-              const SizedBox(height: 20),
-              const Text(
-                'Links',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                ),
-              ),
-              const SizedBox(height: 8),
-              _SectionCard(
-                title: 'Observations',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_links.observationIds.isEmpty)
-                      const Text(
-                        'No linked observations.',
-                        style: TextStyle(color: accentTextColor),
-                      )
-                    else
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: _links.observationIds.map((id) {
-                          final observation = _observations
-                              .where((item) => item.id == id)
-                              .firstOrNull;
-                          final label = observation == null
-                              ? 'Observation $id'
-                              : (_speciesNames[observation.speciesId] ??
-                                  observation.label.trim());
-                          return _linkChip(label, () {
-                            setState(() {
-                              _links = _links.copyWith(
-                                observationIds: _links.observationIds
-                                    .where((item) => item != id)
-                                    .toList(),
-                              );
-                            });
-                          });
-                        }).toList(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: _titleController,
+                        style: const TextStyle(
+                          color: Color(0xFF2A3A33),
+                          fontSize: 23,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: _paperFieldDecoration(
+                          hintText: 'Title',
+                          isTitle: true,
+                        ),
                       ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: _linkObservation,
-                      icon: const Icon(Icons.add, color: Colors.white),
-                      label: const Text(
-                        'Link observation',
-                        style: TextStyle(color: Colors.white),
+                      const SizedBox(height: 10),
+                      const Divider(
+                        color: Color(0xFFDBD2BF),
+                        thickness: 1,
+                        height: 1,
                       ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white54),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              _SectionCard(
-                title: 'Species',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_links.speciesIds.isEmpty)
-                      const Text(
-                        'No linked species.',
-                        style: TextStyle(color: accentTextColor),
-                      )
-                    else
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: _links.speciesIds.map((id) {
-                          final label = _speciesNames[id] ?? 'Species $id';
-                          return _linkChip(label, () {
-                            setState(() {
-                              _links = _links.copyWith(
-                                speciesIds: _links.speciesIds
-                                    .where((item) => item != id)
-                                    .toList(),
-                              );
-                            });
-                          });
-                        }).toList(),
-                      ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: _linkSpecies,
-                      icon: const Icon(Icons.add, color: Colors.white),
-                      label: const Text(
-                        'Link species',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white54),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              _SectionCard(
-                title: 'Locations',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_links.locations.isEmpty)
-                      const Text(
-                        'No linked locations.',
-                        style: TextStyle(color: accentTextColor),
-                      )
-                    else
-                      Column(
-                        children: _links.locations.map((location) {
-                          final label = (location.label ?? '').trim().isEmpty
-                              ? '${location.lat.toStringAsFixed(3)}, ${location.lon.toStringAsFixed(3)}'
-                              : location.label!;
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(
-                              label,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13.5,
-                              ),
-                            ),
-                            subtitle: Text(
-                              'Captured ${formatDateTime(location.capturedAt)}',
-                              style: const TextStyle(
-                                color: Color(0xCCFFFFFF),
-                                fontSize: 11.5,
-                              ),
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.close, color: Colors.white70),
-                              onPressed: () => _removeLocation(location),
-                            ),
-                            onTap: () => _openLocation(location),
-                          );
-                        }).toList(),
-                      ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _addCurrentLocation,
-                            icon: const Icon(Icons.gps_fixed,
-                                color: Colors.white),
-                            label: const Text(
-                              'Use current GPS',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.white54),
-                            ),
+                      const SizedBox(height: 14),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 320),
+                        child: TextField(
+                          controller: _bodyController,
+                          minLines: 12,
+                          maxLines: null,
+                          keyboardType: TextInputType.multiline,
+                          textCapitalization: TextCapitalization.sentences,
+                          style: const TextStyle(
+                            color: Color(0xFF2F443B),
+                            fontSize: 17,
+                            height: 1.45,
+                          ),
+                          decoration: _paperFieldDecoration(
+                            hintText: 'Write your field note...',
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _pickLocationOnMap,
-                            icon: const Icon(Icons.map, color: Colors.white),
-                            label: const Text(
-                              'Pick on Map',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.white54),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          const Text(
+                            'Photos',
+                            style: TextStyle(
+                              color: Color(0xFF2A3A33),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                          const Spacer(),
+                          TextButton.icon(
+                            onPressed: _showPhotoSheet,
+                            icon: const Icon(Icons.add_a_photo_outlined),
+                            label: const Text('Add photo'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      _attachments.isEmpty
+                          ? const Text(
+                              'No photos yet.',
+                              style: TextStyle(color: Color(0xFF5A6D62)),
+                            )
+                          : Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: _attachments
+                                  .map(_attachmentTile)
+                                  .toList(),
+                            ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 90),
-            ],
-          ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _saving ? null : _saveNote,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF8FBFA1),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                icon: const Icon(Icons.save_outlined),
+                label: Text(_saving ? 'Saving...' : 'Save'),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
-}
-
-class _SectionCard extends StatelessWidget {
-  final String title;
-  final Widget child;
-
-  const _SectionCard({required this.title, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-extension<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
 }

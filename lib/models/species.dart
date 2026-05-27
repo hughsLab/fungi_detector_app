@@ -3,6 +3,7 @@ class Species {
   final String scientificName;
   final String? authority;
   final String? commonName;
+  final String? colloquialName;
   final String? shortDescription;
   final String? taxonomyKingdom;
   final String? taxonomyPhylum;
@@ -29,6 +30,7 @@ class Species {
     required this.scientificName,
     required this.authority,
     required this.commonName,
+    required this.colloquialName,
     required this.shortDescription,
     required this.taxonomyKingdom,
     required this.taxonomyPhylum,
@@ -125,6 +127,7 @@ class Species {
       scientificName: json['scientificName']?.toString() ?? '',
       authority: json['authority']?.toString(),
       commonName: json['commonName']?.toString(),
+      colloquialName: json['colloquialName']?.toString(),
       shortDescription: json['shortDescription']?.toString() ??
           json['description']?.toString(),
       taxonomyKingdom: taxonomyKingdom,

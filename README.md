@@ -32,14 +32,17 @@ and paints the bounding boxes received from the native isolate.
 ```bash
 flutter pub get
 
+# Local Firebase config
+# Create .env from .env.example, then pass it to Flutter on each run.
+
 # Android (first run downloads the NDK toolchain automatically)
-flutter run -d android
+flutter run -d android --dart-define-from-file=.env
 
 # iOS
 cd ios
 pod install
 cd ..
-flutter run -d ios
+flutter run -d ios --dart-define-from-file=.env
 ```
 
 The Android build will compile `native/yolo_engine` into `libyolo_engine.so`.

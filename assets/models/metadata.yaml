@@ -1,0 +1,157 @@
+description: Ultralytics YOLO11n model trained on D:\136 species\dataset.yaml
+author: Ultralytics
+date: '2026-04-19T10:45:09.471690'
+version: 8.4.39
+license: AGPL-3.0 License (https://ultralytics.com/license)
+docs: https://docs.ultralytics.com
+stride: 32
+task: detect
+batch: 1
+imgsz:
+- 640
+- 640
+names:
+  0: Agaricus campestris
+  1: Agaricus xanthodermus
+  2: Agrocybe pediades
+  3: Agrocybe praecox
+  4: Aleurina ferruginea
+  5: Amanita cheelii
+  6: Amanita egregia
+  7: Amanita farinacea
+  8: Amanita flavella
+  9: Amanita luteolovelata
+  10: Amanita ochrophylla
+  11: Amanita ochrophylloides
+  12: Amanita pyramidifera
+  13: Annulohypoxylon bovei
+  14: Artomyces austropiperatus
+  15: Auricularia cornea
+  16: Austroboletus lacunosus
+  17: Austrocortinarius australiensis
+  18: Austropuccinia psidii
+  19: Boletellus deceptivus
+  20: Boletellus dissiliens
+  21: Boletellus emodensis
+  22: Boletus barragensis
+  23: Bjerkandera adusta
+  24: Bolbitius titubans
+  25: Calocera sinensis
+  26: Calycina claroflava
+  27: Candolleomyces candolleanus
+  28: Chlorophyllum brunneum
+  29: Chlorophyllum molybdites
+  30: Clathrus archeri
+  31: Clathrus ruber
+  32: Clavulina cinerea
+  33: Clavulina coralloides
+  34: Clavulina rugosa
+  35: Clavulina vinaceocervina
+  36: Collybia kurara
+  37: Collybiopsis affixa
+  38: Colus pusillus
+  39: Conocybe apala
+  40: Cordyceps tenuipes
+  41: Coprinellus micaceus
+  42: Coprinopsis atramentaria
+  43: Coprinopsis lagopus
+  44: Cortinarius fibrillosus
+  45: Cortinarius kioloensis
+  46: Cortinarius persplendidus
+  47: Cyathus stercoreus
+  48: Cyathus striatus
+  49: Cymatoderma elegans
+  50: Dacrymyces spathularia
+  51: Deconica coprophila
+  52: Deconica horizontalis
+  53: Entoloma readiae
+  54: Entoloma virescens
+  55: Favolaschia manipularis
+  56: Fomitopsis lilacinogilva
+  57: Gymnopilus eucalyptorum
+  58: Gymnopilus sapineus
+  59: Hemimycena lactea
+  60: Heterotextus miltinus
+  61: Hexagonia tenuis
+  62: Hexagonia vesparia
+  63: Hymenotorrendiella clelandii
+  64: Hymenotorrendiella eucalypti
+  65: Hypomyces chrysospermus
+  66: Hypoxylon howeanum
+  67: Ileodictyon gracile
+  68: Kordyana brasiliensis
+  69: Lachnum virgineum
+  70: Leucocoprinus birnbaumii
+  71: Leucocoprinus fragilissimus
+  72: Leucocoprinus leucothites
+  73: Lentinus arcularius
+  74: Lentinus sajor-caju
+  75: Lycoperdon pratense
+  76: Lycoperdon subincarnatum
+  77: Lysurus mokusin
+  78: Macrolepiota dolichaula
+  79: Marasmiellus candidus
+  80: Marasmius crinis-equi
+  81: Marasmius oreades
+  82: Meruliopsis taxicola
+  83: Metacampanella olivaceonigra
+  84: Microporus affinis
+  85: Microporus xanthopus
+  86: Morchella australiana
+  87: Mycena carmeliana
+  88: Mycena chlorophos
+  89: Mycena fumosa
+  90: Mycena lazulina
+  91: Mycena leptocephala
+  92: Mycena roseilignicola
+  93: Myxarium nucleatum
+  94: Neobarya agaricicola
+  95: Ossicaulis semiocculta
+  96: Panaeolus foenisecii
+  97: Panaeolus papilionaceus
+  98: Panellus luxfilamentus
+  99: Panellus pusillus
+  100: Panus fasciatus
+  101: Parasola plicatilis
+  102: Phaeotrametes decipiens
+  103: Phaeolus schweinitzii
+  104: Phallus indusiatus
+  105: Phallus multicolor
+  106: Phlebopus marginatus
+  107: Pholiota communis
+  108: Phylloporus rhodoxanthus
+  109: Piptoporus australiensis
+  110: Pleurotus ostreatus
+  111: Podaxis pistillaris
+  112: Pseudohydnum tasmanicum
+  113: Ramaria capitata
+  114: Ramariopsis crocea
+  115: Rhizochaete filamentosa
+  116: Rhodocollybia butyracea
+  117: Russula clelandii
+  118: Satyrus rubicundus
+  119: Scleroderma citrinum
+  120: Schizophyllum commune
+  121: Suillus granulatus
+  122: Suillus luteus
+  123: Thaxterogaster submagellanicus
+  124: Thysanothecium scutellatum
+  125: Trogia straminea
+  126: Trametes hirsuta
+  127: Trametes sanguinea
+  128: Trichaptum biforme
+  129: Trichoderma viride
+  130: Truncospora ochroleuca
+  131: Tylopilus balloui
+  132: Uromycladium murphyi
+  133: Volvopluteus gloiocephalus
+  134: Xylaria hypoxylon
+  135: Xylaria polymorpha
+args:
+  batch: 1
+  fraction: 1.0
+  half: true
+  int8: false
+  nms: false
+channels: 3
+end2end: false

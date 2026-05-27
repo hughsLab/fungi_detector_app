@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/field_note.dart';
 import '../models/navigation_args.dart';
@@ -30,6 +33,10 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
 
   List<Observation> _observations = [];
   Map<String, String> _speciesNames = {};
+  Map<String, Species> _speciesById = {};
+  Map<String, String> _speciesIdByScientificName = {};
+  Map<String, String> _tasColloquialById = {};
+  Map<String, String> _tasColloquialByScientificName = {};
   Set<String> _lichenSpeciesIds = <String>{};
   Set<String> _lichenNames = <String>{};
   List<Observation> _visibleObservations = const [];
@@ -60,10 +67,21 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
     final observationsFuture = _observationRepository.loadObservations();
     final speciesFuture = _speciesRepository.loadSpecies();
     final settingsFuture = _settingsService.loadSettings();
+    final tasColloquialFuture = _loadTasColloquialMaps();
     final observations = await observationsFuture;
     final species = await speciesFuture;
     final settings = await settingsFuture;
+    final tasColloquial = await tasColloquialFuture;
     final nameMap = {for (final item in species) item.id: item.displayName};
+    final speciesById = {for (final item in species) item.id: item};
+    final speciesIdByScientificName = <String, String>{};
+    for (final item in species) {
+      final normalized = _normalizeForLookup(item.scientificName);
+      if (normalized.isNotEmpty &&
+          !speciesIdByScientificName.containsKey(normalized)) {
+        speciesIdByScientificName[normalized] = item.id;
+      }
+    }
     final lichenSpeciesIds = <String>{};
     final lichenNames = <String>{};
     for (final item in species) {
@@ -84,6 +102,10 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
     setState(() {
       _observations = observations;
       _speciesNames = nameMap;
+      _speciesById = speciesById;
+      _speciesIdByScientificName = speciesIdByScientificName;
+      _tasColloquialById = tasColloquial.byId;
+      _tasColloquialByScientificName = tasColloquial.byScientificName;
       _lichenSpeciesIds = lichenSpeciesIds;
       _lichenNames = lichenNames;
       _visibleObservations = _buildVisibleObservations(
@@ -180,6 +202,133 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
     return _speciesNames[observation.speciesId] ?? 'Unknown';
   }
 
+  String _normalizeForLookup(String? value) => value?.trim().toLowerCase() ?? '';
+
+  Future<_TasColloquialMaps> _loadTasColloquialMaps() async {
+    try {
+      final String raw = await rootBundle.loadString('assets/data/species_tas.json');
+      final dynamic decoded = jsonDecode(raw);
+      final List<dynamic> cards = (decoded is Map<String, dynamic> &&
+              decoded['cards'] is List<dynamic>)
+          ? decoded['cards'] as List<dynamic>
+          : const <dynamic>[];
+
+      final Map<String, String> byId = <String, String>{};
+      final Map<String, String> byScientificName = <String, String>{};
+      for (final dynamic item in cards) {
+        if (item is! Map<String, dynamic>) {
+          continue;
+        }
+        final String? colloquial = _cleanColloquialName(
+          item['colloquialName']?.toString(),
+        );
+        if (colloquial == null) {
+          continue;
+        }
+        final String id = item['id']?.toString().trim() ?? '';
+        if (id.isNotEmpty) {
+          byId[id] = colloquial;
+        }
+        final String scientific = item['scientificName']?.toString() ?? '';
+        final String normalizedScientific = _normalizeForLookup(scientific);
+        if (normalizedScientific.isNotEmpty &&
+            !byScientificName.containsKey(normalizedScientific)) {
+          byScientificName[normalizedScientific] = colloquial;
+        }
+      }
+      return _TasColloquialMaps(
+        byId: byId,
+        byScientificName: byScientificName,
+      );
+    } catch (_) {
+      return const _TasColloquialMaps(
+        byId: <String, String>{},
+        byScientificName: <String, String>{},
+      );
+    }
+  }
+
+  String? _cleanColloquialName(String? value) {
+    final cleaned = value?.trim();
+    if (cleaned == null || cleaned.isEmpty) {
+      return null;
+    }
+    final lower = cleaned.toLowerCase();
+    if (lower == 'null' || lower == 'undefined') {
+      return null;
+    }
+    return cleaned;
+  }
+
+  Species? _speciesForObservation(Observation observation) {
+    final String speciesId = observation.speciesId.trim();
+    if (speciesId.isNotEmpty) {
+      final Species? byId = _speciesById[speciesId];
+      if (byId != null) {
+        return byId;
+      }
+    }
+
+    final String normalizedLabel = _normalizeForLookup(observation.label);
+    if (normalizedLabel.isNotEmpty) {
+      final String? lookupId = _speciesIdByScientificName[normalizedLabel];
+      if (lookupId != null) {
+        return _speciesById[lookupId];
+      }
+    }
+
+    return null;
+  }
+
+  String _scientificNameFor(Observation observation) {
+    final Species? species = _speciesForObservation(observation);
+    final String speciesScientific = species?.scientificName.trim() ?? '';
+    if (speciesScientific.isNotEmpty) {
+      return speciesScientific;
+    }
+    final String label = observation.label.trim();
+    if (label.isNotEmpty) {
+      return label;
+    }
+    return _speciesNames[observation.speciesId] ?? 'Unknown';
+  }
+
+  String? _getObservationColloquialName(Observation observation) {
+    final String? fromObservation = _cleanColloquialName(
+      observation.colloquialName,
+    );
+    if (fromObservation != null) {
+      return fromObservation;
+    }
+
+    final Species? species = _speciesForObservation(observation);
+    final String? fromSpecies = _cleanColloquialName(species?.colloquialName);
+    if (fromSpecies != null) {
+      return fromSpecies;
+    }
+
+    final String speciesId = observation.speciesId.trim();
+    if (speciesId.isNotEmpty) {
+      final String? fromTasId = _cleanColloquialName(_tasColloquialById[speciesId]);
+      if (fromTasId != null) {
+        return fromTasId;
+      }
+    }
+
+    final String speciesScientific = species?.scientificName ?? '';
+    final String scientificForLookup = speciesScientific.trim().isNotEmpty
+        ? speciesScientific
+        : observation.label;
+    final String? fromTasScientific = _cleanColloquialName(
+      _tasColloquialByScientificName[_normalizeForLookup(scientificForLookup)],
+    );
+    if (fromTasScientific != null) {
+      return fromTasScientific;
+    }
+
+    return null;
+  }
+
   Color _confidenceColor(double? confidence) {
     final value = confidence ?? 0.0;
     if (value >= 0.8) {
@@ -200,9 +349,11 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
+        final String scientificName = _scientificNameFor(observation);
         return _ObservationDetailSheet(
           observation: observation,
-          displayName: _displayNameFor(observation),
+          scientificName: scientificName,
+          colloquialName: _getObservationColloquialName(observation),
           confidenceColor: _confidenceColor(observation.confidence),
           onOpenMap: observation.location == null
               ? null
@@ -220,7 +371,7 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
   }
 
   void _openFullDetail(Observation observation) {
-    final String label = _displayNameFor(observation);
+    final String label = _scientificNameFor(observation);
     final String normalizedLabel = label.trim().toLowerCase();
     final bool isLichen =
         observation.isLichen ??
@@ -398,10 +549,15 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
                                 const SizedBox(height: 10),
                             itemBuilder: (context, index) {
                               final observation = _visibleObservations[index];
-                              final name = _displayNameFor(observation);
+                              final scientificName = _scientificNameFor(
+                                observation,
+                              );
                               return _ObservationCard(
                                 observation: observation,
-                                displayName: name,
+                                scientificName: scientificName,
+                                colloquialName: _getObservationColloquialName(
+                                  observation,
+                                ),
                                 locationText: _locationTextFor(observation),
                                 confidenceColor: _confidenceColor(
                                   observation.confidence,
@@ -531,7 +687,8 @@ class _FieldNotesShortcut extends StatelessWidget {
 
 class _ObservationCard extends StatelessWidget {
   final Observation observation;
-  final String displayName;
+  final String scientificName;
+  final String? colloquialName;
   final String locationText;
   final Color confidenceColor;
   final VoidCallback onTap;
@@ -539,7 +696,8 @@ class _ObservationCard extends StatelessWidget {
 
   const _ObservationCard({
     required this.observation,
-    required this.displayName,
+    required this.scientificName,
+    required this.colloquialName,
     required this.locationText,
     required this.confidenceColor,
     required this.onTap,
@@ -587,13 +745,24 @@ class _ObservationCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      displayName,
+                      scientificName,
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
                         fontSize: 15.5,
                       ),
                     ),
+                    if (colloquialName != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 1),
+                        child: Text(
+                          colloquialName!,
+                          style: const TextStyle(
+                            color: Color(0xCCFFFFFF),
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 4),
                     Text(
                       formatDateTime(observation.timestamp),
@@ -690,7 +859,8 @@ class _ObservationCard extends StatelessWidget {
 
 class _ObservationDetailSheet extends StatelessWidget {
   final Observation observation;
-  final String displayName;
+  final String scientificName;
+  final String? colloquialName;
   final Color confidenceColor;
   final VoidCallback? onOpenMap;
   final VoidCallback onViewFull;
@@ -699,7 +869,8 @@ class _ObservationDetailSheet extends StatelessWidget {
 
   _ObservationDetailSheet({
     required this.observation,
-    required this.displayName,
+    required this.scientificName,
+    required this.colloquialName,
     required this.confidenceColor,
     required this.onOpenMap,
     required this.onViewFull,
@@ -733,13 +904,24 @@ class _ObservationDetailSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              displayName,
+              scientificName,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
               ),
             ),
+            if (colloquialName != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  colloquialName!,
+                  style: const TextStyle(
+                    color: Color(0xCCFFFFFF),
+                    fontSize: 13,
+                  ),
+                ),
+              ),
             const SizedBox(height: 4),
             Text(
               formatDateTime(observation.timestamp),
@@ -969,3 +1151,13 @@ class _ObservationDetailRow extends StatelessWidget {
 }
 
 enum ObservationSort { date, speciesName }
+
+class _TasColloquialMaps {
+  final Map<String, String> byId;
+  final Map<String, String> byScientificName;
+
+  const _TasColloquialMaps({
+    required this.byId,
+    required this.byScientificName,
+  });
+}
