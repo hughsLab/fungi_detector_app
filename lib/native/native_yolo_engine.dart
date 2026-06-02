@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
 import 'dart:isolate';
-import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:ffi/ffi.dart';
@@ -98,6 +97,13 @@ class NativeYoloEngine {
   bool _disposed = false;
   bool _frameInFlight = false;
   _FramePacket? _pendingFrame;
+  int _nextFrameId = 1;
+  int _receivedFrameCount = 0;
+  int _processedFrameCount = 0;
+  int _droppedPendingFrameCount = 0;
+  int _lastDebugLogMs = 0;
+  int? _inFlightFrameId;
+  int? _inFlightDispatchAtMs;
 
   Stream<List<NativeDetection>> get detections => _detectionsController.stream;
   Stream<String> get errors => _errorsController.stream;
@@ -142,9 +148,20 @@ class NativeYoloEngine {
   void submitCameraImage(CameraImage image, {required int rotationDegrees}) {
     if (_disposed) return;
     try {
-      final packet = _FramePacket.fromCameraImage(image, rotationDegrees);
+      final int nowMs = DateTime.now().millisecondsSinceEpoch;
+      _receivedFrameCount += 1;
+      final packet = _FramePacket.fromCameraImage(
+        image,
+        rotationDegrees,
+        frameId: _nextFrameId++,
+        receivedAtMs: nowMs,
+      );
+      if (_pendingFrame != null) {
+        _droppedPendingFrameCount += 1;
+      }
       _pendingFrame?.dispose();
       _pendingFrame = packet;
+      _debugLogFrame('received', frameId: packet.frameId);
       _pushPendingFrame();
     } catch (e) {
       _errorsController.add('Frame drop: $e');
@@ -175,6 +192,13 @@ class NativeYoloEngine {
     final packet = _pendingFrame!;
     _pendingFrame = null;
     _frameInFlight = true;
+    _inFlightFrameId = packet.frameId;
+    _inFlightDispatchAtMs = DateTime.now().millisecondsSinceEpoch;
+    _debugLogFrame(
+      'submitted',
+      frameId: packet.frameId,
+      receivedAtMs: packet.receivedAtMs,
+    );
     _workerSendPort.send({
       'type': 'frame',
       'frame': packet.serialize(),
@@ -192,6 +216,7 @@ class NativeYoloEngine {
         }
         break;
       case 'detections':
+        final int nowMs = DateTime.now().millisecondsSinceEpoch;
         final items = (message['items'] as List<dynamic>)
             .map((dynamic e) => NativeDetection.fromMap(e as Map<dynamic, dynamic>))
             .toList(growable: false);
@@ -199,13 +224,30 @@ class NativeYoloEngine {
             .where((d) => d.score >= _minDisplayConfidence)
             .toList(growable: false); // Gate detections so only >= 0.45 reach UI.
         _detectionsController.add(filtered);
+        _processedFrameCount += 1;
+        final int? frameId = message['frameId'] as int?;
+        final int? receivedAtMs = message['receivedAtMs'] as int?;
+        final int? workerMs = message['workerMs'] as int?;
+        final int? dispatchMs = _inFlightDispatchAtMs;
+        _debugLogFrame(
+          'returned',
+          frameId: frameId,
+          receivedAtMs: receivedAtMs,
+          workerMs: workerMs,
+          inFlightMs: dispatchMs == null ? null : nowMs - dispatchMs,
+          detectionCount: filtered.length,
+        );
         _frameInFlight = false;
+        _inFlightFrameId = null;
+        _inFlightDispatchAtMs = null;
         _pushPendingFrame();
         break;
       case 'error':
         final error = (message['message'] ?? 'Native engine error') as String;
         _errorsController.add(error);
         _frameInFlight = false;
+        _inFlightFrameId = null;
+        _inFlightDispatchAtMs = null;
         _pushPendingFrame();
         if (!(message['recoverable'] as bool? ?? true) && !_readyCompleter.isCompleted) {
           _readyCompleter.completeError(Exception(error));
@@ -220,12 +262,60 @@ class NativeYoloEngine {
         break;
     }
   }
+
+  void _debugLogFrame(
+    String event, {
+    int? frameId,
+    int? receivedAtMs,
+    int? workerMs,
+    int? inFlightMs,
+    int? detectionCount,
+  }) {
+    if (!kDebugMode) {
+      return;
+    }
+    final int nowMs = DateTime.now().millisecondsSinceEpoch;
+    final bool shouldLogSummary = nowMs - _lastDebugLogMs >= 1200;
+    final bool shouldLogEvent = event != 'received';
+    if (!shouldLogSummary && !shouldLogEvent) {
+      return;
+    }
+    if (shouldLogSummary) {
+      _lastDebugLogMs = nowMs;
+    }
+    final StringBuffer out = StringBuffer('[DetectTiming][engine] $event');
+    if (frameId != null) {
+      out.write(' frame=$frameId');
+    } else if (_inFlightFrameId != null) {
+      out.write(' frame=$_inFlightFrameId');
+    }
+    if (receivedAtMs != null) {
+      out.write(' queueMs=${nowMs - receivedAtMs}');
+    }
+    if (inFlightMs != null) {
+      out.write(' roundTripMs=$inFlightMs');
+    }
+    if (workerMs != null) {
+      out.write(' workerMs=$workerMs');
+    }
+    if (detectionCount != null) {
+      out.write(' dets=$detectionCount');
+    }
+    if (shouldLogSummary) {
+      out.write(
+        ' stats(received=$_receivedFrameCount processed=$_processedFrameCount droppedPending=$_droppedPendingFrameCount)',
+      );
+    }
+    debugPrint(out.toString());
+  }
 }
 
 class _FramePacket {
   _FramePacket({
     required this.width,
     required this.height,
+    required this.frameId,
+    required this.receivedAtMs,
     required this.rotationDegrees,
     required this.yRowStride,
     required this.uvRowStride,
@@ -237,6 +327,8 @@ class _FramePacket {
 
   final int width;
   final int height;
+  final int frameId;
+  final int receivedAtMs;
   final int rotationDegrees;
   final int yRowStride;
   final int uvRowStride;
@@ -245,7 +337,12 @@ class _FramePacket {
   final TransferableTypedData uData;
   final TransferableTypedData vData;
 
-  factory _FramePacket.fromCameraImage(CameraImage image, int rotationDegrees) {
+  factory _FramePacket.fromCameraImage(
+    CameraImage image,
+    int rotationDegrees, {
+    required int frameId,
+    required int receivedAtMs,
+  }) {
     if (image.planes.length < 3) {
       throw ArgumentError('Expected YUV420 image with 3 planes');
     }
@@ -256,6 +353,8 @@ class _FramePacket {
     return _FramePacket(
       width: image.width,
       height: image.height,
+      frameId: frameId,
+      receivedAtMs: receivedAtMs,
       rotationDegrees: rotationDegrees,
       yRowStride: yPlane.bytesPerRow,
       uvRowStride: uPlane.bytesPerRow,
@@ -270,6 +369,8 @@ class _FramePacket {
     return <String, dynamic>{
       'width': width,
       'height': height,
+      'frameId': frameId,
+      'receivedAtMs': receivedAtMs,
       'rotation': rotationDegrees,
       'yRowStride': yRowStride,
       'uvRowStride': uvRowStride,
@@ -306,8 +407,16 @@ void _nativeYoloIsolateEntry(Map<String, dynamic> message) async {
     if (type == 'frame') {
       final frameMap = (raw['frame'] as Map<dynamic, dynamic>).cast<String, dynamic>();
       try {
+        final Stopwatch sw = Stopwatch()..start();
         final detections = worker.processFrame(frameMap);
-        mainPort.send({'type': 'detections', 'items': detections});
+        sw.stop();
+        mainPort.send({
+          'type': 'detections',
+          'items': detections,
+          'frameId': frameMap['frameId'],
+          'receivedAtMs': frameMap['receivedAtMs'],
+          'workerMs': sw.elapsedMilliseconds,
+        });
       } catch (e) {
         mainPort.send({'type': 'error', 'message': e.toString(), 'recoverable': true});
       }

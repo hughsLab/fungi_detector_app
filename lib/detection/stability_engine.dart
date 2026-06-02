@@ -17,11 +17,16 @@ class StabilityConfig {
   final double hysteresisDelta;
   final double readyConfMin;
   final int readyMinAgeMs;
+  final double provisionalConfMin;
+  final double adaptiveHighConfMin;
+  final double adaptiveMediumConfMin;
+  final int adaptiveHighConfWins;
+  final int adaptiveMediumConfWins;
 
   const StabilityConfig({
     this.detectConfMin = 0.45,
     this.iouMatchThreshold = 0.5,
-    this.trackTtlMs = 700,
+    this.trackTtlMs = 1200,
     this.windowMs = 1500,
     this.windowFrames = 45,
     this.stabilityWindowFramesM = 5,
@@ -31,6 +36,11 @@ class StabilityConfig {
     this.hysteresisDelta = 0.10,
     this.readyConfMin = 0.55,
     this.readyMinAgeMs = 600,
+    this.provisionalConfMin = 0.55,
+    this.adaptiveHighConfMin = 0.85,
+    this.adaptiveMediumConfMin = 0.70,
+    this.adaptiveHighConfWins = 2,
+    this.adaptiveMediumConfWins = 3,
   });
 }
 
@@ -48,12 +58,16 @@ class StableTrack {
   final double top2AvgConf;
   final double top1VoteRatio;
   final bool isAmbiguous;
+  final bool isProvisional;
   final bool isStable;
+  final bool isAdaptiveStable;
   final bool isReadyToCapture;
   final int windowFrameCount;
   final int windowDurationMs;
   final int stabilityWinCount;
   final int stabilityWindowSize;
+  final int consecutiveTop1Wins;
+  final int requiredWinsForStability;
 
   const StableTrack({
     required this.trackId,
@@ -69,12 +83,16 @@ class StableTrack {
     required this.top2AvgConf,
     required this.top1VoteRatio,
     required this.isAmbiguous,
+    required this.isProvisional,
     required this.isStable,
+    required this.isAdaptiveStable,
     required this.isReadyToCapture,
     required this.windowFrameCount,
     required this.windowDurationMs,
     required this.stabilityWinCount,
     required this.stabilityWindowSize,
+    required this.consecutiveTop1Wins,
+    required this.requiredWinsForStability,
   });
 }
 
@@ -192,13 +210,25 @@ class DetectionStabilityEngine {
             .length;
     final bool hasFullStabilityWindow =
         stabilityWindowFilled >= config.stabilityWindowFramesM;
-    final bool stable = hasFullStabilityWindow &&
+    final bool normalStable = hasFullStabilityWindow &&
         top1ClassId != null &&
         top1WinCount >= config.lockWinCount;
+    final int consecutiveTop1Wins = top1ClassId == null
+        ? 0
+        : _consecutiveWinnerStreak(track, top1ClassId);
+    final int? adaptiveRequiredWins = _adaptiveWinRequirement(
+      aggregate.top1AvgConf,
+    );
+    final bool adaptiveStable = top1ClassId != null &&
+        adaptiveRequiredWins != null &&
+        consecutiveTop1Wins >= adaptiveRequiredWins;
+    final bool stable = normalStable || adaptiveStable;
 
     final bool ambiguous = top1ClassId != null &&
         aggregate.top2ClassId != null &&
         (aggregate.top1AvgConf - aggregate.top2AvgConf) < config.marginMin;
+    final bool provisional =
+        top1ClassId != null && aggregate.top1AvgConf >= config.provisionalConfMin;
 
     _applyLocking(
       track,
@@ -235,13 +265,38 @@ class DetectionStabilityEngine {
       top2AvgConf: aggregate.top2AvgConf,
       top1VoteRatio: aggregate.top1VoteRatio,
       isAmbiguous: ambiguous,
+      isProvisional: provisional,
       isStable: stable,
+      isAdaptiveStable: adaptiveStable && !normalStable,
       isReadyToCapture: ready,
       windowFrameCount: windowFrameCount,
       windowDurationMs: windowDurationMs,
       stabilityWinCount: top1WinCount,
       stabilityWindowSize: config.stabilityWindowFramesM,
+      consecutiveTop1Wins: consecutiveTop1Wins,
+      requiredWinsForStability: adaptiveRequiredWins ?? config.lockWinCount,
     );
+  }
+
+  int _consecutiveWinnerStreak(Track track, int classId) {
+    int streak = 0;
+    for (final winner in track.lastMFrameWinners.toList().reversed) {
+      if (winner != classId) {
+        break;
+      }
+      streak += 1;
+    }
+    return streak;
+  }
+
+  int? _adaptiveWinRequirement(double avgConfidence) {
+    if (avgConfidence >= config.adaptiveHighConfMin) {
+      return config.adaptiveHighConfWins;
+    }
+    if (avgConfidence >= config.adaptiveMediumConfMin) {
+      return config.adaptiveMediumConfWins;
+    }
+    return null;
   }
 
   void _applyLocking(

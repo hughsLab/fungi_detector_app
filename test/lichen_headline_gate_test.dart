@@ -2,6 +2,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:realtime_detection_app/utils/lichen_headline_gate.dart';
 
 void main() {
+  test('lichen safety headline note remains unchanged', () {
+    expect(
+      lichenHeadlineLimitNote,
+      'Species-level ID limited for lichens due to high visual similarity between taxa.',
+    );
+  });
+
   test('lichen with top1=0.61 and top2=0.24 is downgraded', () {
     final DecisionResult result = decideHeadline(
       topK: const [

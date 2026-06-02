@@ -160,4 +160,16 @@ class Species {
     }
     return '$scientificName ($common)';
   }
+
+  String get taxonomyPath {
+    return <String?>[
+      taxonomyKingdom,
+      taxonomyPhylum,
+      taxonomyClass,
+      taxonomyOrder,
+      taxonomyFamily,
+      taxonomyGenus,
+      taxonomySpecies,
+    ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' > ');
+  }
 }

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
@@ -20,6 +21,38 @@ const Color _deepGreen = Color(0xFF1F4E3D);
 const Color _accentGreen = Color(0xFF8FBFA1);
 const Color _highlightGreen = Color(0xFF7CD39A);
 const Color _mutedWhite = Color(0xCCFFFFFF);
+
+enum _DetectionUiState {
+  scanning,
+  possibleMatch,
+  confirming,
+  matchFound,
+  lowConfidence,
+}
+
+class _DetectionUiPresentation {
+  final _DetectionUiState state;
+  final StableTrack? displayTrack;
+  final String statusText;
+  final IconData statusIcon;
+  final String? bannerTitle;
+  final String? bannerSubtitle;
+  final String? bannerDetail;
+  final String? speciesId;
+  final bool canOpenSpecies;
+
+  const _DetectionUiPresentation({
+    required this.state,
+    required this.displayTrack,
+    required this.statusText,
+    required this.statusIcon,
+    required this.bannerTitle,
+    required this.bannerSubtitle,
+    required this.bannerDetail,
+    required this.speciesId,
+    required this.canOpenSpecies,
+  });
+}
 
 class DetectionPage extends StatefulWidget {
   const DetectionPage({super.key});
@@ -52,7 +85,15 @@ class _DetectionPageState extends State<DetectionPage>
 
   List<Detection> _detections = [];
   StableTrack? _primaryTrack;
+  StableTrack? _lastStableTrack;
+  int _lastStableTrackMs = 0;
   String? _errorMessage;
+  int _streamFrameCount = 0;
+  int _nativeResultCount = 0;
+  int _lastStreamFrameMs = 0;
+  int _lastDebugTimingLogMs = 0;
+  String? _lastDebugUiState;
+  static const int _uiHoldGraceMs = 1300;
 
   static const double _confThreshold = 0.30;
   static const double _nmsIoUThreshold = 0.45;
@@ -230,6 +271,7 @@ class _DetectionPageState extends State<DetectionPage>
     if (!mounted) return;
     if (!_engineReady) return;
     final int nowMs = DateTime.now().millisecondsSinceEpoch;
+    _nativeResultCount += 1;
     final List<Detection> mapped = detections
         .map(
           (d) => Detection(
@@ -245,6 +287,15 @@ class _DetectionPageState extends State<DetectionPage>
       nowMs,
     );
     final StableTrack? primaryTrack = _selectPrimaryTrack(stableTracks);
+    if (primaryTrack != null && (primaryTrack.lockedClassId != null || primaryTrack.isStable)) {
+      _lastStableTrack = primaryTrack;
+      _lastStableTrackMs = nowMs;
+    }
+    _logDetectionTiming(
+      nowMs: nowMs,
+      frameDetectionCount: mapped.length,
+      primaryTrack: primaryTrack,
+    );
     setState(() {
       _detections = mapped;
       _primaryTrack = primaryTrack;
@@ -357,6 +408,183 @@ class _DetectionPageState extends State<DetectionPage>
       }
     }
     return best;
+  }
+
+  void _logFrameSubmission(int nowMs) {
+    if (!kDebugMode) {
+      return;
+    }
+    if (nowMs - _lastDebugTimingLogMs < 1200) {
+      return;
+    }
+    _lastDebugTimingLogMs = nowMs;
+    debugPrint(
+      '[DetectTiming][ui] frame-received ts=$nowMs submitted=1 streamFrames=$_streamFrameCount nativeResults=$_nativeResultCount',
+    );
+  }
+
+  void _logDetectionTiming({
+    required int nowMs,
+    required int frameDetectionCount,
+    required StableTrack? primaryTrack,
+  }) {
+    if (!kDebugMode) {
+      return;
+    }
+    final int approxFrameToResultMs = _lastStreamFrameMs == 0
+        ? 0
+        : nowMs - _lastStreamFrameMs;
+    final _DetectionUiPresentation presentation = _buildUiPresentation(
+      primaryTrack,
+      nowMs,
+    );
+    final String uiState = presentation.state.name;
+    final bool shouldLog = (nowMs - _lastDebugTimingLogMs) >= 1200 ||
+        _lastDebugUiState != uiState;
+    if (!shouldLog) {
+      return;
+    }
+    _lastDebugTimingLogMs = nowMs;
+    _lastDebugUiState = uiState;
+    final String label = primaryTrack?.lockedLabel ?? primaryTrack?.top1Label ?? '--';
+    final double confidence = primaryTrack?.top1AvgConf ?? 0.0;
+    final int wins = primaryTrack?.stabilityWinCount ?? 0;
+    final int requiredWins = primaryTrack?.requiredWinsForStability ?? 0;
+    final int consecutiveWins = primaryTrack?.consecutiveTop1Wins ?? 0;
+    debugPrint(
+      '[DetectTiming][ui] inference-return ts=$nowMs frameToResultMs=$approxFrameToResultMs '
+      'dets=$frameDetectionCount label="$label" conf=${confidence.toStringAsFixed(3)} '
+      'wins=$wins/$requiredWins streak=$consecutiveWins stable=${primaryTrack?.isStable ?? false} '
+      'ready=${primaryTrack?.isReadyToCapture ?? false} uiState=$uiState',
+    );
+  }
+
+  _DetectionUiPresentation _buildUiPresentation(
+    StableTrack? primaryTrack,
+    int nowMs,
+  ) {
+    final StableTrack? heldStable =
+        _lastStableTrack != null && (nowMs - _lastStableTrackMs) <= _uiHoldGraceMs
+        ? _lastStableTrack
+        : null;
+    final StableTrack? displayTrack =
+        primaryTrack ?? heldStable;
+
+    if (primaryTrack == null && displayTrack == null) {
+      return const _DetectionUiPresentation(
+        state: _DetectionUiState.scanning,
+        displayTrack: null,
+        statusText: 'Scanning...',
+        statusIcon: Icons.center_focus_strong,
+        bannerTitle: null,
+        bannerSubtitle: null,
+        bannerDetail: null,
+        speciesId: null,
+        canOpenSpecies: false,
+      );
+    }
+
+    final StableTrack? active = primaryTrack ?? displayTrack;
+    final bool hasLocked = active?.lockedClassId != null;
+    final bool stable = active?.isStable ?? false;
+    final bool ready = primaryTrack?.isReadyToCapture ?? false;
+    final bool ambiguous = active?.isAmbiguous ?? false;
+    final String? label = hasLocked ? active?.lockedLabel : active?.top1Label;
+    final int? classIndex = hasLocked ? active?.lockedClassId : active?.top1ClassId;
+    final String? speciesId = classIndex == null
+        ? (label == null ? null : _speciesIdForLabel(label))
+        : classIndex.toString();
+    final String? topConfidence = active == null
+        ? null
+        : '${(active.top1AvgConf * 100).toStringAsFixed(1)}%';
+
+    if (ready && label != null) {
+      return _DetectionUiPresentation(
+        state: _DetectionUiState.matchFound,
+        displayTrack: active,
+        statusText: 'Match found: $label',
+        statusIcon: Icons.check_circle,
+        bannerTitle: label,
+        bannerSubtitle: topConfidence == null
+            ? 'Ready to capture'
+            : 'Ready to capture • $topConfidence',
+        bannerDetail: ambiguous && active?.top2Label != null
+            ? 'Also possible: ${active!.top2Label}'
+            : null,
+        speciesId: speciesId,
+        canOpenSpecies: speciesId != null,
+      );
+    }
+
+    if ((hasLocked || stable) && label != null) {
+      return _DetectionUiPresentation(
+        state: _DetectionUiState.matchFound,
+        displayTrack: active,
+        statusText: 'Match found: $label',
+        statusIcon: Icons.shield_outlined,
+        bannerTitle: label,
+        bannerSubtitle: topConfidence == null
+            ? 'Confirming...'
+            : 'Confirming... $topConfidence',
+        bannerDetail: ambiguous && active?.top2Label != null
+            ? 'Also possible: ${active!.top2Label}'
+            : null,
+        speciesId: speciesId,
+        canOpenSpecies: speciesId != null,
+      );
+    }
+
+    if (primaryTrack != null && primaryTrack.isProvisional && label != null) {
+      final bool mediumOrHigher =
+          primaryTrack.top1AvgConf >= _stabilityEngine.config.adaptiveMediumConfMin;
+      return _DetectionUiPresentation(
+        state: mediumOrHigher
+            ? _DetectionUiState.confirming
+            : _DetectionUiState.possibleMatch,
+        displayTrack: active,
+        statusText: mediumOrHigher
+            ? 'Confirming...'
+            : 'Possible match: $label',
+        statusIcon: mediumOrHigher ? Icons.timelapse : Icons.search,
+        bannerTitle: mediumOrHigher ? 'Confirming...' : 'Possible match: $label',
+        bannerSubtitle: topConfidence == null
+            ? null
+            : 'Confidence $topConfidence',
+        bannerDetail: ambiguous && active?.top2Label != null
+            ? 'Also possible: ${active!.top2Label}'
+            : null,
+        speciesId: speciesId,
+        canOpenSpecies: speciesId != null,
+      );
+    }
+
+    if (heldStable != null && heldStable.lockedLabel != null) {
+      final int? heldClass = heldStable.lockedClassId ?? heldStable.top1ClassId;
+      final String? heldSpeciesId = heldClass?.toString();
+      return _DetectionUiPresentation(
+        state: _DetectionUiState.confirming,
+        displayTrack: heldStable,
+        statusText: 'Confirming...',
+        statusIcon: Icons.timelapse,
+        bannerTitle: heldStable.lockedLabel,
+        bannerSubtitle: 'Rechecking current view...',
+        bannerDetail: null,
+        speciesId: heldSpeciesId,
+        canOpenSpecies: heldSpeciesId != null,
+      );
+    }
+
+    return const _DetectionUiPresentation(
+      state: _DetectionUiState.lowConfidence,
+      displayTrack: null,
+      statusText: 'Low confidence — try another angle',
+      statusIcon: Icons.warning_amber_rounded,
+      bannerTitle: null,
+      bannerSubtitle: null,
+      bannerDetail: null,
+      speciesId: null,
+      canOpenSpecies: false,
+    );
   }
 
   Future<void> _handleCapture(StableTrack track) async {
@@ -519,6 +747,10 @@ class _DetectionPageState extends State<DetectionPage>
 
     await controller.startImageStream((CameraImage image) {
       if (!mounted) return;
+      final int nowMs = DateTime.now().millisecondsSinceEpoch;
+      _streamFrameCount += 1;
+      _lastStreamFrameMs = nowMs;
+      _logFrameSubmission(nowMs);
       final rotationDegrees = controller.description.sensorOrientation;
       engine.submitCameraImage(image, rotationDegrees: rotationDegrees);
     });
@@ -617,61 +849,17 @@ class _DetectionPageState extends State<DetectionPage>
               builder: (context, _) {
                 final preview = _camera!;
                 final StableTrack? primaryTrack = _primaryTrack;
-                final bool hasLocked = primaryTrack?.lockedClassId != null;
-                final bool isAmbiguous = primaryTrack?.isAmbiguous ?? false;
                 final bool isReady = primaryTrack?.isReadyToCapture ?? false;
-                final String? primaryLabel = hasLocked
-                    ? primaryTrack?.lockedLabel
-                    : primaryTrack?.top1Label;
-                final int? primaryClassIndex = hasLocked
-                    ? primaryTrack?.lockedClassId
-                    : primaryTrack?.top1ClassId;
-                final String? topSpeciesId = primaryClassIndex == null
-                    ? (primaryLabel == null
-                          ? null
-                          : _speciesIdForLabel(primaryLabel))
-                    : primaryClassIndex.toString();
-                final String? topConfidence = primaryTrack == null
-                    ? null
-                    : '${(primaryTrack.top1AvgConf * 100).toStringAsFixed(1)}%';
-                final String statusText;
-                final IconData statusIcon;
-                if (primaryTrack == null) {
-                  statusText = 'Scanning for species...';
-                  statusIcon = Icons.center_focus_strong;
-                } else if (isReady) {
-                  statusText = 'Ready to capture';
-                  statusIcon = Icons.check_circle;
-                } else if (hasLocked) {
-                  statusText = 'Stable detection - hold steady';
-                  statusIcon = Icons.shield_outlined;
-                } else {
-                  statusText = 'Stabilising detection...';
-                  statusIcon = Icons.timelapse;
-                }
-
-                String? bannerTitle;
-                String? bannerSubtitle;
-                String? bannerDetail;
-                if (primaryTrack != null) {
-                  if (hasLocked) {
-                    bannerTitle = primaryTrack.lockedLabel;
-                    if (isAmbiguous && primaryTrack.top2Label != null) {
-                      bannerSubtitle =
-                          'Also possible: ${primaryTrack.top2Label}';
-                    } else if (topConfidence != null) {
-                      bannerSubtitle = 'Stable $topConfidence';
-                    }
-                  } else {
-                    bannerTitle = 'Stabilising...';
-                    if (primaryTrack.top1Label != null) {
-                      bannerSubtitle = 'Leading: ${primaryTrack.top1Label}';
-                    }
-                    if (isAmbiguous && primaryTrack.top2Label != null) {
-                      bannerDetail = 'Also possible: ${primaryTrack.top2Label}';
-                    }
-                  }
-                }
+                final _DetectionUiPresentation ui = _buildUiPresentation(
+                  primaryTrack,
+                  DateTime.now().millisecondsSinceEpoch,
+                );
+                final String statusText = ui.statusText;
+                final IconData statusIcon = ui.statusIcon;
+                final String? bannerTitle = ui.bannerTitle;
+                final String? bannerSubtitle = ui.bannerSubtitle;
+                final String? bannerDetail = ui.bannerDetail;
+                final String? topSpeciesId = ui.speciesId;
 
                 return ColoredBox(
                   color: _deepGreen,
@@ -746,11 +934,10 @@ class _DetectionPageState extends State<DetectionPage>
                                       backgroundColor: _deepGreen.withValues(
                                         alpha: 0.78,
                                       ),
-                                      onTap: !hasLocked || topSpeciesId == null
+                                      onTap: !ui.canOpenSpecies ||
+                                              topSpeciesId == null
                                           ? null
-                                          : () => _openSpeciesDetail(
-                                              topSpeciesId,
-                                            ),
+                                          : () => _openSpeciesDetail(topSpeciesId),
                                     ),
                                   ),
                                 const Spacer(),
@@ -764,7 +951,9 @@ class _DetectionPageState extends State<DetectionPage>
                                         icon: statusIcon,
                                         accentColor: isReady
                                             ? _highlightGreen
-                                            : _accentGreen,
+                                            : (ui.state == _DetectionUiState.lowConfidence
+                                                  ? Colors.orangeAccent
+                                                  : _accentGreen),
                                         backgroundColor: _deepGreen.withValues(
                                           alpha: 0.75,
                                         ),

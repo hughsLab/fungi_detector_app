@@ -1121,7 +1121,10 @@ class _SpeciesSnapshotCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String description = (species.shortDescription ?? '').trim();
-    final String commonName = (species.commonName ?? '').trim();
+    final String colloquialName =
+        (species.colloquialName ?? species.commonName ?? '').trim();
+    final String colloquialDisplay =
+        colloquialName.isEmpty ? 'Not listed' : colloquialName;
     final String habitat = (species.habitat ?? '').trim();
     final String season = (species.season ?? '').trim();
     final String distribution = species.distributionNote.trim();
@@ -1141,33 +1144,24 @@ class _SpeciesSnapshotCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            species.scientificName,
+            'Scientific Name: ${species.scientificName}',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
           ),
-          if (commonName.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Text(
-                commonName,
-                style: const TextStyle(color: Color(0xCCFFFFFF), fontSize: 13),
-              ),
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              'Colloquial Name: $colloquialDisplay',
+              style: const TextStyle(color: Color(0xCCFFFFFF), fontSize: 13),
             ),
+          ),
           const SizedBox(height: 10),
           _InfoLine(
             label: 'Taxonomy',
-            value: [
-              species.taxonomyKingdom,
-              species.taxonomyPhylum,
-              species.taxonomyClass,
-              species.taxonomyOrder,
-              species.taxonomyFamily,
-              species.taxonomyGenus,
-              species.taxonomySpecies,
-            ].whereType<String>().where((v) => v.trim().isNotEmpty).join(' > '),
+            value: species.taxonomyPath,
           ),
           if (description.isNotEmpty)
             _InfoLine(label: 'Description', value: description),

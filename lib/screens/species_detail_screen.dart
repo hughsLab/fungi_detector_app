@@ -331,31 +331,37 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                   final String? ecologicalRole = _extractEcologicalRole(species);
                   final distributionNote = species.distributionNote.trim();
                   final edibilityWarning = species.edibilityWarning?.trim() ?? '';
+                  final String colloquialName = (species.colloquialName
+                                  ?.trim()
+                                  .isNotEmpty ??
+                              false)
+                      ? species.colloquialName!.trim()
+                      : ((species.commonName?.trim().isNotEmpty ?? false)
+                            ? species.commonName!.trim()
+                            : 'Not listed');
 
                   return SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          species.scientificName,
+                          'Scientific Name: ${species.scientificName}',
                           style: const TextStyle(
-                            fontSize: 26,
+                            fontSize: 24,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
                           ),
                         ),
-                        if (species.commonName != null &&
-                            species.commonName!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 6),
-                            child: Text(
-                              species.commonName!,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: accentTextColor,
-                              ),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            'Colloquial Name: $colloquialName',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: accentTextColor,
                             ),
                           ),
+                        ),
                         if (species.authority != null &&
                             species.authority!.isNotEmpty)
                           Padding(

@@ -139,6 +139,16 @@ class _SpeciesLibraryScreenState extends State<SpeciesLibraryScreen> {
                               const SizedBox(height: 10),
                           itemBuilder: (context, index) {
                             final species = _species[index];
+                            final scientificName = _valueOrPlaceholder(
+                              species.scientificName,
+                              placeholder: 'Unknown',
+                            );
+                            final colloquialName = _valueOrPlaceholder(
+                              (species.colloquialName?.trim().isNotEmpty ??
+                                      false)
+                                  ? species.colloquialName
+                                  : species.commonName,
+                            );
                             final shortDescription =
                                 _valueOrPlaceholder(species.shortDescription);
                             final authority =
@@ -151,31 +161,9 @@ class _SpeciesLibraryScreenState extends State<SpeciesLibraryScreen> {
                               species.edibilityWarning,
                               placeholder: 'No warning provided.',
                             );
-                            final taxonomyItems = <String, String>{
-                              'Kingdom': species.taxonomyKingdom ?? '',
-                              'Phylum': species.taxonomyPhylum ?? '',
-                              'Class': species.taxonomyClass ?? '',
-                              'Order': species.taxonomyOrder ?? '',
-                              'Family': species.taxonomyFamily ?? '',
-                              'Genus': species.taxonomyGenus ?? '',
-                              'Species': species.taxonomySpecies ?? '',
-                            };
-                            final taxonomyChips = taxonomyItems.entries
-                                .where((entry) => entry.value.trim().isNotEmpty)
-                                .map(
-                                  (entry) => Chip(
-                                    label: Text(
-                                      '${entry.key}: ${entry.value}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                    backgroundColor:
-                                        Colors.white.withValues(alpha: 0.12),
-                                  ),
-                                )
-                                .toList();
+                            final taxonomyPath = _valueOrPlaceholder(
+                              species.taxonomyPath,
+                            );
                             final distributionParts = <String>[
                               if (species.distributionCountry != null &&
                                   species.distributionCountry!
@@ -228,28 +216,35 @@ class _SpeciesLibraryScreenState extends State<SpeciesLibraryScreen> {
                                       Row(
                                         children: [
                                           Expanded(
-                                            child: Text(
-                                              species.scientificName,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 16,
-                                              ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Scientific Name: $scientificName',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 14.5,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  'Colloquial Name: $colloquialName',
+                                                  style: const TextStyle(
+                                                    color: accentTextColor,
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
+                                          const SizedBox(width: 8),
                                           const Icon(
                                             Icons.chevron_right,
                                             color: Colors.white70,
                                           ),
                                         ],
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        _valueOrPlaceholder(species.commonName),
-                                        style: const TextStyle(
-                                          color: accentTextColor,
-                                          fontSize: 13,
-                                        ),
                                       ),
                                       const SizedBox(height: 8),
                                       _sectionLabel('Authority'),
@@ -339,13 +334,7 @@ class _SpeciesLibraryScreenState extends State<SpeciesLibraryScreen> {
                                       const SizedBox(height: 10),
                                       _sectionLabel('Taxonomy'),
                                       const SizedBox(height: 4),
-                                      taxonomyChips.isEmpty
-                                          ? _sectionValue('Not listed')
-                                          : Wrap(
-                                              spacing: 6,
-                                              runSpacing: 6,
-                                              children: taxonomyChips,
-                                            ),
+                                      _sectionValue(taxonomyPath),
                                       const SizedBox(height: 10),
                                       _sectionLabel('Edibility warning'),
                                       const SizedBox(height: 4),

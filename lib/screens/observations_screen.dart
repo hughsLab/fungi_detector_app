@@ -708,6 +708,10 @@ class _ObservationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool hasLocation =
         observation.latitude != null && observation.longitude != null;
+    final String colloquialDisplay =
+        (colloquialName?.trim().isNotEmpty ?? false)
+        ? colloquialName!.trim()
+        : 'Not listed';
     final Color locationColor = hasLocation
         ? const Color(0xFFE7F3E7)
         : const Color(0xCCFFFFFF);
@@ -745,24 +749,23 @@ class _ObservationCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      scientificName,
+                      'Scientific Name: $scientificName',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
-                        fontSize: 15.5,
+                        fontSize: 14.5,
                       ),
                     ),
-                    if (colloquialName != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 1),
-                        child: Text(
-                          colloquialName!,
-                          style: const TextStyle(
-                            color: Color(0xCCFFFFFF),
-                            fontSize: 12.5,
-                          ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 1),
+                      child: Text(
+                        'Colloquial Name: $colloquialDisplay',
+                        style: const TextStyle(
+                          color: Color(0xCCFFFFFF),
+                          fontSize: 12.5,
                         ),
                       ),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       formatDateTime(observation.timestamp),
@@ -880,6 +883,10 @@ class _ObservationDetailSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     const accentTextColor = Color(0xCCFFFFFF);
     final location = observation.location;
+    final String colloquialDisplay =
+        (colloquialName?.trim().isNotEmpty ?? false)
+        ? colloquialName!.trim()
+        : 'Not listed';
     final top2Label = observation.top2Label?.trim();
     final top2Confidence = observation.top2Confidence;
     final bool hasTop2 = top2Label != null && top2Label.isNotEmpty;
@@ -904,24 +911,23 @@ class _ObservationDetailSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              scientificName,
+              'Scientific Name: $scientificName',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
               ),
             ),
-            if (colloquialName != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  colloquialName!,
-                  style: const TextStyle(
-                    color: Color(0xCCFFFFFF),
-                    fontSize: 13,
-                  ),
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                'Colloquial Name: $colloquialDisplay',
+                style: const TextStyle(
+                  color: Color(0xCCFFFFFF),
+                  fontSize: 13,
                 ),
               ),
+            ),
             const SizedBox(height: 4),
             Text(
               formatDateTime(observation.timestamp),
