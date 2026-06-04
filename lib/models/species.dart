@@ -1,5 +1,7 @@
 class Species {
   final String id;
+  final String? modelId;
+  final int? sourceClassId;
   final String scientificName;
   final String? authority;
   final String? commonName;
@@ -27,6 +29,8 @@ class Species {
 
   const Species({
     required this.id,
+    required this.modelId,
+    required this.sourceClassId,
     required this.scientificName,
     required this.authority,
     required this.commonName,
@@ -124,6 +128,10 @@ class Species {
 
     return Species(
       id: rawId?.toString() ?? '',
+      modelId: json['modelId']?.toString(),
+      sourceClassId: json['sourceClassId'] is num
+          ? (json['sourceClassId'] as num).toInt()
+          : int.tryParse(json['sourceClassId']?.toString() ?? ''),
       scientificName: json['scientificName']?.toString() ?? '',
       authority: json['authority']?.toString(),
       commonName: json['commonName']?.toString(),

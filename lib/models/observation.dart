@@ -4,11 +4,20 @@ class Observation {
   final String id;
   final String speciesId;
   final int? classIndex;
+  final String? modelId;
+  final String? modelDisplayName;
+  final int? sourceClassId;
   final String label;
   final String? colloquialName;
   final double? confidence;
+  final double? rawConfidence;
+  final double? calibratedConfidence;
+  final double? finalScore;
   final String? top2Label;
   final double? top2Confidence;
+  final String? top2ModelId;
+  final String? top2ModelDisplayName;
+  final int? top2SourceClassId;
   final double? top1VoteRatio;
   final int? windowFrameCount;
   final int? windowDurationMs;
@@ -29,11 +38,20 @@ class Observation {
     required this.id,
     required this.speciesId,
     required this.classIndex,
+    this.modelId,
+    this.modelDisplayName,
+    this.sourceClassId,
     required this.label,
     this.colloquialName,
     required this.confidence,
+    this.rawConfidence,
+    this.calibratedConfidence,
+    this.finalScore,
     this.top2Label,
     this.top2Confidence,
+    this.top2ModelId,
+    this.top2ModelDisplayName,
+    this.top2SourceClassId,
     this.top1VoteRatio,
     this.windowFrameCount,
     this.windowDurationMs,
@@ -116,6 +134,11 @@ class Observation {
       id: json['id']?.toString() ?? '',
       speciesId: speciesId,
       classIndex: classIndex,
+      modelId: json['modelId']?.toString(),
+      modelDisplayName: json['modelDisplayName']?.toString(),
+      sourceClassId: json['sourceClassId'] is num
+          ? (json['sourceClassId'] as num).toInt()
+          : int.tryParse(json['sourceClassId']?.toString() ?? ''),
       label: json['label']?.toString() ??
           json['speciesName']?.toString() ??
           '',
@@ -123,10 +146,18 @@ class Observation {
       confidence: json['confidence'] == null
           ? null
           : (json['confidence'] as num).toDouble(),
+      rawConfidence: _parseDouble(json['rawConfidence']),
+      calibratedConfidence: _parseDouble(json['calibratedConfidence']),
+      finalScore: _parseDouble(json['finalScore']),
       top2Label: json['top2Label']?.toString(),
       top2Confidence: json['top2Confidence'] == null
           ? null
           : (json['top2Confidence'] as num).toDouble(),
+      top2ModelId: json['top2ModelId']?.toString(),
+      top2ModelDisplayName: json['top2ModelDisplayName']?.toString(),
+      top2SourceClassId: json['top2SourceClassId'] is num
+          ? (json['top2SourceClassId'] as num).toInt()
+          : int.tryParse(json['top2SourceClassId']?.toString() ?? ''),
       top1VoteRatio: json['top1VoteRatio'] == null
           ? null
           : (json['top1VoteRatio'] as num).toDouble(),
@@ -164,12 +195,21 @@ class Observation {
       'id': id,
       'speciesId': speciesId,
       'classIndex': classIndex,
+      'modelId': modelId,
+      'modelDisplayName': modelDisplayName,
+      'sourceClassId': sourceClassId,
       'label': label,
       'colloquialName': colloquialName,
       'speciesName': speciesName,
       'confidence': confidence,
+      'rawConfidence': rawConfidence,
+      'calibratedConfidence': calibratedConfidence,
+      'finalScore': finalScore,
       'top2Label': top2Label,
       'top2Confidence': top2Confidence,
+      'top2ModelId': top2ModelId,
+      'top2ModelDisplayName': top2ModelDisplayName,
+      'top2SourceClassId': top2SourceClassId,
       'top1VoteRatio': top1VoteRatio,
       'windowFrameCount': windowFrameCount,
       'windowDurationMs': windowDurationMs,

@@ -1,15 +1,31 @@
 import 'dart:collection';
 import 'dart:ui';
 
+import 'detection.dart';
+
 class DetectionSample {
   final int timestampMs;
-  final int classId;
+  final String classKey;
+  final int sourceClassId;
+  final String modelId;
+  final String modelDisplayName;
+  final String label;
   final double confidence;
+  final double rawConfidence;
+  final double calibratedConfidence;
+  final double finalScore;
 
   const DetectionSample({
     required this.timestampMs,
-    required this.classId,
+    required this.classKey,
+    required this.sourceClassId,
+    required this.modelId,
+    required this.modelDisplayName,
+    required this.label,
     required this.confidence,
+    required this.rawConfidence,
+    required this.calibratedConfidence,
+    required this.finalScore,
   });
 }
 
@@ -20,7 +36,7 @@ class Track {
     required this.createdAtMs,
     required this.lastSeenMs,
   })  : window = ListQueue<DetectionSample>(),
-        lastMFrameWinners = ListQueue<int>(),
+        lastMFrameWinners = ListQueue<String>(),
         lockedSinceMs = createdAtMs;
 
   final int id;
@@ -29,23 +45,34 @@ class Track {
   int lastSeenMs;
 
   final ListQueue<DetectionSample> window;
-  final ListQueue<int> lastMFrameWinners;
+  final ListQueue<String> lastMFrameWinners;
 
   int? lockedClassId;
+  String? lockedClassKey;
+  String? lockedModelId;
+  String? lockedModelDisplayName;
+  String? lockedLabel;
   int lockedSinceMs;
   double lockedAvgConf = 0.0;
 
-  int? candidateClassId;
+  String? candidateClassKey;
   int consecutiveWinsForCandidate = 0;
 
   double get area => bbox.width * bbox.height;
 
-  void addSample(int timestampMs, int classId, double confidence) {
+  void addSample(int timestampMs, Detection detection) {
     window.addLast(
       DetectionSample(
         timestampMs: timestampMs,
-        classId: classId,
-        confidence: confidence,
+        classKey: detection.namespacedClassId,
+        sourceClassId: detection.sourceClassId,
+        modelId: detection.modelId,
+        modelDisplayName: detection.sourceDisplayName,
+        label: detection.speciesName,
+        confidence: detection.confidence,
+        rawConfidence: detection.rawConfidence,
+        calibratedConfidence: detection.calibratedConfidence,
+        finalScore: detection.finalScore,
       ),
     );
     lastSeenMs = timestampMs;
@@ -61,8 +88,8 @@ class Track {
     }
   }
 
-  void pushWinner(int classId, int maxFrames) {
-    lastMFrameWinners.addLast(classId);
+  void pushWinner(String classKey, int maxFrames) {
+    lastMFrameWinners.addLast(classKey);
     while (lastMFrameWinners.length > maxFrames) {
       lastMFrameWinners.removeFirst();
     }

@@ -119,7 +119,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
         _selectedLabel = args.top2Label!;
         _selectedConfidence = args.top2AvgConf!;
         _selectedClassIndex = args.top2ClassIndex;
-        _selectedSpeciesId = args.top2ClassIndex?.toString();
+        _selectedSpeciesId = null;
       });
     }
   }
@@ -159,6 +159,11 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
         photoPath = await _persistPhoto(args.photoPath!);
       }
       final bool swapped = _selectedCandidateIndex == 1;
+      final String selectedSpeciesId = await _resolveSelectedSpeciesId(
+        args: args,
+        swapped: swapped,
+        label: label,
+      );
       final String? top2LabelToStore = swapped ? args.lockedLabel : args.top2Label;
       final double? top2ConfidenceToStore = swapped
           ? args.top1AvgConf
@@ -192,14 +197,25 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
 
       final observation = Observation(
         id: _uuid.v4(),
-        speciesId: (_selectedSpeciesId?.trim().isNotEmpty ?? false)
-            ? _selectedSpeciesId!.trim()
-            : classIndex.toString(),
+        speciesId: selectedSpeciesId,
         classIndex: classIndex,
+        modelId: swapped ? args.top2ModelId : args.modelId,
+        modelDisplayName:
+            swapped ? args.top2ModelDisplayName : args.modelDisplayName,
+        sourceClassId: swapped ? args.top2SourceClassId : args.sourceClassId,
         label: label,
         confidence: confidence,
+        rawConfidence: swapped ? args.top2AvgConf : args.rawConfidence,
+        calibratedConfidence:
+            swapped ? args.top2AvgConf : args.calibratedConfidence,
+        finalScore: swapped ? args.top2AvgConf : args.finalScore,
         top2Label: top2LabelToStore,
         top2Confidence: top2ConfidenceToStore,
+        top2ModelId: swapped ? args.modelId : args.top2ModelId,
+        top2ModelDisplayName:
+            swapped ? args.modelDisplayName : args.top2ModelDisplayName,
+        top2SourceClassId:
+            swapped ? args.sourceClassId : args.top2SourceClassId,
         top1VoteRatio: args.top1VoteRatio,
         windowFrameCount: args.windowFrameCount,
         windowDurationMs: args.windowDurationMs,
@@ -230,14 +246,23 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
       if (!mounted) return;
       _showMessage('Failed to save observation: $e');
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _saving = false;
-      });
+      if (mounted) {
+        setState(() {
+          _saving = false;
+        });
+      }
     }
   }
 
   Future<Species?> _loadMatchedSpecies(DetectionResultArgs args) async {
+    final Species? byModelClass = await _speciesRepository.getByModelClass(
+      args.modelId,
+      args.sourceClassId ?? args.classIndex,
+    );
+    if (byModelClass != null) {
+      return byModelClass;
+    }
+
     final String? speciesId = args.speciesId?.trim();
     if (speciesId != null && speciesId.isNotEmpty) {
       final Species? exact = await _speciesRepository.getById(speciesId);
@@ -262,6 +287,31 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
       }
     }
     return null;
+  }
+
+  Future<String> _resolveSelectedSpeciesId({
+    required DetectionResultArgs args,
+    required bool swapped,
+    required String label,
+  }) async {
+    final explicit = _selectedSpeciesId?.trim();
+    if (explicit != null && explicit.isNotEmpty) {
+      return explicit;
+    }
+    final Species? byModelClass = await _speciesRepository.getByModelClass(
+      swapped ? args.top2ModelId : args.modelId,
+      swapped
+          ? (args.top2SourceClassId ?? args.top2ClassIndex)
+          : (args.sourceClassId ?? args.classIndex),
+    );
+    if (byModelClass != null) {
+      return byModelClass.id;
+    }
+    if (!swapped && _matchedSpecies != null) {
+      return _matchedSpecies!.id;
+    }
+    final Species? byName = await _speciesRepository.getByScientificName(label);
+    return byName?.id ?? label;
   }
 
   Future<String?> _persistPhoto(String tempPath) async {
@@ -714,7 +764,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                                   Navigator.of(context).pushNamed(
                                     '/species-detail',
                                     arguments: SpeciesDetailArgs(
-                                      speciesId: primarySpeciesId!,
+                                      speciesId: primarySpeciesId,
                                       comparePrimaryLabel: args.lockedLabel,
                                       compareSecondaryLabel: args.top2Label,
                                     ),
@@ -748,7 +798,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                   onPressed: () {
                     Navigator.of(context).pushNamed(
                       '/species-detail',
-                      arguments: SpeciesDetailArgs(speciesId: selectedSpeciesId!),
+                      arguments: SpeciesDetailArgs(speciesId: selectedSpeciesId),
                     );
                   },
                   icon: const Icon(Icons.nature),

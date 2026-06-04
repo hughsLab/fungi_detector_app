@@ -93,6 +93,15 @@ class DetectionResultArgs {
   final DateTime timestamp;
   final String? speciesId;
   final int? classIndex;
+  final String? modelId;
+  final String? modelDisplayName;
+  final int? sourceClassId;
+  final double? rawConfidence;
+  final double? calibratedConfidence;
+  final double? finalScore;
+  final String? top2ModelId;
+  final String? top2ModelDisplayName;
+  final int? top2SourceClassId;
   final String? photoPath;
   final double? latitude;
   final double? longitude;
@@ -115,6 +124,15 @@ class DetectionResultArgs {
     required this.timestamp,
     required this.speciesId,
     required this.classIndex,
+    this.modelId,
+    this.modelDisplayName,
+    this.sourceClassId,
+    this.rawConfidence,
+    this.calibratedConfidence,
+    this.finalScore,
+    this.top2ModelId,
+    this.top2ModelDisplayName,
+    this.top2SourceClassId,
     this.photoPath,
     this.latitude,
     this.longitude,

@@ -10,53 +10,35 @@ class SpeciesRepository {
   static final SpeciesRepository instance = SpeciesRepository._();
 
   List<Species>? _cache;
+  Map<String, Species>? _byModelClassCache;
+
+  static const String model1Id = 'model_1';
+  static const String model2Id = 'model_2';
 
   Future<List<Species>> loadSpecies() async {
     if (_cache != null) {
       return _cache!;
     }
-    String raw;
-    try {
-      raw = await rootBundle.loadString('assets/data/species.json');
-    } catch (_) {
-      raw = await rootBundle.loadString('assets/data/species_tas.json');
-    }
-    final decoded = jsonDecode(raw);
-    final List<dynamic> data;
-    if (decoded is List<dynamic>) {
-      data = decoded;
-    } else if (decoded is Map<String, dynamic> &&
-        decoded['cards'] is List<dynamic>) {
-      data = decoded['cards'] as List<dynamic>;
-    } else {
-      throw FormatException('Unexpected species data format');
-    }
     final _TasColloquialMaps tasColloquial = await _loadTasColloquialMaps();
-    _cache = data
-        .whereType<Map<String, dynamic>>()
-        .map((item) {
-          final Map<String, dynamic> enriched = Map<String, dynamic>.from(item);
-          final String existingColloquial =
-              enriched['colloquialName']?.toString().trim() ?? '';
-          if (existingColloquial.isEmpty) {
-            final String id = (enriched['id'] ??
-                        enriched['speciesId'] ??
-                        enriched['species_id'])
-                    ?.toString()
-                    .trim() ??
-                '';
-            final String normalizedScientific = _normalizeForLookup(
-              enriched['scientificName']?.toString(),
-            );
-            final String? fallback = (id.isNotEmpty ? tasColloquial.byId[id] : null) ??
-                tasColloquial.byScientificName[normalizedScientific];
-            if (fallback != null && fallback.trim().isNotEmpty) {
-              enriched['colloquialName'] = fallback.trim();
-            }
-          }
-          return Species.fromJson(enriched);
-        })
-        .toList();
+    final List<Species> model1Species = await _loadSpeciesFromAsset(
+      assetPath: 'assets/data/species.json',
+      fallbackAssetPath: 'assets/data/species_tas.json',
+      modelId: model1Id,
+      namespaceIds: false,
+      colloquialFallback: tasColloquial,
+    );
+    final List<Species> model2Species = await _loadSpeciesFromAsset(
+      assetPath: 'assets/data/species_model2_136_app_form.json',
+      modelId: model2Id,
+      namespaceIds: true,
+      colloquialFallback: tasColloquial,
+    );
+    _cache = <Species>[...model1Species, ...model2Species];
+    _byModelClassCache = {
+      for (final item in _cache!)
+        if (item.modelId != null && item.sourceClassId != null)
+          _modelClassKey(item.modelId!, item.sourceClassId!): item,
+    };
     return _cache!;
   }
 
@@ -67,6 +49,28 @@ class SpeciesRepository {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<Species?> getByModelClass(String? modelId, int? sourceClassId) async {
+    if (modelId == null || sourceClassId == null) {
+      return null;
+    }
+    await loadSpecies();
+    return _byModelClassCache?[_modelClassKey(modelId, sourceClassId)];
+  }
+
+  Future<Species?> getByScientificName(String name) async {
+    final normalized = _normalizeForLookup(name);
+    if (normalized.isEmpty) {
+      return null;
+    }
+    final species = await loadSpecies();
+    for (final item in species) {
+      if (_normalizeForLookup(item.scientificName) == normalized) {
+        return item;
+      }
+    }
+    return null;
   }
 
   Future<List<Species>> search(String query) async {
@@ -85,6 +89,80 @@ class SpeciesRepository {
   }
 
   String _normalizeForLookup(String? value) => value?.trim().toLowerCase() ?? '';
+
+  String _modelClassKey(String modelId, int sourceClassId) {
+    return '$modelId:$sourceClassId';
+  }
+
+  Future<List<Species>> _loadSpeciesFromAsset({
+    required String assetPath,
+    String? fallbackAssetPath,
+    required String modelId,
+    required bool namespaceIds,
+    required _TasColloquialMaps colloquialFallback,
+  }) async {
+    String raw;
+    try {
+      raw = await rootBundle.loadString(assetPath);
+    } catch (_) {
+      if (fallbackAssetPath == null) {
+        rethrow;
+      }
+      raw = await rootBundle.loadString(fallbackAssetPath);
+    }
+    final data = _decodeCards(raw);
+    return data.whereType<Map<String, dynamic>>().map((item) {
+      final Map<String, dynamic> enriched = Map<String, dynamic>.from(item);
+      final String rawId = (enriched['id'] ??
+                  enriched['speciesId'] ??
+                  enriched['species_id'])
+              ?.toString()
+              .trim() ??
+          '';
+      final int? sourceClassId = int.tryParse(rawId);
+      if (namespaceIds && rawId.isNotEmpty) {
+        enriched['id'] = '$modelId:$rawId';
+      }
+      enriched['modelId'] = modelId;
+      if (sourceClassId != null) {
+        enriched['sourceClassId'] = sourceClassId;
+      }
+      _applyColloquialFallback(enriched, rawId, colloquialFallback);
+      return Species.fromJson(enriched);
+    }).toList();
+  }
+
+  List<dynamic> _decodeCards(String raw) {
+    final decoded = jsonDecode(raw);
+    if (decoded is List<dynamic>) {
+      return decoded;
+    }
+    if (decoded is Map<String, dynamic> && decoded['cards'] is List<dynamic>) {
+      return decoded['cards'] as List<dynamic>;
+    }
+    throw FormatException('Unexpected species data format');
+  }
+
+  void _applyColloquialFallback(
+    Map<String, dynamic> enriched,
+    String rawId,
+    _TasColloquialMaps fallback,
+  ) {
+    final String existingColloquial =
+        enriched['colloquialName']?.toString().trim() ?? '';
+    if (existingColloquial.isNotEmpty) {
+      return;
+    }
+    final String normalizedScientific = _normalizeForLookup(
+      enriched['scientificName']?.toString(),
+    );
+    final String? fallbackValue =
+        (rawId.isNotEmpty ? fallback.byId[rawId] : null) ??
+            fallback.byScientificName[normalizedScientific];
+    if (fallbackValue != null && fallbackValue.trim().isNotEmpty) {
+      enriched['colloquialName'] = fallbackValue.trim();
+    }
+  }
 
   Future<_TasColloquialMaps> _loadTasColloquialMaps() async {
     try {

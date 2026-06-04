@@ -11,6 +11,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:yaml/yaml.dart';
 
 import '../detection/detection.dart';
+import '../detection/iou.dart';
 import '../detection/stability_engine.dart';
 import '../models/species.dart';
 import '../models/navigation_args.dart';
@@ -54,6 +55,56 @@ class _DetectionUiPresentation {
   });
 }
 
+class _ModelMetadata {
+  final List<String> labels;
+  final int inputWidth;
+  final int inputHeight;
+
+  const _ModelMetadata({
+    required this.labels,
+    required this.inputWidth,
+    required this.inputHeight,
+  });
+}
+
+class _YoloModelDescriptor {
+  final String modelId;
+  final String displayName;
+  final String modelAssetPath;
+  final String metadataAssetPath;
+  final String materializedFileName;
+  final double nativeConfidenceThreshold;
+  final double displayConfidenceThreshold;
+  final double iouThreshold;
+  final bool useGpu;
+  final bool allowFp16;
+
+  const _YoloModelDescriptor({
+    required this.modelId,
+    required this.displayName,
+    required this.modelAssetPath,
+    required this.metadataAssetPath,
+    required this.materializedFileName,
+    required this.nativeConfidenceThreshold,
+    required this.displayConfidenceThreshold,
+    required this.iouThreshold,
+    required this.useGpu,
+    required this.allowFp16,
+  });
+}
+
+class _CaptureSelection {
+  final Detection primary;
+  final Detection? secondary;
+  final bool isAmbiguous;
+
+  const _CaptureSelection({
+    required this.primary,
+    required this.secondary,
+    required this.isAmbiguous,
+  });
+}
+
 class DetectionPage extends StatefulWidget {
   const DetectionPage({super.key});
 
@@ -69,9 +120,16 @@ class _DetectionPageState extends State<DetectionPage>
   StreamSubscription<String>? _nativeErrorSub;
   late DetectionStabilityEngine _stabilityEngine;
   List<String> _labels = [];
+  final Map<String, _ModelMetadata> _modelMetadata =
+      <String, _ModelMetadata>{};
+  final Map<String, NativeYoloEngine> _captureEngines =
+      <String, NativeYoloEngine>{};
+  NativeYuvFrame? _latestFrame;
   final SpeciesRepository _speciesRepository = SpeciesRepository.instance;
   Map<String, String> _speciesIdByName = {};
+  Map<String, String> _speciesIdByModelClass = {};
   Set<int> _lichenClassIndices = <int>{};
+  Set<String> _lichenClassKeys = <String>{};
   Set<String> _lichenNames = <String>{};
   bool _isInitialized = false;
   bool _hasPermission = false;
@@ -97,6 +155,39 @@ class _DetectionPageState extends State<DetectionPage>
 
   static const double _confThreshold = 0.30;
   static const double _nmsIoUThreshold = 0.45;
+  static const double _crossModelMergeIoUThreshold = 0.5;
+  static const double _crossModelAmbiguousMargin = 0.20;
+  static const double _crossModelOverrideMargin = 0.25;
+  static const double _crossModelCompetingMinScore = 0.45;
+
+  static const _YoloModelDescriptor _model1 = _YoloModelDescriptor(
+    modelId: 'model_1',
+    displayName: 'Model 1',
+    modelAssetPath: 'assets/models/1_yolo11n_float32.tflite',
+    metadataAssetPath: 'assets/models/metadata_1.yaml',
+    materializedFileName: '1_yolo11n_float32.tflite',
+    nativeConfidenceThreshold: _confThreshold,
+    displayConfidenceThreshold: 0.45,
+    iouThreshold: _nmsIoUThreshold,
+    useGpu: true,
+    allowFp16: true,
+  );
+
+  static const _YoloModelDescriptor _model2 = _YoloModelDescriptor(
+    modelId: 'model_2',
+    displayName: 'Model 2',
+    modelAssetPath: 'assets/models/yolo11n_float32.tflite',
+    metadataAssetPath: 'assets/models/metadata.yaml',
+    materializedFileName: 'yolo11n_float32.tflite',
+    nativeConfidenceThreshold: _confThreshold,
+    displayConfidenceThreshold: 0.45,
+    iouThreshold: _nmsIoUThreshold,
+    useGpu: true,
+    allowFp16: true,
+  );
+
+  static const List<_YoloModelDescriptor> _captureModels =
+      <_YoloModelDescriptor>[_model2, _model1];
 
   @override
   void initState() {
@@ -119,7 +210,17 @@ class _DetectionPageState extends State<DetectionPage>
       setState(() {
         _hasPermission = true;
       });
-      _labels = await _loadClassNamesFromYaml('assets/models/metadata.yaml');
+      final model2Metadata = await _loadModelMetadata(
+        _model2.metadataAssetPath,
+      );
+      final model1Metadata = await _loadModelMetadata(
+        _model1.metadataAssetPath,
+      );
+      _modelMetadata[_model2.modelId] = model2Metadata;
+      _modelMetadata[_model1.modelId] = model1Metadata;
+      _labels = model2Metadata.labels;
+      _inputWidth = model2Metadata.inputWidth;
+      _inputHeight = model2Metadata.inputHeight;
       debugPrint('labels.length: ${_labels.length}');
       _stabilityEngine = DetectionStabilityEngine(labels: _labels);
       _engineReady = true;
@@ -150,19 +251,29 @@ class _DetectionPageState extends State<DetectionPage>
     return false;
   }
 
-  Future<List<String>> _loadClassNamesFromYaml(String assetPath) async {
+  Future<_ModelMetadata> _loadModelMetadata(String assetPath) async {
     final yamlStr = await rootBundle.loadString(assetPath);
     final doc = loadYaml(yamlStr);
 
     List<String> names = [];
+    int inputWidth = 640;
+    int inputHeight = 640;
     if (doc is YamlMap) {
-      _updateInputShapeFromMetadata(doc);
+      final Size? rootSize = _inputShapeFromMetadata(doc);
+      if (rootSize != null) {
+        inputWidth = rootSize.width.toInt();
+        inputHeight = rootSize.height.toInt();
+      }
       dynamic namesNode;
       if (doc.containsKey('names')) {
         namesNode = doc['names'];
       } else if (doc.containsKey('model') && doc['model'] is YamlMap) {
         final modelNode = doc['model'] as YamlMap;
-        _updateInputShapeFromMetadata(modelNode);
+        final Size? modelSize = _inputShapeFromMetadata(modelNode);
+        if (modelSize != null) {
+          inputWidth = modelSize.width.toInt();
+          inputHeight = modelSize.height.toInt();
+        }
         if (modelNode.containsKey('names')) {
           namesNode = modelNode['names'];
         }
@@ -207,27 +318,33 @@ class _DetectionPageState extends State<DetectionPage>
     if (names.any((name) => name.trim().isEmpty)) {
       throw StateError('Metadata labels contain empty entries');
     }
-    return names;
+    return _ModelMetadata(
+      labels: names,
+      inputWidth: inputWidth,
+      inputHeight: inputHeight,
+    );
   }
 
-  void _updateInputShapeFromMetadata(YamlMap source) {
+  Size? _inputShapeFromMetadata(YamlMap source) {
     final imgsz = source['imgsz'];
     if (imgsz is YamlList && imgsz.isNotEmpty) {
       if (imgsz.length >= 2 && imgsz[0] is num && imgsz[1] is num) {
-        _inputWidth = (imgsz[0] as num).toInt();
-        _inputHeight = (imgsz[1] as num).toInt();
+        return Size(
+          (imgsz[0] as num).toDouble(),
+          (imgsz[1] as num).toDouble(),
+        );
       } else if (imgsz.length == 1 && imgsz[0] is num) {
         final size = (imgsz[0] as num).toInt();
-        _inputWidth = size;
-        _inputHeight = size;
+        return Size(size.toDouble(), size.toDouble());
       }
     }
+    return null;
   }
 
   Future<void> _initializeNativeEngine() async {
     final modelPath = await _materializeAsset(
-      'assets/models/yolo11n_float32.tflite',
-      'yolo11n_float32.tflite',
+      _model2.modelAssetPath,
+      _model2.materializedFileName,
     );
     final config = NativeYoloConfig(
       modelPath: modelPath,
@@ -235,10 +352,11 @@ class _DetectionPageState extends State<DetectionPage>
       inputHeight: _inputHeight,
       threads: Platform.isAndroid ? 3 : 2,
       maxDetections: 150,
-      confidenceThreshold: _confThreshold,
-      iouThreshold: _nmsIoUThreshold,
-      useGpu: true,
-      allowFp16: true,
+      confidenceThreshold: _model2.nativeConfidenceThreshold,
+      iouThreshold: _model2.iouThreshold,
+      displayConfidenceThreshold: _model2.displayConfidenceThreshold,
+      useGpu: _model2.useGpu,
+      allowFp16: _model2.allowFp16,
     );
 
     await _nativeDetectionsSub?.cancel();
@@ -272,22 +390,19 @@ class _DetectionPageState extends State<DetectionPage>
     if (!_engineReady) return;
     final int nowMs = DateTime.now().millisecondsSinceEpoch;
     _nativeResultCount += 1;
-    final List<Detection> mapped = detections
-        .map(
-          (d) => Detection(
-            box: Rect.fromLTRB(d.left, d.top, d.right, d.bottom),
-            confidence: d.score,
-            classId: d.classIndex,
-            label: _labelForIndex(d.classIndex),
-          ),
-        )
-        .toList();
+    final List<Detection> mapped = _mapNativeDetections(
+      _model2,
+      detections,
+      targetInputWidth: _inputWidth,
+      targetInputHeight: _inputHeight,
+    );
     final List<StableTrack> stableTracks = _stabilityEngine.processFrame(
       mapped,
       nowMs,
     );
     final StableTrack? primaryTrack = _selectPrimaryTrack(stableTracks);
-    if (primaryTrack != null && (primaryTrack.lockedClassId != null || primaryTrack.isStable)) {
+    if (primaryTrack != null &&
+        (primaryTrack.lockedClassKey != null || primaryTrack.isStable)) {
       _lastStableTrack = primaryTrack;
       _lastStableTrackMs = nowMs;
     }
@@ -302,9 +417,71 @@ class _DetectionPageState extends State<DetectionPage>
     });
   }
 
-  String _labelForIndex(int index) {
-    if (index >= 0 && index < _labels.length) {
-      final label = _labels[index].trim();
+  List<Detection> _mapNativeDetections(
+    _YoloModelDescriptor model,
+    List<NativeDetection> detections, {
+    required int targetInputWidth,
+    required int targetInputHeight,
+  }) {
+    final metadata = _modelMetadata[model.modelId];
+    if (metadata == null) {
+      return const <Detection>[];
+    }
+    final double scaleX = targetInputWidth / metadata.inputWidth;
+    final double scaleY = targetInputHeight / metadata.inputHeight;
+    return detections
+        .map((d) {
+          final label = _labelForIndex(d.classIndex, model: model);
+          final calibratedConfidence = _calibratedConfidence(model, d.score);
+          final finalScore = _finalScore(
+            model: model,
+            rawConfidence: d.score,
+            calibratedConfidence: calibratedConfidence,
+          );
+          return Detection(
+            box: Rect.fromLTRB(
+              d.left * scaleX,
+              d.top * scaleY,
+              d.right * scaleX,
+              d.bottom * scaleY,
+            ),
+            confidence: finalScore,
+            classId: d.classIndex,
+            label: label,
+            modelId: model.modelId,
+            modelDisplayName: model.displayName,
+            sourceClassId: d.classIndex,
+            namespacedClassId: '${model.modelId}:${d.classIndex}',
+            speciesName: label,
+            rawConfidence: d.score,
+            calibratedConfidence: calibratedConfidence,
+            finalScore: finalScore,
+            sourceModelIds: <String>[model.modelId],
+            sourceModelDisplayNames: <String>[model.displayName],
+          );
+        })
+        .toList(growable: false);
+  }
+
+  double _calibratedConfidence(_YoloModelDescriptor model, double raw) {
+    return raw.clamp(0.0, 1.0);
+  }
+
+  double _finalScore({
+    required _YoloModelDescriptor model,
+    required double rawConfidence,
+    required double calibratedConfidence,
+  }) {
+    return calibratedConfidence.clamp(0.0, 1.0);
+  }
+
+  String _labelForIndex(
+    int index, {
+    _YoloModelDescriptor model = _model2,
+  }) {
+    final labels = _modelMetadata[model.modelId]?.labels ?? _labels;
+    if (index >= 0 && index < labels.length) {
+      final label = labels[index].trim();
       if (label.isNotEmpty) {
         return label;
       }
@@ -316,7 +493,9 @@ class _DetectionPageState extends State<DetectionPage>
     try {
       final species = await _speciesRepository.loadSpecies();
       final map = <String, String>{};
+      final modelClassMap = <String, String>{};
       final lichenClassIndices = <int>{};
+      final lichenClassKeys = <String>{};
       final lichenNames = <String>{};
       for (final item in species) {
         final scientific = _normalizeName(item.scientificName);
@@ -332,6 +511,11 @@ class _DetectionPageState extends State<DetectionPage>
           if (classIndex != null) {
             lichenClassIndices.add(classIndex);
           }
+          final String? modelId = item.modelId;
+          final int? sourceClassId = item.sourceClassId;
+          if (modelId != null && sourceClassId != null) {
+            lichenClassKeys.add(_modelClassKey(modelId, sourceClassId));
+          }
           if (scientific.isNotEmpty) {
             lichenNames.add(scientific);
           }
@@ -339,11 +523,18 @@ class _DetectionPageState extends State<DetectionPage>
             lichenNames.add(common);
           }
         }
+        final String? modelId = item.modelId;
+        final int? sourceClassId = item.sourceClassId;
+        if (modelId != null && sourceClassId != null) {
+          modelClassMap[_modelClassKey(modelId, sourceClassId)] = item.id;
+        }
       }
       if (!mounted) return;
       setState(() {
         _speciesIdByName = map;
+        _speciesIdByModelClass = modelClassMap;
         _lichenClassIndices = lichenClassIndices;
+        _lichenClassKeys = lichenClassKeys;
         _lichenNames = lichenNames;
       });
     } catch (e, stack) {
@@ -382,7 +573,33 @@ class _DetectionPageState extends State<DetectionPage>
     return _speciesIdByName[_normalizeName(label)];
   }
 
-  bool _isLichenDetection({required int? classIndex, required String label}) {
+  String _modelClassKey(String modelId, int sourceClassId) {
+    return '$modelId:$sourceClassId';
+  }
+
+  String? _speciesIdForDetection({
+    required String? modelId,
+    required int? sourceClassId,
+    required String label,
+  }) {
+    if (modelId != null && sourceClassId != null) {
+      final String? speciesId =
+          _speciesIdByModelClass[_modelClassKey(modelId, sourceClassId)];
+      if (speciesId != null) {
+        return speciesId;
+      }
+    }
+    return _speciesIdForLabel(label);
+  }
+
+  bool _isLichenDetection({
+    required int? classIndex,
+    required String label,
+    String? modelId,
+  }) {
+    if (modelId != null && classIndex != null) {
+      return _lichenClassKeys.contains(_modelClassKey(modelId, classIndex));
+    }
     if (classIndex != null && _lichenClassIndices.contains(classIndex)) {
       return true;
     }
@@ -395,7 +612,7 @@ class _DetectionPageState extends State<DetectionPage>
       return null;
     }
     final List<StableTrack> locked = tracks
-        .where((t) => t.lockedClassId != null)
+        .where((t) => t.lockedClassKey != null)
         .toList();
     final List<StableTrack> candidates = locked.isNotEmpty ? locked : tracks;
     StableTrack best = candidates.first;
@@ -485,24 +702,39 @@ class _DetectionPageState extends State<DetectionPage>
     }
 
     final StableTrack? active = primaryTrack ?? displayTrack;
-    final bool hasLocked = active?.lockedClassId != null;
+    final bool hasLocked = active?.lockedClassKey != null;
     final bool stable = active?.isStable ?? false;
     final bool ready = primaryTrack?.isReadyToCapture ?? false;
     final bool ambiguous = active?.isAmbiguous ?? false;
     final String? label = hasLocked ? active?.lockedLabel : active?.top1Label;
-    final int? classIndex = hasLocked ? active?.lockedClassId : active?.top1ClassId;
-    final String? speciesId = classIndex == null
-        ? (label == null ? null : _speciesIdForLabel(label))
-        : classIndex.toString();
+    final String? modelDisplayName = hasLocked
+        ? active?.lockedModelDisplayName
+        : active?.top1ModelDisplayName;
+    final String? speciesId = label == null
+        ? null
+        : _speciesIdForDetection(
+            modelId: hasLocked ? active?.lockedModelId : active?.top1ModelId,
+            sourceClassId: hasLocked
+                ? active?.lockedClassId
+                : active?.top1ClassId,
+            label: label,
+          );
     final String? topConfidence = active == null
         ? null
         : '${(active.top1AvgConf * 100).toStringAsFixed(1)}%';
+    final String? sourceText = modelDisplayName == null
+        ? topConfidence
+        : topConfidence == null
+            ? modelDisplayName
+            : '$topConfidence $modelDisplayName';
 
     if (ready && label != null) {
       return _DetectionUiPresentation(
         state: _DetectionUiState.matchFound,
         displayTrack: active,
-        statusText: 'Match found: $label',
+        statusText: modelDisplayName == null
+            ? 'Match found: $label'
+            : 'Match found: $label ($modelDisplayName)',
         statusIcon: Icons.check_circle,
         bannerTitle: label,
         bannerSubtitle: topConfidence == null
@@ -520,12 +752,14 @@ class _DetectionPageState extends State<DetectionPage>
       return _DetectionUiPresentation(
         state: _DetectionUiState.matchFound,
         displayTrack: active,
-        statusText: 'Match found: $label',
+        statusText: modelDisplayName == null
+            ? 'Match found: $label'
+            : 'Match found: $label ($modelDisplayName)',
         statusIcon: Icons.shield_outlined,
         bannerTitle: label,
         bannerSubtitle: topConfidence == null
             ? 'Confirming...'
-            : 'Confirming... $topConfidence',
+            : 'Confirming... $sourceText',
         bannerDetail: ambiguous && active?.top2Label != null
             ? 'Also possible: ${active!.top2Label}'
             : null,
@@ -544,12 +778,14 @@ class _DetectionPageState extends State<DetectionPage>
         displayTrack: active,
         statusText: mediumOrHigher
             ? 'Confirming...'
-            : 'Possible match: $label',
+            : modelDisplayName == null
+                ? 'Possible match: $label'
+                : 'Possible match: $label ($modelDisplayName)',
         statusIcon: mediumOrHigher ? Icons.timelapse : Icons.search,
         bannerTitle: mediumOrHigher ? 'Confirming...' : 'Possible match: $label',
         bannerSubtitle: topConfidence == null
             ? null
-            : 'Confidence $topConfidence',
+            : 'Confidence $sourceText',
         bannerDetail: ambiguous && active?.top2Label != null
             ? 'Also possible: ${active!.top2Label}'
             : null,
@@ -559,8 +795,11 @@ class _DetectionPageState extends State<DetectionPage>
     }
 
     if (heldStable != null && heldStable.lockedLabel != null) {
-      final int? heldClass = heldStable.lockedClassId ?? heldStable.top1ClassId;
-      final String? heldSpeciesId = heldClass?.toString();
+      final String? heldSpeciesId = _speciesIdForDetection(
+        modelId: heldStable.lockedModelId ?? heldStable.top1ModelId,
+        sourceClassId: heldStable.lockedClassId ?? heldStable.top1ClassId,
+        label: heldStable.lockedLabel ?? heldStable.top1Label ?? '',
+      );
       return _DetectionUiPresentation(
         state: _DetectionUiState.confirming,
         displayTrack: heldStable,
@@ -596,61 +835,313 @@ class _DetectionPageState extends State<DetectionPage>
     });
 
     String? photoPath;
+    final navigator = Navigator.of(context);
     try {
+      final captureFrame = _latestFrame;
+      final Future<_CaptureSelection?> captureSelectionFuture =
+          captureFrame == null
+              ? Future<_CaptureSelection?>.value(null)
+              : _runCaptureDetectors(captureFrame);
       photoPath = await _capturePhoto();
       if (!mounted) return;
 
-      final int? classIndex = track.lockedClassId ?? track.top1ClassId;
-      final String label = classIndex == null
-          ? 'Unknown'
-          : _labelForIndex(classIndex);
-      final bool isLichen = _isLichenDetection(
-        classIndex: classIndex,
-        label: label,
-      );
-      final String? speciesId = classIndex == null
-          ? _speciesIdForLabel(label)
-          : classIndex.toString();
-      final args = DetectionResultArgs(
-        observationId: null,
-        lockedLabel: label,
-        top2Label: track.isAmbiguous ? track.top2Label : null,
-        top2ClassIndex: track.isAmbiguous ? track.top2ClassId : null,
-        top1AvgConf: track.lockedClassId == null
-            ? track.top1AvgConf
-            : track.lockedAvgConf,
-        top2AvgConf: track.isAmbiguous ? track.top2AvgConf : null,
-        top1VoteRatio: track.top1VoteRatio,
-        windowFrameCount: track.windowFrameCount,
-        windowDurationMs: track.windowDurationMs,
-        stabilityWinCount: track.stabilityWinCount,
-        stabilityWindowSize: track.stabilityWindowSize,
-        timestamp: DateTime.now(),
-        speciesId: speciesId,
-        classIndex: classIndex,
-        photoPath: photoPath,
-        isLichen: isLichen,
-      );
-      await Navigator.of(
-        context,
-      ).pushNamed('/detection-result', arguments: args);
-    } finally {
-      if (!mounted) return;
+      _CaptureSelection? captureSelection;
       try {
-        if (_camera != null &&
-            _camera!.value.isInitialized &&
-            !_camera!.value.isStreamingImages) {
-          await _startImageStream();
-        }
+        captureSelection = await captureSelectionFuture;
       } catch (e, stack) {
-        debugPrint('Failed to restart camera stream: $e');
+        debugPrint('Capture detector warning: $e');
         debugPrintStack(stackTrace: stack);
       }
-      if (!mounted) return;
-      setState(() {
-        _isCapturing = false;
-      });
+
+      final args = captureSelection == null
+          ? _resultArgsFromTrack(track, photoPath)
+          : _resultArgsFromCaptureSelection(
+              captureSelection,
+              track,
+              photoPath,
+            );
+      await navigator.pushNamed('/detection-result', arguments: args);
+    } finally {
+      if (mounted) {
+        try {
+          if (_camera != null &&
+              _camera!.value.isInitialized &&
+              !_camera!.value.isStreamingImages) {
+            await _startImageStream();
+          }
+        } catch (e, stack) {
+          debugPrint('Failed to restart camera stream: $e');
+          debugPrintStack(stackTrace: stack);
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _isCapturing = false;
+        });
+      }
     }
+  }
+
+  Future<_CaptureSelection?> _runCaptureDetectors(NativeYuvFrame frame) async {
+    final detections = <Detection>[];
+    for (final model in _captureModels) {
+      final engine = await _captureEngineFor(model);
+      final nativeDetections = await engine.detectFrame(frame);
+      detections.addAll(
+        _mapNativeDetections(
+          model,
+          nativeDetections,
+          targetInputWidth: _inputWidth,
+          targetInputHeight: _inputHeight,
+        ),
+      );
+    }
+    final merged = _mergeCrossModelDetections(detections);
+    return _selectCaptureDetection(merged);
+  }
+
+  Future<NativeYoloEngine> _captureEngineFor(
+    _YoloModelDescriptor model,
+  ) async {
+    final existing = _captureEngines[model.modelId];
+    if (existing != null) {
+      return existing;
+    }
+    final metadata = _modelMetadata[model.modelId];
+    if (metadata == null) {
+      throw StateError('Metadata not loaded for ${model.modelId}');
+    }
+    final modelPath = await _materializeAsset(
+      model.modelAssetPath,
+      model.materializedFileName,
+    );
+    final engine = await NativeYoloEngine.create(
+      NativeYoloConfig(
+        modelPath: modelPath,
+        inputWidth: metadata.inputWidth,
+        inputHeight: metadata.inputHeight,
+        threads: Platform.isAndroid ? 3 : 2,
+        maxDetections: 150,
+        confidenceThreshold: model.nativeConfidenceThreshold,
+        iouThreshold: model.iouThreshold,
+        displayConfidenceThreshold: model.displayConfidenceThreshold,
+        useGpu: false,
+        allowFp16: model.allowFp16,
+      ),
+    );
+    _captureEngines[model.modelId] = engine;
+    return engine;
+  }
+
+  List<Detection> _mergeCrossModelDetections(List<Detection> detections) {
+    if (detections.length < 2) {
+      return detections;
+    }
+    final sorted = [...detections]
+      ..sort((a, b) => b.finalScore.compareTo(a.finalScore));
+    final used = <int>{};
+    final output = <Detection>[];
+
+    for (int i = 0; i < sorted.length; i++) {
+      if (used.contains(i)) {
+        continue;
+      }
+      final base = sorted[i];
+      final group = <Detection>[base];
+      used.add(i);
+      for (int j = i + 1; j < sorted.length; j++) {
+        if (used.contains(j)) {
+          continue;
+        }
+        final candidate = sorted[j];
+        if (base.modelId == candidate.modelId) {
+          continue;
+        }
+        if (intersectionOverUnion(base.box, candidate.box) <
+            _crossModelMergeIoUThreshold) {
+          continue;
+        }
+        group.add(candidate);
+        used.add(j);
+      }
+      output.addAll(_mergeDetectionGroup(group));
+    }
+
+    output.sort((a, b) => b.finalScore.compareTo(a.finalScore));
+    return output;
+  }
+
+  List<Detection> _mergeDetectionGroup(List<Detection> group) {
+    if (group.length == 1) {
+      return group;
+    }
+    final sorted = [...group]
+      ..sort((a, b) => b.finalScore.compareTo(a.finalScore));
+    final best = sorted.first;
+    final sameSpecies = group.every(
+      (candidate) => _normalizeName(candidate.speciesName) ==
+          _normalizeName(best.speciesName),
+    );
+    if (!sameSpecies) {
+      return sorted;
+    }
+    final sourceModelIds = group.map((d) => d.modelId).toSet().toList()
+      ..sort();
+    final sourceModelDisplayNames =
+        group.map((d) => d.modelDisplayName).toSet().toList()..sort();
+    final double averageScore =
+        group.fold<double>(0.0, (sum, d) => sum + d.finalScore) / group.length;
+    final double finalScore = (averageScore + 0.05).clamp(0.0, 1.0);
+    return <Detection>[
+      Detection(
+        box: best.box,
+        confidence: finalScore,
+        classId: best.sourceClassId,
+        label: best.speciesName,
+        modelId: 'merged',
+        modelDisplayName: sourceModelDisplayNames.join(' + '),
+        sourceClassId: best.sourceClassId,
+        namespacedClassId: sourceModelIds.join('+'),
+        speciesName: best.speciesName,
+        rawConfidence: best.rawConfidence,
+        calibratedConfidence: averageScore,
+        finalScore: finalScore,
+        sourceModelIds: sourceModelIds,
+        sourceModelDisplayNames: sourceModelDisplayNames,
+      ),
+    ];
+  }
+
+  _CaptureSelection? _selectCaptureDetection(List<Detection> detections) {
+    if (detections.isEmpty) {
+      return null;
+    }
+    final sorted = [...detections]
+      ..sort((a, b) => b.finalScore.compareTo(a.finalScore));
+    final primary = sorted.first;
+    Detection? secondary;
+    bool ambiguous = false;
+    for (final candidate in sorted.skip(1)) {
+      if (intersectionOverUnion(primary.box, candidate.box) <
+          _crossModelMergeIoUThreshold) {
+        continue;
+      }
+      secondary = candidate;
+      final bool crossModelConflict = primary.modelId != candidate.modelId;
+      final double scoreGap =
+          (primary.finalScore - candidate.finalScore).abs();
+      ambiguous = crossModelConflict &&
+              candidate.finalScore >= _crossModelCompetingMinScore
+          ? scoreGap < _crossModelOverrideMargin
+          : scoreGap < _crossModelAmbiguousMargin;
+      break;
+    }
+    return _CaptureSelection(
+      primary: primary,
+      secondary: secondary,
+      isAmbiguous: ambiguous,
+    );
+  }
+
+  DetectionResultArgs _resultArgsFromCaptureSelection(
+    _CaptureSelection selection,
+    StableTrack fallbackTrack,
+    String? photoPath,
+  ) {
+    final primary = selection.primary;
+    final secondary = selection.isAmbiguous ? selection.secondary : null;
+    final bool isLichen = _isLichenDetection(
+      classIndex: primary.sourceClassId,
+      label: primary.speciesName,
+      modelId: primary.modelId,
+    );
+    return DetectionResultArgs(
+      observationId: null,
+      lockedLabel: primary.speciesName,
+      top2Label: secondary?.speciesName,
+      top2ClassIndex: secondary?.sourceClassId,
+      top1AvgConf: primary.finalScore,
+      top2AvgConf: secondary?.finalScore,
+      top1VoteRatio: fallbackTrack.top1VoteRatio,
+      windowFrameCount: fallbackTrack.windowFrameCount,
+      windowDurationMs: fallbackTrack.windowDurationMs,
+      stabilityWinCount: fallbackTrack.stabilityWinCount,
+      stabilityWindowSize: fallbackTrack.stabilityWindowSize,
+      timestamp: DateTime.now(),
+      speciesId: _speciesIdForDetection(
+        modelId: primary.modelId,
+        sourceClassId: primary.sourceClassId,
+        label: primary.speciesName,
+      ),
+      classIndex: primary.sourceClassId,
+      photoPath: photoPath,
+      isLichen: isLichen,
+      modelId: primary.modelId,
+      modelDisplayName: primary.sourceDisplayName,
+      sourceClassId: primary.sourceClassId,
+      rawConfidence: primary.rawConfidence,
+      calibratedConfidence: primary.calibratedConfidence,
+      finalScore: primary.finalScore,
+      top2ModelId: secondary?.modelId,
+      top2ModelDisplayName: secondary?.sourceDisplayName,
+      top2SourceClassId: secondary?.sourceClassId,
+    );
+  }
+
+  DetectionResultArgs _resultArgsFromTrack(
+    StableTrack track,
+    String? photoPath,
+  ) {
+    final int? classIndex = track.lockedClassId ?? track.top1ClassId;
+    final String label = track.lockedLabel ??
+        track.top1Label ??
+        (classIndex == null ? 'Unknown' : _labelForIndex(classIndex));
+    final bool isLichen = _isLichenDetection(
+      classIndex: classIndex,
+      label: label,
+      modelId: track.lockedModelId ?? track.top1ModelId,
+    );
+    return DetectionResultArgs(
+      observationId: null,
+      lockedLabel: label,
+      top2Label: track.isAmbiguous ? track.top2Label : null,
+      top2ClassIndex: track.isAmbiguous ? track.top2ClassId : null,
+      top1AvgConf: track.lockedClassKey == null
+          ? track.top1AvgConf
+          : track.lockedAvgConf,
+      top2AvgConf: track.isAmbiguous ? track.top2AvgConf : null,
+      top1VoteRatio: track.top1VoteRatio,
+      windowFrameCount: track.windowFrameCount,
+      windowDurationMs: track.windowDurationMs,
+      stabilityWinCount: track.stabilityWinCount,
+      stabilityWindowSize: track.stabilityWindowSize,
+      timestamp: DateTime.now(),
+      speciesId: _speciesIdForDetection(
+        modelId: track.lockedModelId ?? track.top1ModelId,
+        sourceClassId: classIndex,
+        label: label,
+      ),
+      classIndex: classIndex,
+      photoPath: photoPath,
+      isLichen: isLichen,
+      modelId: track.lockedModelId ?? track.top1ModelId,
+      modelDisplayName:
+          track.lockedModelDisplayName ?? track.top1ModelDisplayName,
+      sourceClassId: classIndex,
+      rawConfidence: track.lockedClassKey == null
+          ? track.top1AvgConf
+          : track.lockedAvgConf,
+      calibratedConfidence: track.lockedClassKey == null
+          ? track.top1AvgConf
+          : track.lockedAvgConf,
+      finalScore: track.lockedClassKey == null
+          ? track.top1AvgConf
+          : track.lockedAvgConf,
+      top2ModelId: track.isAmbiguous ? track.top2ModelId : null,
+      top2ModelDisplayName:
+          track.isAmbiguous ? track.top2ModelDisplayName : null,
+      top2SourceClassId: track.isAmbiguous ? track.top2ClassId : null,
+    );
   }
 
   Future<String?> _capturePhoto() async {
@@ -752,7 +1243,12 @@ class _DetectionPageState extends State<DetectionPage>
       _lastStreamFrameMs = nowMs;
       _logFrameSubmission(nowMs);
       final rotationDegrees = controller.description.sensorOrientation;
-      engine.submitCameraImage(image, rotationDegrees: rotationDegrees);
+      final frame = NativeYuvFrame.fromCameraImage(
+        image,
+        rotationDegrees: rotationDegrees,
+      );
+      _latestFrame = frame;
+      engine.submitFrame(frame);
     });
   }
 
@@ -798,6 +1294,12 @@ class _DetectionPageState extends State<DetectionPage>
     try {
       await _nativeEngine?.dispose();
     } catch (_) {}
+    for (final engine in _captureEngines.values) {
+      try {
+        await engine.dispose();
+      } catch (_) {}
+    }
+    _captureEngines.clear();
     _nativeEngine = null;
   }
 
@@ -1037,6 +1539,9 @@ class DetectionPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5
       ..color = accentColor;
+    final Paint labelBackgroundPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = const Color(0xCC1F4E3D);
 
     final double scaleXPreview = previewSize.width / inputSize.width;
     final double scaleYPreview = previewSize.height / inputSize.height;
@@ -1065,6 +1570,41 @@ class DetectionPainter extends CustomPainter {
       final rect = Rect.fromLTRB(left, top, right, bottom);
       canvas.drawRect(rect, glowPaint);
       canvas.drawRect(rect, boxPaint);
+
+      final TextPainter labelPainter = TextPainter(
+        text: TextSpan(
+          text: d.overlayLabel,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        maxLines: 2,
+        ellipsis: '...',
+        textDirection: TextDirection.ltr,
+      );
+      final double maxLabelWidth = (size.width - left - 8).clamp(80.0, 240.0);
+      labelPainter.layout(maxWidth: maxLabelWidth);
+      final double labelLeft = left.clamp(0.0, size.width - labelPainter.width - 8);
+      final double labelTop = (top - labelPainter.height - 6).clamp(
+        0.0,
+        size.height - labelPainter.height - 4,
+      );
+      final Rect labelRect = Rect.fromLTWH(
+        labelLeft,
+        labelTop,
+        labelPainter.width + 8,
+        labelPainter.height + 4,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(labelRect, const Radius.circular(4)),
+        labelBackgroundPaint,
+      );
+      labelPainter.paint(
+        canvas,
+        Offset(labelLeft + 4, labelTop + 2),
+      );
     }
   }
 

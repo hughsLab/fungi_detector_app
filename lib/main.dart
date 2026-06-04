@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import 'debug/detection_batch_test_runner.dart';
 import 'firebase_options.dart';
 import 'screens/about_screen.dart';
 import 'screens/detection_page.dart';
@@ -28,6 +29,7 @@ import 'services/settings_service.dart';
 import 'services/sync_manager.dart';
 
 const String _expectedAndroidPackageName = 'com.example.app1';
+const bool _detectionBatchTest = bool.fromEnvironment('DETECTION_BATCH_TEST');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +40,10 @@ Future<void> main() async {
     }
     FlutterError.presentError(details);
   };
+  if (_detectionBatchTest) {
+    await DetectionBatchTestRunner().runAndExit();
+    return;
+  }
   debugPrint('FIREBASE_INIT: initializing Firebase');
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   debugPrint('FIREBASE_INIT: Firebase initialized OK');

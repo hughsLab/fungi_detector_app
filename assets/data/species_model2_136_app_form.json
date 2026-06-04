@@ -1,0 +1,4766 @@
+{
+  "generatedAt": "2026-06-02T10:03:54Z",
+  "cards": [
+    {
+      "id": 0,
+      "scientificName": "Agaricus campestris",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Agaricaceae",
+        "genus": "Agaricus",
+        "species": "Agaricus campestris"
+      },
+      "commonName": null,
+      "colloquialName": "field mushroom",
+      "shortDescription": "Agaricus campestris is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 1,
+      "scientificName": "Agaricus xanthodermus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Agaricaceae",
+        "genus": "Agaricus",
+        "species": "Agaricus xanthodermus"
+      },
+      "commonName": null,
+      "colloquialName": "yellow-staining mushroom",
+      "shortDescription": "Agaricus xanthodermus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 2,
+      "scientificName": "Agrocybe pediades",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Strophariaceae",
+        "genus": "Agrocybe",
+        "species": "Agrocybe pediades"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Agrocybe pediades is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 3,
+      "scientificName": "Agrocybe praecox",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Strophariaceae",
+        "genus": "Agrocybe",
+        "species": "Agrocybe praecox"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Agrocybe praecox is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 4,
+      "scientificName": "Aleurina ferruginea",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Aleurina",
+        "species": "Aleurina ferruginea"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Aleurina ferruginea is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 5,
+      "scientificName": "Amanita cheelii",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Amanitaceae",
+        "genus": "Amanita",
+        "species": "Amanita cheelii"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Amanita cheelii is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 6,
+      "scientificName": "Amanita egregia",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Amanitaceae",
+        "genus": "Amanita",
+        "species": "Amanita egregia"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Amanita egregia is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 7,
+      "scientificName": "Amanita farinacea",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Amanitaceae",
+        "genus": "Amanita",
+        "species": "Amanita farinacea"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Amanita farinacea is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 8,
+      "scientificName": "Amanita flavella",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Amanitaceae",
+        "genus": "Amanita",
+        "species": "Amanita flavella"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Amanita flavella is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 9,
+      "scientificName": "Amanita luteolovelata",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Amanitaceae",
+        "genus": "Amanita",
+        "species": "Amanita luteolovelata"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Amanita luteolovelata is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 10,
+      "scientificName": "Amanita ochrophylla",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Amanitaceae",
+        "genus": "Amanita",
+        "species": "Amanita ochrophylla"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Amanita ochrophylla is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 11,
+      "scientificName": "Amanita ochrophylloides",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Amanitaceae",
+        "genus": "Amanita",
+        "species": "Amanita ochrophylloides"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Amanita ochrophylloides is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 12,
+      "scientificName": "Amanita pyramidifera",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Amanitaceae",
+        "genus": "Amanita",
+        "species": "Amanita pyramidifera"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Amanita pyramidifera is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 13,
+      "scientificName": "Annulohypoxylon bovei",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Annulohypoxylon",
+        "species": "Annulohypoxylon bovei"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Annulohypoxylon bovei is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 14,
+      "scientificName": "Artomyces austropiperatus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Artomyces",
+        "species": "Artomyces austropiperatus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Artomyces austropiperatus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 15,
+      "scientificName": "Auricularia cornea",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Auriculariales",
+        "family": "Auriculariaceae",
+        "genus": "Auricularia",
+        "species": "Auricularia cornea"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Auricularia cornea is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 16,
+      "scientificName": "Austroboletus lacunosus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Boletales",
+        "family": "Boletaceae",
+        "genus": "Austroboletus",
+        "species": "Austroboletus lacunosus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Austroboletus lacunosus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 17,
+      "scientificName": "Austrocortinarius australiensis",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Austrocortinarius",
+        "species": "Austrocortinarius australiensis"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Austrocortinarius australiensis is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 18,
+      "scientificName": "Austropuccinia psidii",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Austropuccinia",
+        "species": "Austropuccinia psidii"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Austropuccinia psidii is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 19,
+      "scientificName": "Boletellus deceptivus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Boletales",
+        "family": "Boletaceae",
+        "genus": "Boletellus",
+        "species": "Boletellus deceptivus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Boletellus deceptivus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 20,
+      "scientificName": "Boletellus dissiliens",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Boletales",
+        "family": "Boletaceae",
+        "genus": "Boletellus",
+        "species": "Boletellus dissiliens"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Boletellus dissiliens is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 21,
+      "scientificName": "Boletellus emodensis",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Boletales",
+        "family": "Boletaceae",
+        "genus": "Boletellus",
+        "species": "Boletellus emodensis"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Boletellus emodensis is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 22,
+      "scientificName": "Boletus barragensis",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Boletales",
+        "family": "Boletaceae",
+        "genus": "Boletus",
+        "species": "Boletus barragensis"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Boletus barragensis is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 23,
+      "scientificName": "Bjerkandera adusta",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Polyporales",
+        "family": "Meruliaceae",
+        "genus": "Bjerkandera",
+        "species": "Bjerkandera adusta"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Bjerkandera adusta is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 24,
+      "scientificName": "Bolbitius titubans",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Bolbitiaceae",
+        "genus": "Bolbitius",
+        "species": "Bolbitius titubans"
+      },
+      "commonName": null,
+      "colloquialName": "yellow fieldcap",
+      "shortDescription": "Bolbitius titubans is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 25,
+      "scientificName": "Calocera sinensis",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Calocera",
+        "species": "Calocera sinensis"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Calocera sinensis is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 26,
+      "scientificName": "Calycina claroflava",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Calycina",
+        "species": "Calycina claroflava"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Calycina claroflava is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 27,
+      "scientificName": "Candolleomyces candolleanus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Psathyrellaceae",
+        "genus": "Candolleomyces",
+        "species": "Candolleomyces candolleanus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Candolleomyces candolleanus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 28,
+      "scientificName": "Chlorophyllum brunneum",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Agaricaceae",
+        "genus": "Chlorophyllum",
+        "species": "Chlorophyllum brunneum"
+      },
+      "commonName": null,
+      "colloquialName": "shaggy parasol",
+      "shortDescription": "Chlorophyllum brunneum is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 29,
+      "scientificName": "Chlorophyllum molybdites",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Agaricaceae",
+        "genus": "Chlorophyllum",
+        "species": "Chlorophyllum molybdites"
+      },
+      "commonName": null,
+      "colloquialName": "green-spored parasol",
+      "shortDescription": "Chlorophyllum molybdites is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 30,
+      "scientificName": "Clathrus archeri",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Phallales",
+        "family": "Phallaceae",
+        "genus": "Clathrus",
+        "species": "Clathrus archeri"
+      },
+      "commonName": null,
+      "colloquialName": "octopus stinkhorn",
+      "shortDescription": "Clathrus archeri is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 31,
+      "scientificName": "Clathrus ruber",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Phallales",
+        "family": "Phallaceae",
+        "genus": "Clathrus",
+        "species": "Clathrus ruber"
+      },
+      "commonName": null,
+      "colloquialName": "basket stinkhorn",
+      "shortDescription": "Clathrus ruber is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 32,
+      "scientificName": "Clavulina cinerea",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Cantharellales",
+        "family": "Hydnaceae",
+        "genus": "Clavulina",
+        "species": "Clavulina cinerea"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Clavulina cinerea is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 33,
+      "scientificName": "Clavulina coralloides",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Cantharellales",
+        "family": "Hydnaceae",
+        "genus": "Clavulina",
+        "species": "Clavulina coralloides"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Clavulina coralloides is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 34,
+      "scientificName": "Clavulina rugosa",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Cantharellales",
+        "family": "Hydnaceae",
+        "genus": "Clavulina",
+        "species": "Clavulina rugosa"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Clavulina rugosa is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 35,
+      "scientificName": "Clavulina vinaceocervina",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Cantharellales",
+        "family": "Hydnaceae",
+        "genus": "Clavulina",
+        "species": "Clavulina vinaceocervina"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Clavulina vinaceocervina is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 36,
+      "scientificName": "Collybia kurara",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Collybia",
+        "species": "Collybia kurara"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Collybia kurara is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 37,
+      "scientificName": "Collybiopsis affixa",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Collybiopsis",
+        "species": "Collybiopsis affixa"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Collybiopsis affixa is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 38,
+      "scientificName": "Colus pusillus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Colus",
+        "species": "Colus pusillus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Colus pusillus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 39,
+      "scientificName": "Conocybe apala",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Bolbitiaceae",
+        "genus": "Conocybe",
+        "species": "Conocybe apala"
+      },
+      "commonName": null,
+      "colloquialName": "milky conecap",
+      "shortDescription": "Conocybe apala is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 40,
+      "scientificName": "Cordyceps tenuipes",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Cordyceps",
+        "species": "Cordyceps tenuipes"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Cordyceps tenuipes is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 41,
+      "scientificName": "Coprinellus micaceus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Psathyrellaceae",
+        "genus": "Coprinellus",
+        "species": "Coprinellus micaceus"
+      },
+      "commonName": null,
+      "colloquialName": "mica cap",
+      "shortDescription": "Coprinellus micaceus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 42,
+      "scientificName": "Coprinopsis atramentaria",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Psathyrellaceae",
+        "genus": "Coprinopsis",
+        "species": "Coprinopsis atramentaria"
+      },
+      "commonName": null,
+      "colloquialName": "common ink cap",
+      "shortDescription": "Coprinopsis atramentaria is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 43,
+      "scientificName": "Coprinopsis lagopus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Psathyrellaceae",
+        "genus": "Coprinopsis",
+        "species": "Coprinopsis lagopus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Coprinopsis lagopus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 44,
+      "scientificName": "Cortinarius fibrillosus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Cortinariaceae",
+        "genus": "Cortinarius",
+        "species": "Cortinarius fibrillosus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Cortinarius fibrillosus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 45,
+      "scientificName": "Cortinarius kioloensis",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Cortinariaceae",
+        "genus": "Cortinarius",
+        "species": "Cortinarius kioloensis"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Cortinarius kioloensis is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 46,
+      "scientificName": "Cortinarius persplendidus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Cortinariaceae",
+        "genus": "Cortinarius",
+        "species": "Cortinarius persplendidus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Cortinarius persplendidus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 47,
+      "scientificName": "Cyathus stercoreus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Agaricaceae",
+        "genus": "Cyathus",
+        "species": "Cyathus stercoreus"
+      },
+      "commonName": null,
+      "colloquialName": "dung-loving bird's nest",
+      "shortDescription": "Cyathus stercoreus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 48,
+      "scientificName": "Cyathus striatus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Agaricaceae",
+        "genus": "Cyathus",
+        "species": "Cyathus striatus"
+      },
+      "commonName": null,
+      "colloquialName": "fluted bird's nest",
+      "shortDescription": "Cyathus striatus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 49,
+      "scientificName": "Cymatoderma elegans",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Cymatoderma",
+        "species": "Cymatoderma elegans"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Cymatoderma elegans is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 50,
+      "scientificName": "Dacrymyces spathularia",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Dacrymyces",
+        "species": "Dacrymyces spathularia"
+      },
+      "commonName": null,
+      "colloquialName": "fan-shaped jelly fungus",
+      "shortDescription": "Dacrymyces spathularia is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 51,
+      "scientificName": "Deconica coprophila",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Strophariaceae",
+        "genus": "Deconica",
+        "species": "Deconica coprophila"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Deconica coprophila is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 52,
+      "scientificName": "Deconica horizontalis",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Strophariaceae",
+        "genus": "Deconica",
+        "species": "Deconica horizontalis"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Deconica horizontalis is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 53,
+      "scientificName": "Entoloma readiae",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Entolomataceae",
+        "genus": "Entoloma",
+        "species": "Entoloma readiae"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Entoloma readiae is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 54,
+      "scientificName": "Entoloma virescens",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Entolomataceae",
+        "genus": "Entoloma",
+        "species": "Entoloma virescens"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Entoloma virescens is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 55,
+      "scientificName": "Favolaschia manipularis",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Mycenaceae",
+        "genus": "Favolaschia",
+        "species": "Favolaschia manipularis"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Favolaschia manipularis is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 56,
+      "scientificName": "Fomitopsis lilacinogilva",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Fomitopsis",
+        "species": "Fomitopsis lilacinogilva"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Fomitopsis lilacinogilva is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 57,
+      "scientificName": "Gymnopilus eucalyptorum",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Hymenogastraceae",
+        "genus": "Gymnopilus",
+        "species": "Gymnopilus eucalyptorum"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Gymnopilus eucalyptorum is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 58,
+      "scientificName": "Gymnopilus sapineus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Hymenogastraceae",
+        "genus": "Gymnopilus",
+        "species": "Gymnopilus sapineus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Gymnopilus sapineus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 59,
+      "scientificName": "Hemimycena lactea",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Mycenaceae",
+        "genus": "Hemimycena",
+        "species": "Hemimycena lactea"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Hemimycena lactea is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 60,
+      "scientificName": "Heterotextus miltinus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Dacrymycetes",
+        "order": "Dacrymycetales",
+        "family": "Dacrymycetaceae",
+        "genus": "Heterotextus",
+        "species": "Heterotextus miltinus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Heterotextus miltinus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 61,
+      "scientificName": "Hexagonia tenuis",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Polyporales",
+        "family": "Polyporaceae",
+        "genus": "Hexagonia",
+        "species": "Hexagonia tenuis"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Hexagonia tenuis is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 62,
+      "scientificName": "Hexagonia vesparia",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Polyporales",
+        "family": "Polyporaceae",
+        "genus": "Hexagonia",
+        "species": "Hexagonia vesparia"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Hexagonia vesparia is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 63,
+      "scientificName": "Hymenotorrendiella clelandii",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Hymenotorrendiella",
+        "species": "Hymenotorrendiella clelandii"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Hymenotorrendiella clelandii is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 64,
+      "scientificName": "Hymenotorrendiella eucalypti",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Hymenotorrendiella",
+        "species": "Hymenotorrendiella eucalypti"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Hymenotorrendiella eucalypti is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 65,
+      "scientificName": "Hypomyces chrysospermus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Hypomyces",
+        "species": "Hypomyces chrysospermus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Hypomyces chrysospermus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 66,
+      "scientificName": "Hypoxylon howeanum",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Hypoxylon",
+        "species": "Hypoxylon howeanum"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Hypoxylon howeanum is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 67,
+      "scientificName": "Ileodictyon gracile",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Ileodictyon",
+        "species": "Ileodictyon gracile"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Ileodictyon gracile is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 68,
+      "scientificName": "Kordyana brasiliensis",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Kordyana",
+        "species": "Kordyana brasiliensis"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Kordyana brasiliensis is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 69,
+      "scientificName": "Lachnum virgineum",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Lachnum",
+        "species": "Lachnum virgineum"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Lachnum virgineum is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 70,
+      "scientificName": "Leucocoprinus birnbaumii",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Agaricaceae",
+        "genus": "Leucocoprinus",
+        "species": "Leucocoprinus birnbaumii"
+      },
+      "commonName": null,
+      "colloquialName": "yellow houseplant mushroom",
+      "shortDescription": "Leucocoprinus birnbaumii is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 71,
+      "scientificName": "Leucocoprinus fragilissimus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Agaricaceae",
+        "genus": "Leucocoprinus",
+        "species": "Leucocoprinus fragilissimus"
+      },
+      "commonName": null,
+      "colloquialName": "fragile dapperling",
+      "shortDescription": "Leucocoprinus fragilissimus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 72,
+      "scientificName": "Leucocoprinus leucothites",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Agaricaceae",
+        "genus": "Leucocoprinus",
+        "species": "Leucocoprinus leucothites"
+      },
+      "commonName": null,
+      "colloquialName": "white dapperling",
+      "shortDescription": "Leucocoprinus leucothites is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 73,
+      "scientificName": "Lentinus arcularius",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Polyporales",
+        "family": "Polyporaceae",
+        "genus": "Lentinus",
+        "species": "Lentinus arcularius"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Lentinus arcularius is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 74,
+      "scientificName": "Lentinus sajor-caju",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Polyporales",
+        "family": "Polyporaceae",
+        "genus": "Lentinus",
+        "species": "Lentinus sajor-caju"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Lentinus sajor-caju is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 75,
+      "scientificName": "Lycoperdon pratense",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Agaricaceae",
+        "genus": "Lycoperdon",
+        "species": "Lycoperdon pratense"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Lycoperdon pratense is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 76,
+      "scientificName": "Lycoperdon subincarnatum",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Agaricaceae",
+        "genus": "Lycoperdon",
+        "species": "Lycoperdon subincarnatum"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Lycoperdon subincarnatum is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 77,
+      "scientificName": "Lysurus mokusin",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Lysurus",
+        "species": "Lysurus mokusin"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Lysurus mokusin is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 78,
+      "scientificName": "Macrolepiota dolichaula",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Agaricaceae",
+        "genus": "Macrolepiota",
+        "species": "Macrolepiota dolichaula"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Macrolepiota dolichaula is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 79,
+      "scientificName": "Marasmiellus candidus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Marasmiellus",
+        "species": "Marasmiellus candidus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Marasmiellus candidus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 80,
+      "scientificName": "Marasmius crinis-equi",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Marasmiaceae",
+        "genus": "Marasmius",
+        "species": "Marasmius crinis-equi"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Marasmius crinis-equi is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 81,
+      "scientificName": "Marasmius oreades",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Marasmiaceae",
+        "genus": "Marasmius",
+        "species": "Marasmius oreades"
+      },
+      "commonName": null,
+      "colloquialName": "fairy ring mushroom",
+      "shortDescription": "Marasmius oreades is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 82,
+      "scientificName": "Meruliopsis taxicola",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Meruliopsis",
+        "species": "Meruliopsis taxicola"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Meruliopsis taxicola is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 83,
+      "scientificName": "Metacampanella olivaceonigra",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Metacampanella",
+        "species": "Metacampanella olivaceonigra"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Metacampanella olivaceonigra is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 84,
+      "scientificName": "Microporus affinis",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Polyporales",
+        "family": "Polyporaceae",
+        "genus": "Microporus",
+        "species": "Microporus affinis"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Microporus affinis is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 85,
+      "scientificName": "Microporus xanthopus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Polyporales",
+        "family": "Polyporaceae",
+        "genus": "Microporus",
+        "species": "Microporus xanthopus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Microporus xanthopus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 86,
+      "scientificName": "Morchella australiana",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Ascomycota",
+        "class": "Pezizomycetes",
+        "order": "Pezizales",
+        "family": "Morchellaceae",
+        "genus": "Morchella",
+        "species": "Morchella australiana"
+      },
+      "commonName": null,
+      "colloquialName": "Australian morel",
+      "shortDescription": "Morchella australiana is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 87,
+      "scientificName": "Mycena carmeliana",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Mycenaceae",
+        "genus": "Mycena",
+        "species": "Mycena carmeliana"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Mycena carmeliana is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 88,
+      "scientificName": "Mycena chlorophos",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Mycenaceae",
+        "genus": "Mycena",
+        "species": "Mycena chlorophos"
+      },
+      "commonName": null,
+      "colloquialName": "green-pepe",
+      "shortDescription": "Mycena chlorophos is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 89,
+      "scientificName": "Mycena fumosa",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Mycenaceae",
+        "genus": "Mycena",
+        "species": "Mycena fumosa"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Mycena fumosa is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 90,
+      "scientificName": "Mycena lazulina",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Mycenaceae",
+        "genus": "Mycena",
+        "species": "Mycena lazulina"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Mycena lazulina is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 91,
+      "scientificName": "Mycena leptocephala",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Mycenaceae",
+        "genus": "Mycena",
+        "species": "Mycena leptocephala"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Mycena leptocephala is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 92,
+      "scientificName": "Mycena roseilignicola",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Mycenaceae",
+        "genus": "Mycena",
+        "species": "Mycena roseilignicola"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Mycena roseilignicola is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 93,
+      "scientificName": "Myxarium nucleatum",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Myxarium",
+        "species": "Myxarium nucleatum"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Myxarium nucleatum is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 94,
+      "scientificName": "Neobarya agaricicola",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Neobarya",
+        "species": "Neobarya agaricicola"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Neobarya agaricicola is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 95,
+      "scientificName": "Ossicaulis semiocculta",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Ossicaulis",
+        "species": "Ossicaulis semiocculta"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Ossicaulis semiocculta is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 96,
+      "scientificName": "Panaeolus foenisecii",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Psathyrellaceae",
+        "genus": "Panaeolus",
+        "species": "Panaeolus foenisecii"
+      },
+      "commonName": null,
+      "colloquialName": "mower's mushroom",
+      "shortDescription": "Panaeolus foenisecii is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 97,
+      "scientificName": "Panaeolus papilionaceus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Psathyrellaceae",
+        "genus": "Panaeolus",
+        "species": "Panaeolus papilionaceus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Panaeolus papilionaceus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 98,
+      "scientificName": "Panellus luxfilamentus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Mycenaceae",
+        "genus": "Panellus",
+        "species": "Panellus luxfilamentus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Panellus luxfilamentus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 99,
+      "scientificName": "Panellus pusillus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Mycenaceae",
+        "genus": "Panellus",
+        "species": "Panellus pusillus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Panellus pusillus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 100,
+      "scientificName": "Panus fasciatus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Panus",
+        "species": "Panus fasciatus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Panus fasciatus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 101,
+      "scientificName": "Parasola plicatilis",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Psathyrellaceae",
+        "genus": "Parasola",
+        "species": "Parasola plicatilis"
+      },
+      "commonName": null,
+      "colloquialName": "pleated inkcap",
+      "shortDescription": "Parasola plicatilis is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 102,
+      "scientificName": "Phaeotrametes decipiens",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Phaeotrametes",
+        "species": "Phaeotrametes decipiens"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Phaeotrametes decipiens is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 103,
+      "scientificName": "Phaeolus schweinitzii",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Polyporales",
+        "family": "Fomitopsidaceae",
+        "genus": "Phaeolus",
+        "species": "Phaeolus schweinitzii"
+      },
+      "commonName": null,
+      "colloquialName": "dyer's polypore",
+      "shortDescription": "Phaeolus schweinitzii is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 104,
+      "scientificName": "Phallus indusiatus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Phallales",
+        "family": "Phallaceae",
+        "genus": "Phallus",
+        "species": "Phallus indusiatus"
+      },
+      "commonName": null,
+      "colloquialName": "veiled stinkhorn",
+      "shortDescription": "Phallus indusiatus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 105,
+      "scientificName": "Phallus multicolor",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Phallales",
+        "family": "Phallaceae",
+        "genus": "Phallus",
+        "species": "Phallus multicolor"
+      },
+      "commonName": null,
+      "colloquialName": "yellow-veiled stinkhorn",
+      "shortDescription": "Phallus multicolor is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 106,
+      "scientificName": "Phlebopus marginatus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Boletales",
+        "family": "Boletinellaceae",
+        "genus": "Phlebopus",
+        "species": "Phlebopus marginatus"
+      },
+      "commonName": null,
+      "colloquialName": "giant bolete",
+      "shortDescription": "Phlebopus marginatus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 107,
+      "scientificName": "Pholiota communis",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Strophariaceae",
+        "genus": "Pholiota",
+        "species": "Pholiota communis"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Pholiota communis is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 108,
+      "scientificName": "Phylloporus rhodoxanthus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Phylloporus",
+        "species": "Phylloporus rhodoxanthus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Phylloporus rhodoxanthus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 109,
+      "scientificName": "Piptoporus australiensis",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Polyporales",
+        "family": "Fomitopsidaceae",
+        "genus": "Piptoporus",
+        "species": "Piptoporus australiensis"
+      },
+      "commonName": null,
+      "colloquialName": "curry punk",
+      "shortDescription": "Piptoporus australiensis is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 110,
+      "scientificName": "Pleurotus ostreatus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Pleurotaceae",
+        "genus": "Pleurotus",
+        "species": "Pleurotus ostreatus"
+      },
+      "commonName": null,
+      "colloquialName": "oyster mushroom",
+      "shortDescription": "Pleurotus ostreatus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 111,
+      "scientificName": "Podaxis pistillaris",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Agaricaceae",
+        "genus": "Podaxis",
+        "species": "Podaxis pistillaris"
+      },
+      "commonName": null,
+      "colloquialName": "desert shaggy mane",
+      "shortDescription": "Podaxis pistillaris is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 112,
+      "scientificName": "Pseudohydnum tasmanicum",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Auriculariales",
+        "family": null,
+        "genus": "Pseudohydnum",
+        "species": "Pseudohydnum tasmanicum"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Pseudohydnum tasmanicum is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 113,
+      "scientificName": "Ramaria capitata",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Gomphales",
+        "family": "Gomphaceae",
+        "genus": "Ramaria",
+        "species": "Ramaria capitata"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Ramaria capitata is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 114,
+      "scientificName": "Ramariopsis crocea",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Ramariopsis",
+        "species": "Ramariopsis crocea"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Ramariopsis crocea is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 115,
+      "scientificName": "Rhizochaete filamentosa",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Rhizochaete",
+        "species": "Rhizochaete filamentosa"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Rhizochaete filamentosa is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 116,
+      "scientificName": "Rhodocollybia butyracea",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Rhodocollybia",
+        "species": "Rhodocollybia butyracea"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Rhodocollybia butyracea is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 117,
+      "scientificName": "Russula clelandii",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Russulales",
+        "family": "Russulaceae",
+        "genus": "Russula",
+        "species": "Russula clelandii"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Russula clelandii is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 118,
+      "scientificName": "Satyrus rubicundus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Satyrus",
+        "species": "Satyrus rubicundus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Satyrus rubicundus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 119,
+      "scientificName": "Scleroderma citrinum",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Boletales",
+        "family": "Sclerodermataceae",
+        "genus": "Scleroderma",
+        "species": "Scleroderma citrinum"
+      },
+      "commonName": null,
+      "colloquialName": "common earthball",
+      "shortDescription": "Scleroderma citrinum is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 120,
+      "scientificName": "Schizophyllum commune",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Agaricales",
+        "family": "Schizophyllaceae",
+        "genus": "Schizophyllum",
+        "species": "Schizophyllum commune"
+      },
+      "commonName": null,
+      "colloquialName": "split gill",
+      "shortDescription": "Schizophyllum commune is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 121,
+      "scientificName": "Suillus granulatus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Boletales",
+        "family": "Suillaceae",
+        "genus": "Suillus",
+        "species": "Suillus granulatus"
+      },
+      "commonName": null,
+      "colloquialName": "weeping bolete",
+      "shortDescription": "Suillus granulatus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 122,
+      "scientificName": "Suillus luteus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Boletales",
+        "family": "Suillaceae",
+        "genus": "Suillus",
+        "species": "Suillus luteus"
+      },
+      "commonName": null,
+      "colloquialName": "slippery jack",
+      "shortDescription": "Suillus luteus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 123,
+      "scientificName": "Thaxterogaster submagellanicus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Thaxterogaster",
+        "species": "Thaxterogaster submagellanicus"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Thaxterogaster submagellanicus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 124,
+      "scientificName": "Thysanothecium scutellatum",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Thysanothecium",
+        "species": "Thysanothecium scutellatum"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Thysanothecium scutellatum is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 125,
+      "scientificName": "Trogia straminea",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Trogia",
+        "species": "Trogia straminea"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Trogia straminea is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 126,
+      "scientificName": "Trametes hirsuta",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Polyporales",
+        "family": "Polyporaceae",
+        "genus": "Trametes",
+        "species": "Trametes hirsuta"
+      },
+      "commonName": null,
+      "colloquialName": "hairy bracket",
+      "shortDescription": "Trametes hirsuta is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 127,
+      "scientificName": "Trametes sanguinea",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Polyporales",
+        "family": "Polyporaceae",
+        "genus": "Trametes",
+        "species": "Trametes sanguinea"
+      },
+      "commonName": null,
+      "colloquialName": "scarlet bracket",
+      "shortDescription": "Trametes sanguinea is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 128,
+      "scientificName": "Trichaptum biforme",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Basidiomycota",
+        "class": "Agaricomycetes",
+        "order": "Hymenochaetales",
+        "family": "Hymenochaetaceae",
+        "genus": "Trichaptum",
+        "species": "Trichaptum biforme"
+      },
+      "commonName": null,
+      "colloquialName": "violet-toothed polypore",
+      "shortDescription": "Trichaptum biforme is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 129,
+      "scientificName": "Trichoderma viride",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Ascomycota",
+        "class": "Sordariomycetes",
+        "order": "Hypocreales",
+        "family": "Hypocreaceae",
+        "genus": "Trichoderma",
+        "species": "Trichoderma viride"
+      },
+      "commonName": null,
+      "colloquialName": "green mould",
+      "shortDescription": "Trichoderma viride is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 130,
+      "scientificName": "Truncospora ochroleuca",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Truncospora",
+        "species": "Truncospora ochroleuca"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Truncospora ochroleuca is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 131,
+      "scientificName": "Tylopilus balloui",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Tylopilus",
+        "species": "Tylopilus balloui"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Tylopilus balloui is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 132,
+      "scientificName": "Uromycladium murphyi",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Uromycladium",
+        "species": "Uromycladium murphyi"
+      },
+      "commonName": null,
+      "colloquialName": null,
+      "shortDescription": "Uromycladium murphyi is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 133,
+      "scientificName": "Volvopluteus gloiocephalus",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": null,
+        "class": null,
+        "order": null,
+        "family": null,
+        "genus": "Volvopluteus",
+        "species": "Volvopluteus gloiocephalus"
+      },
+      "commonName": null,
+      "colloquialName": "stubble rosegill",
+      "shortDescription": "Volvopluteus gloiocephalus is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 134,
+      "scientificName": "Xylaria hypoxylon",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Ascomycota",
+        "class": "Sordariomycetes",
+        "order": "Xylariales",
+        "family": "Xylariaceae",
+        "genus": "Xylaria",
+        "species": "Xylaria hypoxylon"
+      },
+      "commonName": null,
+      "colloquialName": "candlesnuff fungus",
+      "shortDescription": "Xylaria hypoxylon is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    },
+    {
+      "id": 135,
+      "scientificName": "Xylaria polymorpha",
+      "authority": null,
+      "taxonomy": {
+        "kingdom": "Fungi",
+        "phylum": "Ascomycota",
+        "class": "Sordariomycetes",
+        "order": "Xylariales",
+        "family": "Xylariaceae",
+        "genus": "Xylaria",
+        "species": "Xylaria polymorpha"
+      },
+      "commonName": null,
+      "colloquialName": "dead man's fingers",
+      "shortDescription": "Xylaria polymorpha is a fungus species included in the app's Australian fungus detection model.",
+      "keyFeatures": [],
+      "habitat": "",
+      "season": "",
+      "distribution": {
+        "country": "Australia",
+        "states": [
+          "Tasmania",
+          "New South Wales"
+        ],
+        "note": "Presence only. No abundance or frequency implied."
+      },
+      "similarSpecies": [],
+      "edibilityWarning": "Do not consume. Many fungi have toxic lookalikes and identification from images alone can be unreliable.",
+      "imageAsset": null,
+      "sources": {
+        "taxonomy": "Model metadata / pending GBIF Backbone enrichment",
+        "description": "Generated from YOLO metadata species list"
+      }
+    }
+  ],
+  "errors": []
+}

@@ -144,6 +144,60 @@ void main() {
     expect(out.top2Label, 'b');
   });
 
+  test('same raw class id from different models does not collide', () {
+    final engine = DetectionStabilityEngine(
+      labels: const ['fallback'],
+      config: const StabilityConfig(
+        detectConfMin: 0.0,
+        stabilityWindowFramesM: 2,
+        lockWinCount: 1,
+        readyConfMin: 0.0,
+        readyMinAgeMs: 0,
+      ),
+    );
+
+    engine.processFrame(
+      [
+        Detection(
+          box: Rect.fromLTWH(0, 0, 1, 1),
+          confidence: 0.65,
+          classId: 0,
+          label: 'model one species',
+          modelId: 'model_1',
+          modelDisplayName: 'Model 1',
+          namespacedClassId: 'model_1:0',
+          sourceClassId: 0,
+          speciesName: 'model one species',
+          finalScore: 0.65,
+        ),
+      ],
+      0,
+    );
+    final StableTrack out = engine.processFrame(
+      [
+        Detection(
+          box: Rect.fromLTWH(0, 0, 1, 1),
+          confidence: 0.62,
+          classId: 0,
+          label: 'model two species',
+          modelId: 'model_2',
+          modelDisplayName: 'Model 2',
+          namespacedClassId: 'model_2:0',
+          sourceClassId: 0,
+          speciesName: 'model two species',
+          finalScore: 0.62,
+        ),
+      ],
+      33,
+    ).single;
+
+    expect(out.top1ClassKey, 'model_1:0');
+    expect(out.top2ClassKey, 'model_2:0');
+    expect(out.isAmbiguous, true);
+    expect(out.top1Label, 'model one species');
+    expect(out.top2Label, 'model two species');
+  });
+
   test('high confidence candidate stabilizes faster via adaptive wins', () {
     final engine = DetectionStabilityEngine(
       labels: const ['a'],

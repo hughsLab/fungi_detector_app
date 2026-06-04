@@ -7,6 +7,54 @@ import 'package:camera/camera.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
 
+class NativeYuvFrame {
+  NativeYuvFrame({
+    required this.width,
+    required this.height,
+    required this.rotationDegrees,
+    required this.yRowStride,
+    required this.uvRowStride,
+    required this.uvPixelStride,
+    required this.yBytes,
+    required this.uBytes,
+    required this.vBytes,
+  });
+
+  final int width;
+  final int height;
+  final int rotationDegrees;
+  final int yRowStride;
+  final int uvRowStride;
+  final int uvPixelStride;
+  final Uint8List yBytes;
+  final Uint8List uBytes;
+  final Uint8List vBytes;
+
+  factory NativeYuvFrame.fromCameraImage(
+    CameraImage image, {
+    required int rotationDegrees,
+  }) {
+    if (image.planes.length < 3) {
+      throw ArgumentError('Expected YUV420 image with 3 planes');
+    }
+    final Plane yPlane = image.planes[0];
+    final Plane uPlane = image.planes[1];
+    final Plane vPlane = image.planes[2];
+
+    return NativeYuvFrame(
+      width: image.width,
+      height: image.height,
+      rotationDegrees: rotationDegrees,
+      yRowStride: yPlane.bytesPerRow,
+      uvRowStride: uPlane.bytesPerRow,
+      uvPixelStride: uPlane.bytesPerPixel ?? 2,
+      yBytes: Uint8List.fromList(yPlane.bytes),
+      uBytes: Uint8List.fromList(uPlane.bytes),
+      vBytes: Uint8List.fromList(vPlane.bytes),
+    );
+  }
+}
+
 class NativeDetection {
   final double left;
   final double top;
@@ -44,6 +92,7 @@ class NativeYoloConfig {
   final int maxDetections;
   final double confidenceThreshold;
   final double iouThreshold;
+  final double displayConfidenceThreshold;
   final bool useGpu;
   final bool allowFp16;
 
@@ -55,6 +104,7 @@ class NativeYoloConfig {
     this.maxDetections = 100,
     this.confidenceThreshold = 0.25,
     this.iouThreshold = 0.45,
+    this.displayConfidenceThreshold = 0.45,
     this.useGpu = false,
     this.allowFp16 = true,
   });
@@ -68,6 +118,7 @@ class NativeYoloConfig {
       'maxDetections': maxDetections,
       'confidenceThreshold': confidenceThreshold,
       'iouThreshold': iouThreshold,
+      'displayConfidenceThreshold': displayConfidenceThreshold,
       'useGpu': useGpu,
       'allowFp16': allowFp16,
     };
@@ -79,24 +130,26 @@ class NativeYoloEngine {
     required SendPort workerSendPort,
     required StreamSubscription<dynamic> subscription,
     required Isolate isolate,
+    required double displayConfidenceThreshold,
   })  : _workerSendPort = workerSendPort,
         _subscription = subscription,
-        _isolate = isolate;
+        _isolate = isolate,
+        _displayConfidenceThreshold = displayConfidenceThreshold;
 
   final SendPort _workerSendPort;
   final StreamSubscription<dynamic> _subscription;
   final Isolate _isolate;
+  final double _displayConfidenceThreshold;
 
   final StreamController<List<NativeDetection>> _detectionsController = StreamController.broadcast();
   final StreamController<String> _errorsController = StreamController.broadcast();
   final Completer<void> _readyCompleter = Completer<void>();
   final Completer<void> _disposedCompleter = Completer<void>();
 
-  static const double _minDisplayConfidence = 0.45;
-
   bool _disposed = false;
   bool _frameInFlight = false;
   _FramePacket? _pendingFrame;
+  Completer<List<NativeDetection>>? _singleDetectionCompleter;
   int _nextFrameId = 1;
   int _receivedFrameCount = 0;
   int _processedFrameCount = 0;
@@ -139,6 +192,7 @@ class NativeYoloEngine {
       workerSendPort: workerSendPort,
       subscription: subscription,
       isolate: isolate,
+      displayConfidenceThreshold: config.displayConfidenceThreshold,
     );
 
     await engine.ready;
@@ -146,13 +200,21 @@ class NativeYoloEngine {
   }
 
   void submitCameraImage(CameraImage image, {required int rotationDegrees}) {
+    submitFrame(
+      NativeYuvFrame.fromCameraImage(
+        image,
+        rotationDegrees: rotationDegrees,
+      ),
+    );
+  }
+
+  void submitFrame(NativeYuvFrame frame) {
     if (_disposed) return;
     try {
       final int nowMs = DateTime.now().millisecondsSinceEpoch;
       _receivedFrameCount += 1;
-      final packet = _FramePacket.fromCameraImage(
-        image,
-        rotationDegrees,
+      final packet = _FramePacket.fromNativeFrame(
+        frame,
         frameId: _nextFrameId++,
         receivedAtMs: nowMs,
       );
@@ -166,6 +228,26 @@ class NativeYoloEngine {
     } catch (e) {
       _errorsController.add('Frame drop: $e');
     }
+  }
+
+  Future<List<NativeDetection>> detectFrame(
+    NativeYuvFrame frame, {
+    Duration timeout = const Duration(seconds: 4),
+  }) {
+    if (_disposed) {
+      throw StateError('Native engine disposed');
+    }
+    if (_singleDetectionCompleter != null) {
+      throw StateError('Native engine already has a pending one-shot request');
+    }
+    final completer = Completer<List<NativeDetection>>();
+    _singleDetectionCompleter = completer;
+    submitFrame(frame);
+    return completer.future.timeout(timeout).whenComplete(() {
+      if (_singleDetectionCompleter == completer) {
+        _singleDetectionCompleter = null;
+      }
+    });
   }
 
   Future<void> dispose() async {
@@ -221,8 +303,13 @@ class NativeYoloEngine {
             .map((dynamic e) => NativeDetection.fromMap(e as Map<dynamic, dynamic>))
             .toList(growable: false);
         final filtered = items
-            .where((d) => d.score >= _minDisplayConfidence)
+            .where((d) => d.score >= _displayConfidenceThreshold)
             .toList(growable: false); // Gate detections so only >= 0.45 reach UI.
+        final oneShot = _singleDetectionCompleter;
+        if (oneShot != null && !oneShot.isCompleted) {
+          oneShot.complete(filtered);
+          _singleDetectionCompleter = null;
+        }
         _detectionsController.add(filtered);
         _processedFrameCount += 1;
         final int? frameId = message['frameId'] as int?;
@@ -244,6 +331,11 @@ class NativeYoloEngine {
         break;
       case 'error':
         final error = (message['message'] ?? 'Native engine error') as String;
+        final oneShot = _singleDetectionCompleter;
+        if (oneShot != null && !oneShot.isCompleted) {
+          oneShot.completeError(Exception(error));
+          _singleDetectionCompleter = null;
+        }
         _errorsController.add(error);
         _frameInFlight = false;
         _inFlightFrameId = null;
@@ -337,31 +429,23 @@ class _FramePacket {
   final TransferableTypedData uData;
   final TransferableTypedData vData;
 
-  factory _FramePacket.fromCameraImage(
-    CameraImage image,
-    int rotationDegrees, {
+  factory _FramePacket.fromNativeFrame(
+    NativeYuvFrame frame, {
     required int frameId,
     required int receivedAtMs,
   }) {
-    if (image.planes.length < 3) {
-      throw ArgumentError('Expected YUV420 image with 3 planes');
-    }
-    final Plane yPlane = image.planes[0];
-    final Plane uPlane = image.planes[1];
-    final Plane vPlane = image.planes[2];
-
     return _FramePacket(
-      width: image.width,
-      height: image.height,
+      width: frame.width,
+      height: frame.height,
       frameId: frameId,
       receivedAtMs: receivedAtMs,
-      rotationDegrees: rotationDegrees,
-      yRowStride: yPlane.bytesPerRow,
-      uvRowStride: uPlane.bytesPerRow,
-      uvPixelStride: uPlane.bytesPerPixel ?? 2,
-      yData: TransferableTypedData.fromList([yPlane.bytes]),
-      uData: TransferableTypedData.fromList([uPlane.bytes]),
-      vData: TransferableTypedData.fromList([vPlane.bytes]),
+      rotationDegrees: frame.rotationDegrees,
+      yRowStride: frame.yRowStride,
+      uvRowStride: frame.uvRowStride,
+      uvPixelStride: frame.uvPixelStride,
+      yData: TransferableTypedData.fromList([frame.yBytes]),
+      uData: TransferableTypedData.fromList([frame.uBytes]),
+      vData: TransferableTypedData.fromList([frame.vBytes]),
     );
   }
 

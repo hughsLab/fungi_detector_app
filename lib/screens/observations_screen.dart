@@ -194,14 +194,6 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
     return speciesNames[observation.speciesId] ?? 'Unknown';
   }
 
-  String _displayNameFor(Observation observation) {
-    final label = observation.label.trim();
-    if (label.isNotEmpty) {
-      return label;
-    }
-    return _speciesNames[observation.speciesId] ?? 'Unknown';
-  }
-
   String _normalizeForLookup(String? value) => value?.trim().toLowerCase() ?? '';
 
   Future<_TasColloquialMaps> _loadTasColloquialMaps() async {
@@ -395,6 +387,15 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
             ? null
             : observation.speciesId,
         classIndex: observation.classIndex,
+        modelId: observation.modelId,
+        modelDisplayName: observation.modelDisplayName,
+        sourceClassId: observation.sourceClassId,
+        rawConfidence: observation.rawConfidence,
+        calibratedConfidence: observation.calibratedConfidence,
+        finalScore: observation.finalScore,
+        top2ModelId: observation.top2ModelId,
+        top2ModelDisplayName: observation.top2ModelDisplayName,
+        top2SourceClassId: observation.top2SourceClassId,
         photoPath: observation.photoPath,
         latitude: observation.latitude,
         longitude: observation.longitude,
