@@ -15,6 +15,8 @@ class Detection {
   final double finalScore;
   final List<String> sourceModelIds;
   final List<String> sourceModelDisplayNames;
+  final int? timestampMs;
+  final int? frameIndex;
 
   const Detection({
     required this.box,
@@ -31,6 +33,8 @@ class Detection {
     double? finalScore,
     List<String>? sourceModelIds,
     List<String>? sourceModelDisplayNames,
+    this.timestampMs,
+    this.frameIndex,
   })  : sourceClassId = sourceClassId ?? classId,
         namespacedClassId = namespacedClassId ?? '$modelId:$classId',
         speciesName = speciesName ?? label,
@@ -44,6 +48,9 @@ class Detection {
   double get area => box.width * box.height;
 
   String get sourceDisplayName {
+    if (modelId == 'merged') {
+      return 'Merged';
+    }
     if (sourceModelDisplayNames.isNotEmpty) {
       return sourceModelDisplayNames.join(' + ');
     }

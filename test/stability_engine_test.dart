@@ -198,6 +198,57 @@ void main() {
     expect(out.top2Label, 'model two species');
   });
 
+  test('model-specific confidence thresholds admit lower model 1 detections', () {
+    final engine = DetectionStabilityEngine(
+      labels: const ['fallback'],
+      config: const StabilityConfig(
+        detectConfMin: 0.45,
+        modelDetectConfMin: <String, double>{
+          'model_1': 0.25,
+          'model_2': 0.40,
+        },
+        stabilityWindowFramesM: 2,
+        lockWinCount: 1,
+        readyConfMin: 0.0,
+        readyMinAgeMs: 0,
+      ),
+    );
+
+    final tracks = engine.processFrame(
+      [
+        Detection(
+          box: Rect.fromLTWH(0, 0, 1, 1),
+          confidence: 0.30,
+          classId: 4,
+          label: 'model one species',
+          modelId: 'model_1',
+          modelDisplayName: 'Model 1',
+          namespacedClassId: 'model_1:4',
+          sourceClassId: 4,
+          speciesName: 'model one species',
+          finalScore: 0.30,
+        ),
+        Detection(
+          box: Rect.fromLTWH(2, 2, 1, 1),
+          confidence: 0.35,
+          classId: 4,
+          label: 'model two species',
+          modelId: 'model_2',
+          modelDisplayName: 'Model 2',
+          namespacedClassId: 'model_2:4',
+          sourceClassId: 4,
+          speciesName: 'model two species',
+          finalScore: 0.35,
+        ),
+      ],
+      0,
+    );
+
+    expect(tracks, hasLength(1));
+    expect(tracks.single.top1ModelId, 'model_1');
+    expect(tracks.single.top1ClassKey, 'model_1:4');
+  });
+
   test('high confidence candidate stabilizes faster via adaptive wins', () {
     final engine = DetectionStabilityEngine(
       labels: const ['a'],

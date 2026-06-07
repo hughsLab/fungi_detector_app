@@ -6,6 +6,7 @@ import 'track.dart';
 
 class StabilityConfig {
   final double detectConfMin;
+  final Map<String, double> modelDetectConfMin;
   final double iouMatchThreshold;
   final int trackTtlMs;
   final int windowMs;
@@ -18,6 +19,9 @@ class StabilityConfig {
   final double readyConfMin;
   final int readyMinAgeMs;
   final double provisionalConfMin;
+  final double stableConfMin;
+  final Map<String, double> modelStableConfMin;
+  final int minObservationsForStability;
   final double adaptiveHighConfMin;
   final double adaptiveMediumConfMin;
   final int adaptiveHighConfWins;
@@ -25,6 +29,7 @@ class StabilityConfig {
 
   const StabilityConfig({
     this.detectConfMin = 0.45,
+    this.modelDetectConfMin = const <String, double>{},
     this.iouMatchThreshold = 0.5,
     this.trackTtlMs = 1200,
     this.windowMs = 1500,
@@ -37,11 +42,25 @@ class StabilityConfig {
     this.readyConfMin = 0.55,
     this.readyMinAgeMs = 600,
     this.provisionalConfMin = 0.55,
+    this.stableConfMin = 0.55,
+    this.modelStableConfMin = const <String, double>{},
+    this.minObservationsForStability = 1,
     this.adaptiveHighConfMin = 0.85,
     this.adaptiveMediumConfMin = 0.70,
     this.adaptiveHighConfWins = 2,
     this.adaptiveMediumConfWins = 3,
   });
+
+  double detectConfMinFor(Detection detection) {
+    return modelDetectConfMin[detection.modelId] ?? detectConfMin;
+  }
+
+  double stableConfMinFor(String? modelId) {
+    if (modelId == null) {
+      return stableConfMin;
+    }
+    return modelStableConfMin[modelId] ?? stableConfMin;
+  }
 }
 
 class StableTrack {
@@ -128,7 +147,7 @@ class DetectionStabilityEngine {
 
   List<StableTrack> processFrame(List<Detection> detections, int timestampMs) {
     final List<Detection> filtered = detections
-        .where((d) => d.confidence >= config.detectConfMin)
+        .where((d) => d.confidence >= config.detectConfMinFor(d))
         .toList(growable: false);
     final List<Detection> sorted = [...filtered]
       ..sort((a, b) => b.confidence.compareTo(a.confidence));
@@ -224,9 +243,15 @@ class DetectionStabilityEngine {
             .length;
     final bool hasFullStabilityWindow =
         stabilityWindowFilled >= config.stabilityWindowFramesM;
+    final bool hasEnoughObservations = aggregate.top1Count >=
+        config.minObservationsForStability;
+    final bool stableConfidence = aggregate.top1AvgConf >=
+        config.stableConfMinFor(aggregate.top1?.modelId);
     final bool normalStable = hasFullStabilityWindow &&
         top1ClassKey != null &&
-        top1WinCount >= config.lockWinCount;
+        top1WinCount >= config.lockWinCount &&
+        hasEnoughObservations &&
+        stableConfidence;
     final int consecutiveTop1Wins = top1ClassKey == null
         ? 0
         : _consecutiveWinnerStreak(track, top1ClassKey);
@@ -235,7 +260,9 @@ class DetectionStabilityEngine {
     );
     final bool adaptiveStable = top1ClassKey != null &&
         adaptiveRequiredWins != null &&
-        consecutiveTop1Wins >= adaptiveRequiredWins;
+        consecutiveTop1Wins >= adaptiveRequiredWins &&
+        hasEnoughObservations &&
+        stableConfidence;
     final bool stable = normalStable || adaptiveStable;
 
     final bool ambiguous = top1ClassKey != null &&
@@ -440,6 +467,7 @@ class DetectionStabilityEngine {
       top1AvgConf: top1AvgConf,
       top2AvgConf: top2AvgConf,
       top1VoteRatio: top1VoteRatio,
+      top1Count: top1Count,
     );
   }
 }
@@ -450,6 +478,7 @@ class _AggregateResult {
   final double top1AvgConf;
   final double top2AvgConf;
   final double top1VoteRatio;
+  final int top1Count;
 
   const _AggregateResult({
     required this.top1,
@@ -457,6 +486,7 @@ class _AggregateResult {
     required this.top1AvgConf,
     required this.top2AvgConf,
     required this.top1VoteRatio,
+    required this.top1Count,
   });
 
   const _AggregateResult.empty()
@@ -464,7 +494,8 @@ class _AggregateResult {
         top2 = null,
         top1AvgConf = 0.0,
         top2AvgConf = 0.0,
-        top1VoteRatio = 0.0;
+        top1VoteRatio = 0.0,
+        top1Count = 0;
 
   String? get top1ClassKey => top1?.classKey;
   String? get top2ClassKey => top2?.classKey;

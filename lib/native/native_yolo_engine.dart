@@ -84,8 +84,35 @@ class NativeDetection {
   }
 }
 
+class NativeYoloFrameResult {
+  final List<NativeDetection> detections;
+  final int frameId;
+  final int? receivedAtMs;
+  final int? workerMs;
+  final int rawDetectionCount;
+  final int filteredDetectionCount;
+  final int? topRawClassId;
+  final double? topRawConfidence;
+  final double? topRejectedConfidence;
+  final double displayConfidenceThreshold;
+
+  const NativeYoloFrameResult({
+    required this.detections,
+    required this.frameId,
+    required this.receivedAtMs,
+    required this.workerMs,
+    required this.rawDetectionCount,
+    required this.filteredDetectionCount,
+    required this.topRawClassId,
+    required this.topRawConfidence,
+    required this.topRejectedConfidence,
+    required this.displayConfidenceThreshold,
+  });
+}
+
 class NativeYoloConfig {
   final String modelPath;
+  final String debugLabel;
   final int inputWidth;
   final int inputHeight;
   final int threads;
@@ -98,6 +125,7 @@ class NativeYoloConfig {
 
   const NativeYoloConfig({
     required this.modelPath,
+    this.debugLabel = 'native-yolo',
     required this.inputWidth,
     required this.inputHeight,
     this.threads = 2,
@@ -112,6 +140,7 @@ class NativeYoloConfig {
   Map<String, dynamic> toMessage() {
     return <String, dynamic>{
       'modelPath': modelPath,
+      'debugLabel': debugLabel,
       'inputWidth': inputWidth,
       'inputHeight': inputHeight,
       'threads': threads,
@@ -131,17 +160,21 @@ class NativeYoloEngine {
     required StreamSubscription<dynamic> subscription,
     required Isolate isolate,
     required double displayConfidenceThreshold,
+    required String debugLabel,
   })  : _workerSendPort = workerSendPort,
         _subscription = subscription,
         _isolate = isolate,
-        _displayConfidenceThreshold = displayConfidenceThreshold;
+        _displayConfidenceThreshold = displayConfidenceThreshold,
+        _debugLabel = debugLabel;
 
   final SendPort _workerSendPort;
   final StreamSubscription<dynamic> _subscription;
   final Isolate _isolate;
   final double _displayConfidenceThreshold;
+  final String _debugLabel;
 
   final StreamController<List<NativeDetection>> _detectionsController = StreamController.broadcast();
+  final StreamController<NativeYoloFrameResult> _frameResultsController = StreamController.broadcast();
   final StreamController<String> _errorsController = StreamController.broadcast();
   final Completer<void> _readyCompleter = Completer<void>();
   final Completer<void> _disposedCompleter = Completer<void>();
@@ -159,6 +192,7 @@ class NativeYoloEngine {
   int? _inFlightDispatchAtMs;
 
   Stream<List<NativeDetection>> get detections => _detectionsController.stream;
+  Stream<NativeYoloFrameResult> get frameResults => _frameResultsController.stream;
   Stream<String> get errors => _errorsController.stream;
   Future<void> get ready => _readyCompleter.future;
 
@@ -193,6 +227,7 @@ class NativeYoloEngine {
       subscription: subscription,
       isolate: isolate,
       displayConfidenceThreshold: config.displayConfidenceThreshold,
+      debugLabel: config.debugLabel,
     );
 
     await engine.ready;
@@ -263,6 +298,7 @@ class NativeYoloEngine {
     }
     await _subscription.cancel();
     _isolate.kill(priority: Isolate.immediate);
+    await _frameResultsController.close();
     await _detectionsController.close();
     await _errorsController.close();
   }
@@ -304,17 +340,42 @@ class NativeYoloEngine {
             .toList(growable: false);
         final filtered = items
             .where((d) => d.score >= _displayConfidenceThreshold)
-            .toList(growable: false); // Gate detections so only >= 0.45 reach UI.
+            .toList(growable: false);
+        NativeDetection? topRaw;
+        NativeDetection? topRejected;
+        for (final item in items) {
+          if (topRaw == null || item.score > topRaw.score) {
+            topRaw = item;
+          }
+          if (item.score < _displayConfidenceThreshold &&
+              (topRejected == null || item.score > topRejected.score)) {
+            topRejected = item;
+          }
+        }
         final oneShot = _singleDetectionCompleter;
         if (oneShot != null && !oneShot.isCompleted) {
           oneShot.complete(filtered);
           _singleDetectionCompleter = null;
         }
-        _detectionsController.add(filtered);
-        _processedFrameCount += 1;
         final int? frameId = message['frameId'] as int?;
         final int? receivedAtMs = message['receivedAtMs'] as int?;
         final int? workerMs = message['workerMs'] as int?;
+        _frameResultsController.add(
+          NativeYoloFrameResult(
+            detections: filtered,
+            frameId: frameId ?? -1,
+            receivedAtMs: receivedAtMs,
+            workerMs: workerMs,
+            rawDetectionCount: items.length,
+            filteredDetectionCount: filtered.length,
+            topRawClassId: topRaw?.classIndex,
+            topRawConfidence: topRaw?.score,
+            topRejectedConfidence: topRejected?.score,
+            displayConfidenceThreshold: _displayConfidenceThreshold,
+          ),
+        );
+        _detectionsController.add(filtered);
+        _processedFrameCount += 1;
         final int? dispatchMs = _inFlightDispatchAtMs;
         _debugLogFrame(
           'returned',
@@ -323,6 +384,7 @@ class NativeYoloEngine {
           workerMs: workerMs,
           inFlightMs: dispatchMs == null ? null : nowMs - dispatchMs,
           detectionCount: filtered.length,
+          rawDetectionCount: items.length,
         );
         _frameInFlight = false;
         _inFlightFrameId = null;
@@ -362,6 +424,7 @@ class NativeYoloEngine {
     int? workerMs,
     int? inFlightMs,
     int? detectionCount,
+    int? rawDetectionCount,
   }) {
     if (!kDebugMode) {
       return;
@@ -375,7 +438,8 @@ class NativeYoloEngine {
     if (shouldLogSummary) {
       _lastDebugLogMs = nowMs;
     }
-    final StringBuffer out = StringBuffer('[DetectTiming][engine] $event');
+    final StringBuffer out =
+        StringBuffer('[DetectTiming][engine][$_debugLabel] $event');
     if (frameId != null) {
       out.write(' frame=$frameId');
     } else if (_inFlightFrameId != null) {
@@ -392,6 +456,9 @@ class NativeYoloEngine {
     }
     if (detectionCount != null) {
       out.write(' dets=$detectionCount');
+    }
+    if (rawDetectionCount != null) {
+      out.write(' rawDets=$rawDetectionCount');
     }
     if (shouldLogSummary) {
       out.write(

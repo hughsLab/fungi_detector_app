@@ -105,6 +105,16 @@ class _CaptureSelection {
   });
 }
 
+class _LiveDetectionSnapshot {
+  final List<Detection> detections;
+  final int timestampMs;
+
+  const _LiveDetectionSnapshot({
+    required this.detections,
+    required this.timestampMs,
+  });
+}
+
 class DetectionPage extends StatefulWidget {
   const DetectionPage({super.key});
 
@@ -115,15 +125,21 @@ class DetectionPage extends StatefulWidget {
 class _DetectionPageState extends State<DetectionPage>
     with WidgetsBindingObserver {
   CameraController? _camera;
-  NativeYoloEngine? _nativeEngine;
-  StreamSubscription<List<NativeDetection>>? _nativeDetectionsSub;
-  StreamSubscription<String>? _nativeErrorSub;
+  final Map<String, NativeYoloEngine> _liveEngines =
+      <String, NativeYoloEngine>{};
+  final Map<String, StreamSubscription<NativeYoloFrameResult>>
+      _liveFrameResultSubs =
+      <String, StreamSubscription<NativeYoloFrameResult>>{};
+  final Map<String, StreamSubscription<String>> _liveErrorSubs =
+      <String, StreamSubscription<String>>{};
   late DetectionStabilityEngine _stabilityEngine;
   List<String> _labels = [];
   final Map<String, _ModelMetadata> _modelMetadata =
       <String, _ModelMetadata>{};
   final Map<String, NativeYoloEngine> _captureEngines =
       <String, NativeYoloEngine>{};
+  final Map<String, _LiveDetectionSnapshot> _liveDetectionSnapshots =
+      <String, _LiveDetectionSnapshot>{};
   NativeYuvFrame? _latestFrame;
   final SpeciesRepository _speciesRepository = SpeciesRepository.instance;
   Map<String, String> _speciesIdByName = {};
@@ -149,9 +165,30 @@ class _DetectionPageState extends State<DetectionPage>
   int _streamFrameCount = 0;
   int _nativeResultCount = 0;
   int _lastStreamFrameMs = 0;
+  int _lastDebugFrameSubmissionLogMs = 0;
   int _lastDebugTimingLogMs = 0;
+  int _lastDebugLiveSummaryLogMs = 0;
+  int _lastFpsFrameCount = 0;
   String? _lastDebugUiState;
+  int _liveAlternatingCursor = 0;
+  int _liveSkippedFrameCount = 0;
+  final Map<String, int> _liveSubmittedFrameCountByModel = <String, int>{};
+  final Map<String, int> _liveResultCountByModel = <String, int>{};
+  final Map<String, int> _liveNativeRawCountByModel = <String, int>{};
+  final Map<String, int> _liveNativeFilteredCountByModel = <String, int>{};
+  final Map<String, int> _liveDetectionCountByModel = <String, int>{};
+  final Map<String, int> _liveLatestSubmittedFrameByModel = <String, int>{};
+  final Map<String, int> _liveLatestNativeFrameByModel = <String, int>{};
   static const int _uiHoldGraceMs = 1300;
+
+  static const bool _dualLiveDetectionEnabled =
+      bool.fromEnvironment('DUAL_LIVE_DETECTION');
+  static const bool _dualLiveDebug = bool.fromEnvironment('DUAL_LIVE_DEBUG');
+  static const String _dualLiveMode =
+      String.fromEnvironment('DUAL_LIVE_MODE', defaultValue: 'primary');
+  static const String _livePrimaryModelValue =
+      String.fromEnvironment('LIVE_PRIMARY_MODEL', defaultValue: 'model_2');
+  static const int _liveFusionWindowMs = 700;
 
   static const double _confThreshold = 0.30;
   static const double _nmsIoUThreshold = 0.45;
@@ -159,6 +196,17 @@ class _DetectionPageState extends State<DetectionPage>
   static const double _crossModelAmbiguousMargin = 0.20;
   static const double _crossModelOverrideMargin = 0.25;
   static const double _crossModelCompetingMinScore = 0.45;
+  static const double _dualLiveModel1RawConfidenceThreshold = 0.25;
+  static const double _dualLiveModel2RawConfidenceThreshold = 0.40;
+  static const double _dualLiveModel1VisibleConfidenceThreshold = 0.45;
+  static const double _dualLiveModel2VisibleConfidenceThreshold = 0.50;
+  static const double _dualLiveModel1StableConfidenceThreshold = 0.60;
+  static const double _dualLiveModel2StableConfidenceThreshold = 0.65;
+  static const double _boxTinyAreaRatio = 0.002;
+  static const double _boxHugeAreaRatio = 0.85;
+  static const double _boxExtremeAspectRatio = 8.0;
+  static const double _boxSanityOverrideConfidence = 0.85;
+  static const double _captureHighConfidenceConfirmationThreshold = 0.80;
 
   static const _YoloModelDescriptor _model1 = _YoloModelDescriptor(
     modelId: 'model_1',
@@ -188,6 +236,106 @@ class _DetectionPageState extends State<DetectionPage>
 
   static const List<_YoloModelDescriptor> _captureModels =
       <_YoloModelDescriptor>[_model2, _model1];
+
+  bool get _dualLiveAlternatingEnabled =>
+      _dualLiveDetectionEnabled &&
+      _dualLiveMode.trim().toLowerCase() == 'alternating';
+
+  String get _activeLiveMode =>
+      _dualLiveAlternatingEnabled ? 'alternating' : 'primary';
+
+  _YoloModelDescriptor get _primaryLiveModel =>
+      _modelForLiveValue(_livePrimaryModelValue);
+
+  _YoloModelDescriptor get _secondaryLiveModel =>
+      _primaryLiveModel.modelId == _model1.modelId ? _model2 : _model1;
+
+  List<_YoloModelDescriptor> get _liveModels {
+    if (_dualLiveAlternatingEnabled) {
+      return <_YoloModelDescriptor>[_primaryLiveModel, _secondaryLiveModel];
+    }
+    return <_YoloModelDescriptor>[_primaryLiveModel];
+  }
+
+  _YoloModelDescriptor _modelForLiveValue(String value) {
+    final normalized = value.trim().toLowerCase().replaceAll('-', '_');
+    if (normalized == 'model_1' ||
+        normalized == 'model1' ||
+        normalized == '1') {
+      return _model1;
+    }
+    return _model2;
+  }
+
+  bool _liveUseGpuFor(_YoloModelDescriptor model) {
+    if (!_dualLiveAlternatingEnabled) {
+      return model.useGpu;
+    }
+    return model.modelId == _primaryLiveModel.modelId && model.useGpu;
+  }
+
+  int _liveThreadCountFor(_YoloModelDescriptor model) {
+    if (!Platform.isAndroid) {
+      return 2;
+    }
+    if (_dualLiveAlternatingEnabled &&
+        model.modelId != _primaryLiveModel.modelId) {
+      return 2;
+    }
+    return 3;
+  }
+
+  double _liveConfidenceThresholdFor(_YoloModelDescriptor model) {
+    if (!_dualLiveAlternatingEnabled) {
+      return model.displayConfidenceThreshold;
+    }
+    if (model.modelId == _model1.modelId) {
+      return _dualLiveModel1VisibleConfidenceThreshold;
+    }
+    return _dualLiveModel2VisibleConfidenceThreshold;
+  }
+
+  double _liveNativeConfidenceThresholdFor(_YoloModelDescriptor model) {
+    if (!_dualLiveAlternatingEnabled) {
+      return model.nativeConfidenceThreshold;
+    }
+    if (model.modelId == _model1.modelId) {
+      return _dualLiveModel1RawConfidenceThreshold;
+    }
+    return _dualLiveModel2RawConfidenceThreshold;
+  }
+
+  double _liveStableConfidenceThresholdFor(_YoloModelDescriptor model) {
+    if (!_dualLiveAlternatingEnabled) {
+      return _stabilityEngine.config.stableConfMin;
+    }
+    if (model.modelId == _model1.modelId) {
+      return _dualLiveModel1StableConfidenceThreshold;
+    }
+    return _dualLiveModel2StableConfidenceThreshold;
+  }
+
+  StabilityConfig? _liveStabilityConfig() {
+    if (!_dualLiveAlternatingEnabled) {
+      return null;
+    }
+    return const StabilityConfig(
+      modelDetectConfMin: <String, double>{
+        'model_1': _dualLiveModel1VisibleConfidenceThreshold,
+        'model_2': _dualLiveModel2VisibleConfidenceThreshold,
+        'merged': _dualLiveModel1VisibleConfidenceThreshold,
+      },
+      modelStableConfMin: <String, double>{
+        'model_1': _dualLiveModel1StableConfidenceThreshold,
+        'model_2': _dualLiveModel2StableConfidenceThreshold,
+        'merged': _dualLiveModel1StableConfidenceThreshold,
+      },
+      marginMin: _crossModelAmbiguousMargin,
+      minObservationsForStability: 3,
+      adaptiveHighConfWins: 3,
+      adaptiveMediumConfWins: 3,
+    );
+  }
 
   @override
   void initState() {
@@ -222,9 +370,12 @@ class _DetectionPageState extends State<DetectionPage>
       _inputWidth = model2Metadata.inputWidth;
       _inputHeight = model2Metadata.inputHeight;
       debugPrint('labels.length: ${_labels.length}');
-      _stabilityEngine = DetectionStabilityEngine(labels: _labels);
+      _stabilityEngine = DetectionStabilityEngine(
+        labels: _labels,
+        config: _liveStabilityConfig(),
+      );
       _engineReady = true;
-      await _initializeNativeEngine();
+      await _initializeLiveEngines();
       await _initCamera();
       await _startImageStream();
     } catch (e, stack) {
@@ -341,35 +492,60 @@ class _DetectionPageState extends State<DetectionPage>
     return null;
   }
 
-  Future<void> _initializeNativeEngine() async {
-    final modelPath = await _materializeAsset(
-      _model2.modelAssetPath,
-      _model2.materializedFileName,
-    );
-    final config = NativeYoloConfig(
-      modelPath: modelPath,
-      inputWidth: _inputWidth,
-      inputHeight: _inputHeight,
-      threads: Platform.isAndroid ? 3 : 2,
-      maxDetections: 150,
-      confidenceThreshold: _model2.nativeConfidenceThreshold,
-      iouThreshold: _model2.iouThreshold,
-      displayConfidenceThreshold: _model2.displayConfidenceThreshold,
-      useGpu: _model2.useGpu,
-      allowFp16: _model2.allowFp16,
-    );
+  Future<void> _initializeLiveEngines() async {
+    await _disposeLiveEngines();
 
-    await _nativeDetectionsSub?.cancel();
-    await _nativeErrorSub?.cancel();
-    await _nativeEngine?.dispose();
+    final liveModels = _liveModels;
+    if (kDebugMode) {
+      debugPrint(
+        '[DetectTiming][live] mode=$_activeLiveMode '
+        'dual=$_dualLiveDetectionEnabled primary=${_primaryLiveModel.modelId} '
+        'models=${liveModels.map((model) => model.modelId).join(',')}',
+      );
+    }
 
-    _nativeEngine = await NativeYoloEngine.create(config);
-    _nativeDetectionsSub = _nativeEngine!.detections.listen(
-      _onNativeDetections,
-    );
-    _nativeErrorSub = _nativeEngine!.errors.listen((msg) {
-      debugPrint('Native engine warning: $msg');
-    });
+    for (final model in liveModels) {
+      final metadata = _modelMetadata[model.modelId];
+      if (metadata == null) {
+        throw StateError('Metadata not loaded for ${model.modelId}');
+      }
+      final modelPath = await _materializeAsset(
+        model.modelAssetPath,
+        model.materializedFileName,
+      );
+      if (_dualLiveDebug) {
+        debugPrint(
+          '[DUAL_LIVE] init ${model.modelId} modelAsset=${model.modelAssetPath} '
+          'metadata=${model.metadataAssetPath} size=${metadata.inputWidth}x${metadata.inputHeight} '
+          'nativeThreshold=${_liveNativeConfidenceThresholdFor(model).toStringAsFixed(2)} '
+          'displayThreshold=${_liveConfidenceThresholdFor(model).toStringAsFixed(2)} '
+          'stabilityThreshold=${_liveStableConfidenceThresholdFor(model).toStringAsFixed(2)} '
+          'materializedPath=$modelPath',
+        );
+      }
+      final engine = await NativeYoloEngine.create(
+        NativeYoloConfig(
+          modelPath: modelPath,
+          debugLabel: 'live-${model.modelId}',
+          inputWidth: metadata.inputWidth,
+          inputHeight: metadata.inputHeight,
+          threads: _liveThreadCountFor(model),
+          maxDetections: 150,
+          confidenceThreshold: _liveNativeConfidenceThresholdFor(model),
+          iouThreshold: model.iouThreshold,
+          displayConfidenceThreshold: _liveConfidenceThresholdFor(model),
+          useGpu: _liveUseGpuFor(model),
+          allowFp16: model.allowFp16,
+        ),
+      );
+      _liveEngines[model.modelId] = engine;
+      _liveFrameResultSubs[model.modelId] = engine.frameResults.listen(
+        (result) => _onNativeFrameResult(model, result),
+      );
+      _liveErrorSubs[model.modelId] = engine.errors.listen((msg) {
+        debugPrint('Native engine warning (${model.modelId}): $msg');
+      });
+    }
   }
 
   Future<String> _materializeAsset(String assetPath, String fileName) async {
@@ -385,19 +561,50 @@ class _DetectionPageState extends State<DetectionPage>
     return file.path;
   }
 
-  void _onNativeDetections(List<NativeDetection> detections) {
+  void _onNativeFrameResult(
+    _YoloModelDescriptor model,
+    NativeYoloFrameResult result,
+  ) {
     if (!mounted) return;
     if (!_engineReady) return;
     final int nowMs = DateTime.now().millisecondsSinceEpoch;
     _nativeResultCount += 1;
+    _liveResultCountByModel[model.modelId] =
+        (_liveResultCountByModel[model.modelId] ?? 0) + 1;
+    _liveLatestNativeFrameByModel[model.modelId] = result.frameId;
+    _liveNativeRawCountByModel[model.modelId] = result.rawDetectionCount;
+    _liveNativeFilteredCountByModel[model.modelId] =
+        result.filteredDetectionCount;
+    _liveDetectionCountByModel[model.modelId] = result.detections.length;
     final List<Detection> mapped = _mapNativeDetections(
-      _model2,
-      detections,
+      model,
+      result.detections,
       targetInputWidth: _inputWidth,
       targetInputHeight: _inputHeight,
+      timestampMs: nowMs,
+      frameIndex: result.frameId,
+    );
+    final List<Detection> acceptedMapped = _filterLiveDetections(
+      mapped,
+      frameIndex: result.frameId,
+    );
+    _liveDetectionSnapshots[model.modelId] = _LiveDetectionSnapshot(
+      detections: acceptedMapped,
+      timestampMs: nowMs,
+    );
+    final List<Detection> liveDetections = _currentLiveDetections(nowMs);
+    final Map<String, int> cacheCounts = _countDetectionsByModel(
+      liveDetections,
+    );
+    final Map<String, int> thresholdCounts = _countDetectionsByModel(
+      liveDetections
+          .where((detection) =>
+              detection.confidence >=
+              _stabilityEngine.config.detectConfMinFor(detection))
+          .toList(growable: false),
     );
     final List<StableTrack> stableTracks = _stabilityEngine.processFrame(
-      mapped,
+      liveDetections,
       nowMs,
     );
     final StableTrack? primaryTrack = _selectPrimaryTrack(stableTracks);
@@ -408,13 +615,292 @@ class _DetectionPageState extends State<DetectionPage>
     }
     _logDetectionTiming(
       nowMs: nowMs,
-      frameDetectionCount: mapped.length,
+      resultModel: model,
+      frameDetectionCount: liveDetections.length,
       primaryTrack: primaryTrack,
     );
+    _logDualLiveResult(
+      model: model,
+      result: result,
+      mappedCount: acceptedMapped.length,
+      cacheCounts: cacheCounts,
+      thresholdCounts: thresholdCounts,
+      stableTracks: stableTracks,
+      primaryTrack: primaryTrack,
+    );
+    _logDualLiveStability(stableTracks, primaryTrack);
     setState(() {
-      _detections = mapped;
+      _detections = liveDetections;
       _primaryTrack = primaryTrack;
     });
+  }
+
+  List<Detection> _currentLiveDetections(int nowMs) {
+    final staleModelIds = <String>[];
+    final combined = <Detection>[];
+    for (final entry in _liveDetectionSnapshots.entries) {
+      if (nowMs - entry.value.timestampMs > _liveFusionWindowMs) {
+        staleModelIds.add(entry.key);
+        continue;
+      }
+      combined.addAll(entry.value.detections);
+    }
+    for (final modelId in staleModelIds) {
+      _liveDetectionSnapshots.remove(modelId);
+    }
+    if (combined.length < 2) {
+      return combined;
+    }
+    return _mergeCrossModelDetections(combined);
+  }
+
+  Map<String, int> _countDetectionsByModel(List<Detection> detections) {
+    final counts = <String, int>{};
+    for (final detection in detections) {
+      final sourceIds = detection.sourceModelIds.isEmpty
+          ? <String>[detection.modelId]
+          : detection.sourceModelIds;
+      for (final modelId in sourceIds) {
+        counts[modelId] = (counts[modelId] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }
+
+  Map<String, int> _countStableTracksByModel(List<StableTrack> tracks) {
+    final counts = <String, int>{};
+    for (final track in tracks) {
+      final modelId = track.lockedModelId ?? track.top1ModelId;
+      if (modelId == null) {
+        continue;
+      }
+      if (modelId == 'merged') {
+        counts[modelId] = (counts[modelId] ?? 0) + 1;
+        continue;
+      }
+      counts[modelId] = (counts[modelId] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  List<Detection> _filterLiveDetections(
+    List<Detection> detections, {
+    required int frameIndex,
+  }) {
+    final accepted = <Detection>[];
+    for (final detection in detections) {
+      final reason = _liveRejectionReason(detection);
+      if (reason == null) {
+        accepted.add(detection);
+        _logDualLiveDetectionDecision(
+          frameIndex: frameIndex,
+          detection: detection,
+          accepted: true,
+          reason: 'accepted',
+        );
+      } else {
+        _logDualLiveDetectionDecision(
+          frameIndex: frameIndex,
+          detection: detection,
+          accepted: false,
+          reason: reason,
+        );
+      }
+    }
+    return accepted;
+  }
+
+  String? _liveRejectionReason(Detection detection) {
+    final box = detection.box;
+    final bool invalidCoordinates = box.left.isNaN ||
+        box.top.isNaN ||
+        box.right.isNaN ||
+        box.bottom.isNaN ||
+        box.left < 0 ||
+        box.top < 0 ||
+        box.right <= box.left ||
+        box.bottom <= box.top ||
+        box.right > _inputWidth ||
+        box.bottom > _inputHeight;
+    if (invalidCoordinates) {
+      return 'invalid_coordinates';
+    }
+
+    final double confidence = detection.finalScore;
+    if (confidence >= _boxSanityOverrideConfidence) {
+      return null;
+    }
+    final double areaRatio = _boxAreaRatio(detection.box);
+    if (areaRatio < _boxTinyAreaRatio) {
+      return 'tiny_box';
+    }
+    if (areaRatio > _boxHugeAreaRatio) {
+      return 'huge_box';
+    }
+    final double aspectRatio = _boxAspectRatio(detection.box);
+    if (aspectRatio > _boxExtremeAspectRatio) {
+      return 'extreme_aspect_ratio';
+    }
+    return null;
+  }
+
+  void _logDualLiveDetectionDecision({
+    required int frameIndex,
+    required Detection detection,
+    required bool accepted,
+    required String reason,
+  }) {
+    if (!_dualLiveDebug) {
+      return;
+    }
+    debugPrint(
+      '[DUAL_LIVE] ${accepted ? 'accept' : 'reject'} frame=$frameIndex '
+      'model=${detection.modelId} species=${detection.speciesName} '
+      'sourceClassId=${detection.sourceClassId} '
+      'rawConfidence=${detection.rawConfidence.toStringAsFixed(3)} '
+      'finalScore=${detection.finalScore.toStringAsFixed(3)} '
+      'box=${detection.box.width.toStringAsFixed(1)}x'
+      '${detection.box.height.toStringAsFixed(1)} '
+      'areaRatio=${_boxAreaRatio(detection.box).toStringAsFixed(4)} '
+      'reason=$reason',
+    );
+  }
+
+  double _boxAreaRatio(Rect box) {
+    final double frameArea = _inputWidth * _inputHeight.toDouble();
+    if (frameArea <= 0) {
+      return 0.0;
+    }
+    return (box.width * box.height) / frameArea;
+  }
+
+  double _boxAspectRatio(Rect box) {
+    final double width = box.width.abs();
+    final double height = box.height.abs();
+    if (width <= 0 || height <= 0) {
+      return double.infinity;
+    }
+    return width > height ? width / height : height / width;
+  }
+
+  void _logDualLiveResult({
+    required _YoloModelDescriptor model,
+    required NativeYoloFrameResult result,
+    required int mappedCount,
+    required Map<String, int> cacheCounts,
+    required Map<String, int> thresholdCounts,
+    required List<StableTrack> stableTracks,
+    required StableTrack? primaryTrack,
+  }) {
+    if (!_dualLiveDebug) {
+      return;
+    }
+    final int submittedFrame =
+        _liveLatestSubmittedFrameByModel[model.modelId] ?? _streamFrameCount;
+    final String overlayWinner =
+        primaryTrack?.lockedModelId ?? primaryTrack?.top1ModelId ?? 'none';
+    final Map<String, int> stabilityCounts =
+        _countStableTracksByModel(stableTracks);
+    debugPrint(
+      '[DUAL_LIVE] frame=$submittedFrame nativeFrame=${result.frameId} '
+      '${model.modelId} nativeDetections=${result.rawDetectionCount} '
+      'topClass=${result.topRawClassId ?? 'none'} '
+      'topConf=${_formatDebugConfidence(result.topRawConfidence)}',
+    );
+    debugPrint(
+      '[DUAL_LIVE] threshold model=${model.modelId} '
+      'threshold=${result.displayConfidenceThreshold.toStringAsFixed(2)} '
+      'before=${result.rawDetectionCount} '
+      'after=${result.filteredDetectionCount} '
+      'topRejected=${_formatDebugConfidence(result.topRejectedConfidence)}',
+    );
+    debugPrint(
+      '[DUAL_LIVE] mapped model=${model.modelId} mappedCount=$mappedCount '
+      '${_debugMappedDetectionSummary(model, mappedCount)}',
+    );
+    debugPrint(
+      '[DUAL_LIVE] stability-summary model=${model.modelId} '
+      'afterThreshold=${thresholdCounts[model.modelId] ?? 0} '
+      'cache=${cacheCounts[model.modelId] ?? 0} '
+      'stabilityCandidates=${thresholdCounts[model.modelId] ?? 0} '
+      'stableTracks=${stabilityCounts[model.modelId] ?? 0} '
+      'overlayWinner=$overlayWinner workerMs=${result.workerMs ?? -1}',
+    );
+  }
+
+  String _debugMappedDetectionSummary(
+    _YoloModelDescriptor model,
+    int mappedCount,
+  ) {
+    if (mappedCount <= 0) {
+      final labels = _modelMetadata[model.modelId]?.labels;
+      final labelCount = labels?.length ?? 0;
+      return 'mappingFailures=0 labelCount=$labelCount';
+    }
+    final snapshot = _liveDetectionSnapshots[model.modelId];
+    if (snapshot == null || snapshot.detections.isEmpty) {
+      return 'mappingFailures=0';
+    }
+    final detection = snapshot.detections.first;
+    final bool mappingFailed = detection.speciesName == 'Unknown';
+    return 'sourceClassId=${detection.sourceClassId} '
+        'namespaced=${detection.namespacedClassId} '
+        'species=${detection.speciesName} '
+        'mappingFailures=${mappingFailed ? 1 : 0}';
+  }
+
+  String _formatDebugConfidence(double? value) {
+    if (value == null) {
+      return 'none';
+    }
+    return value.toStringAsFixed(3);
+  }
+
+  void _logDualLiveStability(
+    List<StableTrack> stableTracks,
+    StableTrack? primaryTrack,
+  ) {
+    if (!_dualLiveDebug) {
+      return;
+    }
+    for (final track in stableTracks) {
+      final key = track.lockedClassKey ?? track.top1ClassKey ?? 'none';
+      final modelId = track.lockedModelId ?? track.top1ModelId ?? 'none';
+      final accepted = track.isProvisional || track.isStable;
+      final reason = _stabilityDecisionReason(track);
+      debugPrint(
+        '[DUAL_LIVE] stability key=$key model=$modelId '
+        'accepted=$accepted ageMs=${track.windowDurationMs} '
+        'frames=${track.windowFrameCount} wins=${track.stabilityWinCount}/'
+        '${track.requiredWinsForStability} stable=${track.isStable} '
+        'reason=$reason',
+      );
+    }
+    final winnerKey = primaryTrack?.lockedClassKey ??
+        primaryTrack?.top1ClassKey ??
+        'none';
+    final winnerModel = primaryTrack?.lockedModelId ??
+        primaryTrack?.top1ModelId ??
+        'none';
+    debugPrint(
+      '[DUAL_LIVE] overlay winner=$winnerModel key=$winnerKey '
+      'reason=${primaryTrack == null ? 'no_candidate' : 'stable_candidate'}',
+    );
+  }
+
+  String _stabilityDecisionReason(StableTrack track) {
+    if (track.isStable) {
+      return 'accepted';
+    }
+    if (track.windowFrameCount <= 1) {
+      return 'unstable_single_frame';
+    }
+    if (track.top1AvgConf < _stabilityEngine.config.stableConfMinFor(
+      track.top1ModelId,
+    )) {
+      return 'below_stable_threshold';
+    }
+    return 'insufficient_observations';
   }
 
   List<Detection> _mapNativeDetections(
@@ -422,6 +908,8 @@ class _DetectionPageState extends State<DetectionPage>
     List<NativeDetection> detections, {
     required int targetInputWidth,
     required int targetInputHeight,
+    int? timestampMs,
+    int? frameIndex,
   }) {
     final metadata = _modelMetadata[model.modelId];
     if (metadata == null) {
@@ -458,6 +946,8 @@ class _DetectionPageState extends State<DetectionPage>
             finalScore: finalScore,
             sourceModelIds: <String>[model.modelId],
             sourceModelDisplayNames: <String>[model.displayName],
+            timestampMs: timestampMs,
+            frameIndex: frameIndex,
           );
         })
         .toList(growable: false);
@@ -627,21 +1117,34 @@ class _DetectionPageState extends State<DetectionPage>
     return best;
   }
 
-  void _logFrameSubmission(int nowMs) {
+  void _logFrameSubmission(int nowMs, _YoloModelDescriptor model) {
     if (!kDebugMode) {
       return;
     }
-    if (nowMs - _lastDebugTimingLogMs < 1200) {
+    if (nowMs - _lastDebugFrameSubmissionLogMs < 1200) {
       return;
     }
-    _lastDebugTimingLogMs = nowMs;
+    final int elapsedMs = _lastDebugLiveSummaryLogMs == 0
+        ? 0
+        : nowMs - _lastDebugLiveSummaryLogMs;
+    final int elapsedFrames = _streamFrameCount - _lastFpsFrameCount;
+    final double fps = elapsedMs <= 0 ? 0.0 : elapsedFrames * 1000 / elapsedMs;
+    _lastDebugFrameSubmissionLogMs = nowMs;
+    _lastDebugLiveSummaryLogMs = nowMs;
+    _lastFpsFrameCount = _streamFrameCount;
     debugPrint(
-      '[DetectTiming][ui] frame-received ts=$nowMs submitted=1 streamFrames=$_streamFrameCount nativeResults=$_nativeResultCount',
+      '[DetectTiming][live] frame-received ts=$nowMs mode=$_activeLiveMode '
+      'submittedModel=${model.modelId} streamFrames=$_streamFrameCount '
+      'nativeResults=$_nativeResultCount fps=${fps.toStringAsFixed(1)} '
+      'submittedByModel=$_liveSubmittedFrameCountByModel '
+      'resultsByModel=$_liveResultCountByModel '
+      'skipped=$_liveSkippedFrameCount',
     );
   }
 
   void _logDetectionTiming({
     required int nowMs,
+    required _YoloModelDescriptor resultModel,
     required int frameDetectionCount,
     required StableTrack? primaryTrack,
   }) {
@@ -664,13 +1167,19 @@ class _DetectionPageState extends State<DetectionPage>
     _lastDebugTimingLogMs = nowMs;
     _lastDebugUiState = uiState;
     final String label = primaryTrack?.lockedLabel ?? primaryTrack?.top1Label ?? '--';
+    final String? winnerModel =
+        primaryTrack?.lockedModelId ?? primaryTrack?.top1ModelId;
     final double confidence = primaryTrack?.top1AvgConf ?? 0.0;
     final int wins = primaryTrack?.stabilityWinCount ?? 0;
     final int requiredWins = primaryTrack?.requiredWinsForStability ?? 0;
     final int consecutiveWins = primaryTrack?.consecutiveTop1Wins ?? 0;
     debugPrint(
       '[DetectTiming][ui] inference-return ts=$nowMs frameToResultMs=$approxFrameToResultMs '
-      'dets=$frameDetectionCount label="$label" conf=${confidence.toStringAsFixed(3)} '
+      'mode=$_activeLiveMode resultModel=${resultModel.modelId} '
+      'dets=$frameDetectionCount detsByModel=$_liveDetectionCountByModel '
+      'resultsByModel=$_liveResultCountByModel '
+      'winnerModel=${winnerModel ?? 'none'} label="$label" '
+      'conf=${confidence.toStringAsFixed(3)} '
       'wins=$wins/$requiredWins streak=$consecutiveWins stable=${primaryTrack?.isStable ?? false} '
       'ready=${primaryTrack?.isReadyToCapture ?? false} uiState=$uiState',
     );
@@ -733,12 +1242,12 @@ class _DetectionPageState extends State<DetectionPage>
         state: _DetectionUiState.matchFound,
         displayTrack: active,
         statusText: modelDisplayName == null
-            ? 'Match found: $label'
-            : 'Match found: $label ($modelDisplayName)',
+            ? 'Likely fungus: $label'
+            : 'Likely fungus: $label ($modelDisplayName)',
         statusIcon: Icons.check_circle,
         bannerTitle: label,
         bannerSubtitle: topConfidence == null
-            ? 'Ready to capture'
+            ? 'Capture recheck required'
             : 'Ready to capture • $topConfidence',
         bannerDetail: ambiguous && active?.top2Label != null
             ? 'Also possible: ${active!.top2Label}'
@@ -753,13 +1262,13 @@ class _DetectionPageState extends State<DetectionPage>
         state: _DetectionUiState.matchFound,
         displayTrack: active,
         statusText: modelDisplayName == null
-            ? 'Match found: $label'
-            : 'Match found: $label ($modelDisplayName)',
+            ? 'Likely: $label'
+            : 'Likely: $label ($modelDisplayName)',
         statusIcon: Icons.shield_outlined,
         bannerTitle: label,
         bannerSubtitle: topConfidence == null
-            ? 'Confirming...'
-            : 'Confirming... $sourceText',
+            ? 'Likely fungus'
+            : 'Likely fungus $sourceText',
         bannerDetail: ambiguous && active?.top2Label != null
             ? 'Also possible: ${active!.top2Label}'
             : null,
@@ -769,20 +1278,18 @@ class _DetectionPageState extends State<DetectionPage>
     }
 
     if (primaryTrack != null && primaryTrack.isProvisional && label != null) {
-      final bool mediumOrHigher =
-          primaryTrack.top1AvgConf >= _stabilityEngine.config.adaptiveMediumConfMin;
+      final bool likely = primaryTrack.top1AvgConf >= 0.65;
+      final String tier = likely ? 'Likely' : 'Possible';
       return _DetectionUiPresentation(
-        state: mediumOrHigher
+        state: likely
             ? _DetectionUiState.confirming
             : _DetectionUiState.possibleMatch,
         displayTrack: active,
-        statusText: mediumOrHigher
-            ? 'Confirming...'
-            : modelDisplayName == null
-                ? 'Possible match: $label'
-                : 'Possible match: $label ($modelDisplayName)',
-        statusIcon: mediumOrHigher ? Icons.timelapse : Icons.search,
-        bannerTitle: mediumOrHigher ? 'Confirming...' : 'Possible match: $label',
+        statusText: modelDisplayName == null
+            ? '$tier: $label'
+            : '$tier: $label ($modelDisplayName)',
+        statusIcon: likely ? Icons.timelapse : Icons.search,
+        bannerTitle: '$tier: $label',
         bannerSubtitle: topConfidence == null
             ? null
             : 'Confidence $sourceText',
@@ -853,13 +1360,23 @@ class _DetectionPageState extends State<DetectionPage>
         debugPrintStack(stackTrace: stack);
       }
 
-      final args = captureSelection == null
-          ? _resultArgsFromTrack(track, photoPath)
-          : _resultArgsFromCaptureSelection(
-              captureSelection,
-              track,
-              photoPath,
-            );
+      final bool captureConfirmed = captureSelection != null &&
+          _captureSelectionConfirmsLive(captureSelection, track);
+      _logDualLiveCaptureConfirmation(
+        track: track,
+        selection: captureSelection,
+        confirmed: captureConfirmed,
+      );
+      final DetectionResultArgs args;
+      if (captureConfirmed) {
+        args = _resultArgsFromCaptureSelection(
+          captureSelection,
+          track,
+          photoPath,
+        );
+      } else {
+        args = _uncertainResultArgsFromTrack(track, photoPath);
+      }
       await navigator.pushNamed('/detection-result', arguments: args);
     } finally {
       if (mounted) {
@@ -882,11 +1399,78 @@ class _DetectionPageState extends State<DetectionPage>
     }
   }
 
+  bool _captureSelectionConfirmsLive(
+    _CaptureSelection selection,
+    StableTrack liveTrack,
+  ) {
+    final String? liveModelId = liveTrack.lockedModelId ?? liveTrack.top1ModelId;
+    final int? liveClassId = liveTrack.lockedClassId ?? liveTrack.top1ClassId;
+    final String? liveLabel = liveTrack.lockedLabel ?? liveTrack.top1Label;
+    final candidates = <Detection>[
+      selection.primary,
+      if (selection.secondary != null) selection.secondary!,
+    ];
+    for (final candidate in candidates) {
+      if (liveModelId != null &&
+          liveClassId != null &&
+          candidate.modelId == liveModelId &&
+          candidate.sourceClassId == liveClassId) {
+        return true;
+      }
+      if (liveLabel != null &&
+          _normalizeName(candidate.speciesName) == _normalizeName(liveLabel)) {
+        return true;
+      }
+      final double overlap = intersectionOverUnion(candidate.box, liveTrack.bbox);
+      if (overlap >= _crossModelMergeIoUThreshold &&
+          candidate.finalScore >= _captureHighConfidenceConfirmationThreshold) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void _logDualLiveCaptureConfirmation({
+    required StableTrack track,
+    required _CaptureSelection? selection,
+    required bool confirmed,
+  }) {
+    if (!_dualLiveDebug) {
+      return;
+    }
+    final liveModel = track.lockedModelId ?? track.top1ModelId ?? 'none';
+    final liveLabel = track.lockedLabel ?? track.top1Label ?? 'none';
+    final capture = selection?.primary;
+    final reason = confirmed
+        ? 'capture_recheck_confirmed'
+        : 'capture_recheck_failed';
+    final overlap = capture == null
+        ? 0.0
+        : intersectionOverUnion(capture.box, track.bbox);
+    debugPrint(
+      '[DUAL_LIVE] capture-confirmation accepted=$confirmed reason=$reason '
+      'liveModel=$liveModel liveSpecies=$liveLabel '
+      'captureModel=${capture?.modelId ?? 'none'} '
+      'captureSpecies=${capture?.speciesName ?? 'none'} '
+      'captureScore=${_formatDebugConfidence(capture?.finalScore)} '
+      'iou=${overlap.toStringAsFixed(2)}',
+    );
+  }
+
   Future<_CaptureSelection?> _runCaptureDetectors(NativeYuvFrame frame) async {
     final detections = <Detection>[];
     for (final model in _captureModels) {
       final engine = await _captureEngineFor(model);
+      final stopwatch = Stopwatch()..start();
       final nativeDetections = await engine.detectFrame(frame);
+      stopwatch.stop();
+      if (kDebugMode) {
+        debugPrint(
+          '[DetectTiming][capture] model=${model.modelId} '
+          'inferenceMs=${stopwatch.elapsedMilliseconds} '
+          'dets=${nativeDetections.length}',
+        );
+      }
       detections.addAll(
         _mapNativeDetections(
           model,
@@ -897,7 +1481,15 @@ class _DetectionPageState extends State<DetectionPage>
       );
     }
     final merged = _mergeCrossModelDetections(detections);
-    return _selectCaptureDetection(merged);
+    final selection = _selectCaptureDetection(merged);
+    if (kDebugMode) {
+      debugPrint(
+        '[DetectTiming][capture] winnerModel=${selection?.primary.modelId ?? 'none'} '
+        'secondaryModel=${selection?.secondary?.modelId ?? 'none'} '
+        'ambiguous=${selection?.isAmbiguous ?? false}',
+      );
+    }
+    return selection;
   }
 
   Future<NativeYoloEngine> _captureEngineFor(
@@ -918,6 +1510,7 @@ class _DetectionPageState extends State<DetectionPage>
     final engine = await NativeYoloEngine.create(
       NativeYoloConfig(
         modelPath: modelPath,
+        debugLabel: 'capture-${model.modelId}',
         inputWidth: metadata.inputWidth,
         inputHeight: metadata.inputHeight,
         threads: Platform.isAndroid ? 3 : 2,
@@ -957,10 +1550,22 @@ class _DetectionPageState extends State<DetectionPage>
         if (base.modelId == candidate.modelId) {
           continue;
         }
-        if (intersectionOverUnion(base.box, candidate.box) <
-            _crossModelMergeIoUThreshold) {
+        final double overlap = intersectionOverUnion(base.box, candidate.box);
+        if (overlap < _crossModelMergeIoUThreshold) {
+          _logDualLiveMergeDecision(
+            winner: base,
+            suppressed: candidate,
+            reason: 'low_iou',
+            iou: overlap,
+          );
           continue;
         }
+        _logDualLiveMergeDecision(
+          winner: base,
+          suppressed: candidate,
+          reason: 'overlap_group',
+          iou: overlap,
+        );
         group.add(candidate);
         used.add(j);
       }
@@ -983,15 +1588,40 @@ class _DetectionPageState extends State<DetectionPage>
           _normalizeName(best.speciesName),
     );
     if (!sameSpecies) {
+      if (_dualLiveDebug && group.length > 1) {
+        for (final candidate in sorted.skip(1)) {
+          _logDualLiveMergeDecision(
+            winner: best,
+            suppressed: candidate,
+            reason: 'different_species_keep_separate',
+            iou: intersectionOverUnion(best.box, candidate.box),
+          );
+        }
+      }
       return sorted;
     }
     final sourceModelIds = group.map((d) => d.modelId).toSet().toList()
+      ..sort();
+    final sourceClassKeys = group
+        .map((d) => d.namespacedClassId)
+        .toSet()
+        .toList()
       ..sort();
     final sourceModelDisplayNames =
         group.map((d) => d.modelDisplayName).toSet().toList()..sort();
     final double averageScore =
         group.fold<double>(0.0, (sum, d) => sum + d.finalScore) / group.length;
     final double finalScore = (averageScore + 0.05).clamp(0.0, 1.0);
+    if (_dualLiveDebug) {
+      for (final candidate in sorted.skip(1)) {
+        _logDualLiveMergeDecision(
+          winner: best,
+          suppressed: candidate,
+          reason: 'same_species_merged',
+          iou: intersectionOverUnion(best.box, candidate.box),
+        );
+      }
+    }
     return <Detection>[
       Detection(
         box: best.box,
@@ -1001,13 +1631,31 @@ class _DetectionPageState extends State<DetectionPage>
         modelId: 'merged',
         modelDisplayName: sourceModelDisplayNames.join(' + '),
         sourceClassId: best.sourceClassId,
-        namespacedClassId: sourceModelIds.join('+'),
+        namespacedClassId: sourceClassKeys.join('+'),
         speciesName: best.speciesName,
         rawConfidence: best.rawConfidence,
         calibratedConfidence: averageScore,
         finalScore: finalScore,
         sourceModelIds: sourceModelIds,
-        sourceModelDisplayNames: sourceModelDisplayNames,
+        sourceModelDisplayNames: <String>['Merged'],
+        timestampMs: group
+            .map((d) => d.timestampMs)
+            .whereType<int>()
+            .fold<int?>(null, (latest, value) {
+          if (latest == null || value > latest) {
+            return value;
+          }
+          return latest;
+        }),
+        frameIndex: group
+            .map((d) => d.frameIndex)
+            .whereType<int>()
+            .fold<int?>(null, (latest, value) {
+          if (latest == null || value > latest) {
+            return value;
+          }
+          return latest;
+        }),
       ),
     ];
   }
@@ -1040,6 +1688,27 @@ class _DetectionPageState extends State<DetectionPage>
       primary: primary,
       secondary: secondary,
       isAmbiguous: ambiguous,
+    );
+  }
+
+  void _logDualLiveMergeDecision({
+    required Detection winner,
+    required Detection suppressed,
+    required String reason,
+    required double iou,
+  }) {
+    if (!_dualLiveDebug) {
+      return;
+    }
+    final double scoreGap = winner.finalScore - suppressed.finalScore;
+    final bool ambiguous = winner.modelId != suppressed.modelId &&
+        suppressed.finalScore >= _crossModelCompetingMinScore &&
+        scoreGap.abs() < _crossModelOverrideMargin;
+    debugPrint(
+      '[DUAL_LIVE] merge winner=${winner.modelId} '
+      'suppressed=${suppressed.modelId} reason=$reason '
+      'iou=${iou.toStringAsFixed(2)} '
+      'scoreGap=${scoreGap.toStringAsFixed(2)} ambiguous=$ambiguous',
     );
   }
 
@@ -1088,59 +1757,39 @@ class _DetectionPageState extends State<DetectionPage>
     );
   }
 
-  DetectionResultArgs _resultArgsFromTrack(
+  DetectionResultArgs _uncertainResultArgsFromTrack(
     StableTrack track,
     String? photoPath,
   ) {
-    final int? classIndex = track.lockedClassId ?? track.top1ClassId;
-    final String label = track.lockedLabel ??
-        track.top1Label ??
-        (classIndex == null ? 'Unknown' : _labelForIndex(classIndex));
-    final bool isLichen = _isLichenDetection(
-      classIndex: classIndex,
-      label: label,
-      modelId: track.lockedModelId ?? track.top1ModelId,
-    );
+    final double confidence = track.lockedClassKey == null
+        ? track.top1AvgConf
+        : track.lockedAvgConf;
     return DetectionResultArgs(
       observationId: null,
-      lockedLabel: label,
-      top2Label: track.isAmbiguous ? track.top2Label : null,
-      top2ClassIndex: track.isAmbiguous ? track.top2ClassId : null,
-      top1AvgConf: track.lockedClassKey == null
-          ? track.top1AvgConf
-          : track.lockedAvgConf,
-      top2AvgConf: track.isAmbiguous ? track.top2AvgConf : null,
+      lockedLabel: 'Uncertain fungus detected',
+      top2Label: null,
+      top2ClassIndex: null,
+      top1AvgConf: confidence,
+      top2AvgConf: null,
       top1VoteRatio: track.top1VoteRatio,
       windowFrameCount: track.windowFrameCount,
       windowDurationMs: track.windowDurationMs,
       stabilityWinCount: track.stabilityWinCount,
       stabilityWindowSize: track.stabilityWindowSize,
       timestamp: DateTime.now(),
-      speciesId: _speciesIdForDetection(
-        modelId: track.lockedModelId ?? track.top1ModelId,
-        sourceClassId: classIndex,
-        label: label,
-      ),
-      classIndex: classIndex,
+      speciesId: null,
+      classIndex: null,
       photoPath: photoPath,
-      isLichen: isLichen,
-      modelId: track.lockedModelId ?? track.top1ModelId,
-      modelDisplayName:
-          track.lockedModelDisplayName ?? track.top1ModelDisplayName,
-      sourceClassId: classIndex,
-      rawConfidence: track.lockedClassKey == null
-          ? track.top1AvgConf
-          : track.lockedAvgConf,
-      calibratedConfidence: track.lockedClassKey == null
-          ? track.top1AvgConf
-          : track.lockedAvgConf,
-      finalScore: track.lockedClassKey == null
-          ? track.top1AvgConf
-          : track.lockedAvgConf,
-      top2ModelId: track.isAmbiguous ? track.top2ModelId : null,
-      top2ModelDisplayName:
-          track.isAmbiguous ? track.top2ModelDisplayName : null,
-      top2SourceClassId: track.isAmbiguous ? track.top2ClassId : null,
+      isLichen: false,
+      modelId: null,
+      modelDisplayName: 'Unconfirmed',
+      sourceClassId: null,
+      rawConfidence: confidence,
+      calibratedConfidence: confidence,
+      finalScore: confidence,
+      top2ModelId: null,
+      top2ModelDisplayName: null,
+      top2SourceClassId: null,
     );
   }
 
@@ -1229,9 +1878,8 @@ class _DetectionPageState extends State<DetectionPage>
 
   Future<void> _startImageStream() async {
     final controller = _camera;
-    final engine = _nativeEngine;
     if (controller == null ||
-        engine == null ||
+        _liveEngines.isEmpty ||
         !controller.value.isInitialized) {
       return;
     }
@@ -1241,15 +1889,52 @@ class _DetectionPageState extends State<DetectionPage>
       final int nowMs = DateTime.now().millisecondsSinceEpoch;
       _streamFrameCount += 1;
       _lastStreamFrameMs = nowMs;
-      _logFrameSubmission(nowMs);
       final rotationDegrees = controller.description.sensorOrientation;
       final frame = NativeYuvFrame.fromCameraImage(
         image,
         rotationDegrees: rotationDegrees,
       );
       _latestFrame = frame;
+      final model = _selectLiveModelForFrame();
+      final engine = _liveEngines[model.modelId];
+      if (engine == null) {
+        _liveSkippedFrameCount += 1;
+        return;
+      }
+      _liveSubmittedFrameCountByModel[model.modelId] =
+          (_liveSubmittedFrameCountByModel[model.modelId] ?? 0) + 1;
+      _liveLatestSubmittedFrameByModel[model.modelId] = _streamFrameCount;
+      _logDualLiveFrameSubmission(_streamFrameCount, model);
+      _logFrameSubmission(nowMs, model);
       engine.submitFrame(frame);
     });
+  }
+
+  _YoloModelDescriptor _selectLiveModelForFrame() {
+    final liveModels = _liveModels;
+    if (liveModels.length <= 1) {
+      return liveModels.first;
+    }
+    final model = liveModels[_liveAlternatingCursor % liveModels.length];
+    _liveAlternatingCursor += 1;
+    return model;
+  }
+
+  void _logDualLiveFrameSubmission(
+    int frameIndex,
+    _YoloModelDescriptor model,
+  ) {
+    if (!_dualLiveDebug) {
+      return;
+    }
+    final metadata = _modelMetadata[model.modelId];
+    final String size = metadata == null
+        ? 'unknown'
+        : '${metadata.inputWidth}x${metadata.inputHeight}';
+    debugPrint(
+      '[DUAL_LIVE] frame=$frameIndex submitted ${model.modelId} '
+      'size=$size path=${model.modelAssetPath}',
+    );
   }
 
   Future<void> _disposeCameraController({bool silently = false}) async {
@@ -1289,18 +1974,31 @@ class _DetectionPageState extends State<DetectionPage>
 
   Future<void> _stopStreamAndDispose() async {
     await _disposeCameraController(silently: true);
-    await _nativeDetectionsSub?.cancel();
-    await _nativeErrorSub?.cancel();
-    try {
-      await _nativeEngine?.dispose();
-    } catch (_) {}
+    await _disposeLiveEngines();
     for (final engine in _captureEngines.values) {
       try {
         await engine.dispose();
       } catch (_) {}
     }
     _captureEngines.clear();
-    _nativeEngine = null;
+  }
+
+  Future<void> _disposeLiveEngines() async {
+    for (final sub in _liveFrameResultSubs.values) {
+      await sub.cancel();
+    }
+    _liveFrameResultSubs.clear();
+    for (final sub in _liveErrorSubs.values) {
+      await sub.cancel();
+    }
+    _liveErrorSubs.clear();
+    for (final engine in _liveEngines.values) {
+      try {
+        await engine.dispose();
+      } catch (_) {}
+    }
+    _liveEngines.clear();
+    _liveDetectionSnapshots.clear();
   }
 
   @override
