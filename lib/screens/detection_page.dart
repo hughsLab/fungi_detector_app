@@ -13,8 +13,9 @@ import 'package:yaml/yaml.dart';
 import '../detection/detection.dart';
 import '../detection/iou.dart';
 import '../detection/stability_engine.dart';
-import '../models/species.dart';
 import '../models/navigation_args.dart';
+import '../models/observation.dart';
+import '../models/species.dart';
 import '../native/native_yolo_engine.dart';
 import '../repositories/species_repository.dart';
 
@@ -22,6 +23,11 @@ const Color _deepGreen = Color(0xFF1F4E3D);
 const Color _accentGreen = Color(0xFF8FBFA1);
 const Color _highlightGreen = Color(0xFF7CD39A);
 const Color _mutedWhite = Color(0xCCFFFFFF);
+
+String _normalizeStaticName(String value) {
+  final normalized = value.trim().toLowerCase().replaceAll('_', ' ');
+  return normalized.replaceAll(RegExp(r'\s+'), ' ');
+}
 
 enum _DetectionUiState {
   scanning,
@@ -94,15 +100,17 @@ class _YoloModelDescriptor {
 }
 
 class _CaptureSelection {
-  final Detection primary;
-  final Detection? secondary;
+  final List<Detection> candidates;
   final bool isAmbiguous;
 
   const _CaptureSelection({
-    required this.primary,
-    required this.secondary,
+    required this.candidates,
     required this.isAmbiguous,
   });
+
+  Detection get primary => candidates.first;
+
+  Detection? get secondary => candidates.length > 1 ? candidates[1] : null;
 }
 
 class _LiveDetectionSnapshot {
@@ -112,6 +120,105 @@ class _LiveDetectionSnapshot {
   const _LiveDetectionSnapshot({
     required this.detections,
     required this.timestampMs,
+  });
+}
+
+class _ScanWindowSupport {
+  final String label;
+  final int? classIndex;
+  final String? modelId;
+  final String? modelDisplayName;
+  final Set<String> modelIds = <String>{};
+  int framesSeen = 0;
+  double scoreSum = 0.0;
+  double maxScore = 0.0;
+
+  _ScanWindowSupport({
+    required this.label,
+    required this.classIndex,
+    required this.modelId,
+    required this.modelDisplayName,
+  });
+
+  void add(Detection detection) {
+    framesSeen += 1;
+    scoreSum += detection.finalScore;
+    if (detection.finalScore > maxScore) {
+      maxScore = detection.finalScore;
+    }
+    if (detection.sourceModelIds.isNotEmpty) {
+      modelIds.addAll(detection.sourceModelIds);
+    } else {
+      modelIds.add(detection.modelId);
+    }
+  }
+
+  double get averageScore => framesSeen == 0 ? 0.0 : scoreSum / framesSeen;
+
+  double get supportScore {
+    final double frameScore = (framesSeen / 10).clamp(0.0, 1.0);
+    final double modelScore = modelIds.length > 1 ? 1.0 : 0.55;
+    return (frameScore * 0.30) +
+        (averageScore * 0.30) +
+        (maxScore * 0.25) +
+        (modelScore * 0.15);
+  }
+}
+
+class _ScanWindowSummary {
+  final int startedAtMs;
+  final int endedAtMs;
+  final Map<String, _ScanWindowSupport> supportByName;
+
+  const _ScanWindowSummary({
+    required this.startedAtMs,
+    required this.endedAtMs,
+    required this.supportByName,
+  });
+
+  int get windowDurationMs => (endedAtMs - startedAtMs).clamp(0, 60000);
+
+  int get windowFrameCount =>
+      supportByName.values.fold<int>(0, (sum, support) => sum + support.framesSeen);
+
+  double supportFor(Detection detection) {
+    return supportByName[_normalizeStaticName(detection.speciesName)]
+            ?.supportScore ??
+        0.0;
+  }
+
+  List<_ScanWindowSupport> get rankedSupports {
+    final ranked = supportByName.values.toList()
+      ..sort((a, b) => b.supportScore.compareTo(a.supportScore));
+    return ranked;
+  }
+}
+
+class _ScanRankedCandidate {
+  final Detection detection;
+  final double liveSupport;
+  final double finalScore;
+
+  const _ScanRankedCandidate({
+    required this.detection,
+    required this.liveSupport,
+    required this.finalScore,
+  });
+}
+
+class _ResultWindowMetrics {
+  final double top1VoteRatio;
+  final int windowFrameCount;
+  final int windowDurationMs;
+  final int stabilityWinCount;
+  final int stabilityWindowSize;
+
+  const _ResultWindowMetrics({
+    required this.top1VoteRatio,
+    required this.windowFrameCount,
+    required this.windowDurationMs,
+    required this.stabilityWinCount,
+    required this.stabilityWindowSize,
   });
 }
 
@@ -151,6 +258,11 @@ class _DetectionPageState extends State<DetectionPage>
   bool _hasPermission = false;
   bool _engineReady = false;
   bool _isCapturing = false;
+  bool _isScanning = false;
+  int _scanRemainingSeconds = 5;
+  int _scanStartedAtMs = 0;
+  Timer? _scanCountdownTimer;
+  final List<Detection> _scanWindowDetections = <Detection>[];
 
   int _inputWidth = 640;
   int _inputHeight = 640;
@@ -206,7 +318,12 @@ class _DetectionPageState extends State<DetectionPage>
   static const double _boxHugeAreaRatio = 0.85;
   static const double _boxExtremeAspectRatio = 8.0;
   static const double _boxSanityOverrideConfidence = 0.85;
-  static const double _captureHighConfidenceConfirmationThreshold = 0.80;
+  static const int _scanDurationSeconds = 5;
+  static const double _scanCaptureWeight = 0.70;
+  static const double _scanLiveWindowWeight = 0.30;
+  static const double _scanFinalAcceptanceThreshold = 0.55;
+  static const double _scanSecondaryMargin = 0.18;
+  static const double _scanLivePossibleSupportThreshold = 0.45;
 
   static const _YoloModelDescriptor _model1 = _YoloModelDescriptor(
     modelId: 'model_1',
@@ -588,6 +705,7 @@ class _DetectionPageState extends State<DetectionPage>
       mapped,
       frameIndex: result.frameId,
     );
+    _recordScanWindowDetections(acceptedMapped);
     _liveDetectionSnapshots[model.modelId] = _LiveDetectionSnapshot(
       detections: acceptedMapped,
       timestampMs: nowMs,
@@ -708,6 +826,44 @@ class _DetectionPageState extends State<DetectionPage>
       }
     }
     return accepted;
+  }
+
+  void _recordScanWindowDetections(List<Detection> detections) {
+    if (!_isScanning || _isCapturing || detections.isEmpty) {
+      return;
+    }
+    for (final detection in detections) {
+      if (detection.finalScore <
+          _stabilityEngine.config.detectConfMinFor(detection)) {
+        continue;
+      }
+      _scanWindowDetections.add(detection);
+    }
+  }
+
+  _ScanWindowSummary _buildScanWindowSummary(int endedAtMs) {
+    final supportByName = <String, _ScanWindowSupport>{};
+    for (final detection in _scanWindowDetections) {
+      final String key = _normalizeName(detection.speciesName);
+      if (key.isEmpty || key == 'unknown') {
+        continue;
+      }
+      final support = supportByName.putIfAbsent(
+        key,
+        () => _ScanWindowSupport(
+          label: detection.speciesName,
+          classIndex: detection.sourceClassId,
+          modelId: detection.modelId,
+          modelDisplayName: detection.sourceDisplayName,
+        ),
+      );
+      support.add(detection);
+    }
+    return _ScanWindowSummary(
+      startedAtMs: _scanStartedAtMs == 0 ? endedAtMs : _scanStartedAtMs,
+      endedAtMs: endedAtMs,
+      supportByName: supportByName,
+    );
   }
 
   String? _liveRejectionReason(Detection detection) {
@@ -1052,8 +1208,7 @@ class _DetectionPageState extends State<DetectionPage>
   }
 
   String _normalizeName(String value) {
-    final normalized = value.trim().toLowerCase().replaceAll('_', ' ');
-    return normalized.replaceAll(RegExp(r'\s+'), ' ');
+    return _normalizeStaticName(value);
   }
 
   String? _speciesIdForLabel(String label) {
@@ -1333,11 +1488,48 @@ class _DetectionPageState extends State<DetectionPage>
     );
   }
 
-  Future<void> _handleCapture(StableTrack track) async {
+  void _startTimedScan() {
+    if (_isScanning || _isCapturing) {
+      return;
+    }
+    _scanCountdownTimer?.cancel();
+    final int nowMs = DateTime.now().millisecondsSinceEpoch;
+    setState(() {
+      _isScanning = true;
+      _scanRemainingSeconds = _scanDurationSeconds;
+      _scanStartedAtMs = nowMs;
+      _scanWindowDetections.clear();
+    });
+
+    _scanCountdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      final int next = _scanRemainingSeconds - 1;
+      if (next <= 0) {
+        timer.cancel();
+        setState(() {
+          _scanRemainingSeconds = 0;
+        });
+        unawaited(_finishTimedScan());
+        return;
+      }
+      setState(() {
+        _scanRemainingSeconds = next;
+      });
+    });
+  }
+
+  Future<void> _finishTimedScan() async {
     if (_isCapturing) {
       return;
     }
+    _scanCountdownTimer?.cancel();
+    final int endedAtMs = DateTime.now().millisecondsSinceEpoch;
+    final _ScanWindowSummary scanSummary = _buildScanWindowSummary(endedAtMs);
     setState(() {
+      _isScanning = false;
       _isCapturing = true;
     });
 
@@ -1360,23 +1552,11 @@ class _DetectionPageState extends State<DetectionPage>
         debugPrintStack(stackTrace: stack);
       }
 
-      final bool captureConfirmed = captureSelection != null &&
-          _captureSelectionConfirmsLive(captureSelection, track);
-      _logDualLiveCaptureConfirmation(
-        track: track,
-        selection: captureSelection,
-        confirmed: captureConfirmed,
+      final DetectionResultArgs args = _resultArgsFromTimedScan(
+        captureSelection,
+        scanSummary,
+        photoPath,
       );
-      final DetectionResultArgs args;
-      if (captureConfirmed) {
-        args = _resultArgsFromCaptureSelection(
-          captureSelection,
-          track,
-          photoPath,
-        );
-      } else {
-        args = _uncertainResultArgsFromTrack(track, photoPath);
-      }
       await navigator.pushNamed('/detection-result', arguments: args);
     } finally {
       if (mounted) {
@@ -1394,67 +1574,10 @@ class _DetectionPageState extends State<DetectionPage>
       if (mounted) {
         setState(() {
           _isCapturing = false;
+          _scanRemainingSeconds = _scanDurationSeconds;
         });
       }
     }
-  }
-
-  bool _captureSelectionConfirmsLive(
-    _CaptureSelection selection,
-    StableTrack liveTrack,
-  ) {
-    final String? liveModelId = liveTrack.lockedModelId ?? liveTrack.top1ModelId;
-    final int? liveClassId = liveTrack.lockedClassId ?? liveTrack.top1ClassId;
-    final String? liveLabel = liveTrack.lockedLabel ?? liveTrack.top1Label;
-    final candidates = <Detection>[
-      selection.primary,
-      if (selection.secondary != null) selection.secondary!,
-    ];
-    for (final candidate in candidates) {
-      if (liveModelId != null &&
-          liveClassId != null &&
-          candidate.modelId == liveModelId &&
-          candidate.sourceClassId == liveClassId) {
-        return true;
-      }
-      if (liveLabel != null &&
-          _normalizeName(candidate.speciesName) == _normalizeName(liveLabel)) {
-        return true;
-      }
-      final double overlap = intersectionOverUnion(candidate.box, liveTrack.bbox);
-      if (overlap >= _crossModelMergeIoUThreshold &&
-          candidate.finalScore >= _captureHighConfidenceConfirmationThreshold) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  void _logDualLiveCaptureConfirmation({
-    required StableTrack track,
-    required _CaptureSelection? selection,
-    required bool confirmed,
-  }) {
-    if (!_dualLiveDebug) {
-      return;
-    }
-    final liveModel = track.lockedModelId ?? track.top1ModelId ?? 'none';
-    final liveLabel = track.lockedLabel ?? track.top1Label ?? 'none';
-    final capture = selection?.primary;
-    final reason = confirmed
-        ? 'capture_recheck_confirmed'
-        : 'capture_recheck_failed';
-    final overlap = capture == null
-        ? 0.0
-        : intersectionOverUnion(capture.box, track.bbox);
-    debugPrint(
-      '[DUAL_LIVE] capture-confirmation accepted=$confirmed reason=$reason '
-      'liveModel=$liveModel liveSpecies=$liveLabel '
-      'captureModel=${capture?.modelId ?? 'none'} '
-      'captureSpecies=${capture?.speciesName ?? 'none'} '
-      'captureScore=${_formatDebugConfidence(capture?.finalScore)} '
-      'iou=${overlap.toStringAsFixed(2)}',
-    );
   }
 
   Future<_CaptureSelection?> _runCaptureDetectors(NativeYuvFrame frame) async {
@@ -1667,26 +1790,32 @@ class _DetectionPageState extends State<DetectionPage>
     final sorted = [...detections]
       ..sort((a, b) => b.finalScore.compareTo(a.finalScore));
     final primary = sorted.first;
-    Detection? secondary;
+    final candidates = <Detection>[primary];
     bool ambiguous = false;
     for (final candidate in sorted.skip(1)) {
       if (intersectionOverUnion(primary.box, candidate.box) <
           _crossModelMergeIoUThreshold) {
         continue;
       }
-      secondary = candidate;
+      if (candidate.finalScore < _crossModelCompetingMinScore) {
+        continue;
+      }
+      candidates.add(candidate);
       final bool crossModelConflict = primary.modelId != candidate.modelId;
       final double scoreGap =
           (primary.finalScore - candidate.finalScore).abs();
-      ambiguous = crossModelConflict &&
+      if (!ambiguous) {
+        ambiguous = crossModelConflict &&
               candidate.finalScore >= _crossModelCompetingMinScore
           ? scoreGap < _crossModelOverrideMargin
           : scoreGap < _crossModelAmbiguousMargin;
-      break;
+      }
+      if (candidates.length >= 3) {
+        break;
+      }
     }
     return _CaptureSelection(
-      primary: primary,
-      secondary: secondary,
+      candidates: candidates,
       isAmbiguous: ambiguous,
     );
   }
@@ -1712,13 +1841,144 @@ class _DetectionPageState extends State<DetectionPage>
     );
   }
 
-  DetectionResultArgs _resultArgsFromCaptureSelection(
-    _CaptureSelection selection,
-    StableTrack fallbackTrack,
+  DetectionResultArgs _resultArgsFromTimedScan(
+    _CaptureSelection? captureSelection,
+    _ScanWindowSummary scanSummary,
     String? photoPath,
   ) {
+    if (captureSelection == null) {
+      return _uncertainResultArgsFromScan(scanSummary, photoPath);
+    }
+
+    final _CaptureSelection rankedSelection =
+        _rankCaptureSelectionWithScanWindow(captureSelection, scanSummary);
+    final bool accepted =
+        rankedSelection.primary.finalScore >= _scanFinalAcceptanceThreshold;
+    if (!accepted) {
+      return _uncertainResultArgsFromScan(
+        scanSummary,
+        photoPath,
+        possibleCaptureSelection: rankedSelection,
+      );
+    }
+
+    return _resultArgsFromCaptureSelection(
+      rankedSelection,
+      _primaryTrack ?? _lastStableTrack,
+      photoPath,
+      metrics: _metricsForScan(
+        scanSummary,
+        rankedSelection.primary,
+      ),
+      isConfirmed: true,
+    );
+  }
+
+  _CaptureSelection _rankCaptureSelectionWithScanWindow(
+    _CaptureSelection selection,
+    _ScanWindowSummary scanSummary,
+  ) {
+    final ranked = selection.candidates
+        .map((candidate) => _rankScanCandidate(candidate, scanSummary))
+        .toList()
+      ..sort((a, b) => b.finalScore.compareTo(a.finalScore));
+
+    final _ScanRankedCandidate primary = ranked.first;
+    final _ScanRankedCandidate? secondary = ranked.length > 1 ? ranked[1] : null;
+    final bool ambiguous =
+        secondary != null &&
+        (primary.finalScore - secondary.finalScore).abs() <= _scanSecondaryMargin;
+    return _CaptureSelection(
+      candidates: ranked
+          .take(3)
+          .map(
+            (candidate) => _detectionWithFinalScore(
+              candidate.detection,
+              candidate.finalScore,
+            ),
+          )
+          .toList(growable: false),
+      isAmbiguous: ambiguous,
+    );
+  }
+
+  _ScanRankedCandidate _rankScanCandidate(
+    Detection detection,
+    _ScanWindowSummary scanSummary,
+  ) {
+    final double liveSupport = scanSummary.supportFor(detection);
+    final double finalScore =
+        (detection.finalScore * _scanCaptureWeight) +
+        (liveSupport * _scanLiveWindowWeight);
+    return _ScanRankedCandidate(
+      detection: detection,
+      liveSupport: liveSupport,
+      finalScore: finalScore.clamp(0.0, 1.0),
+    );
+  }
+
+  Detection _detectionWithFinalScore(Detection detection, double finalScore) {
+    return Detection(
+      box: detection.box,
+      confidence: finalScore,
+      classId: detection.classId,
+      label: detection.label,
+      modelId: detection.modelId,
+      modelDisplayName: detection.modelDisplayName,
+      sourceClassId: detection.sourceClassId,
+      namespacedClassId: detection.namespacedClassId,
+      speciesName: detection.speciesName,
+      rawConfidence: detection.rawConfidence,
+      calibratedConfidence: detection.calibratedConfidence,
+      finalScore: finalScore,
+      sourceModelIds: detection.sourceModelIds,
+      sourceModelDisplayNames: detection.sourceModelDisplayNames,
+      timestampMs: detection.timestampMs,
+      frameIndex: detection.frameIndex,
+    );
+  }
+
+  _ResultWindowMetrics _metricsForScan(
+    _ScanWindowSummary scanSummary,
+    Detection primary,
+  ) {
+    final support =
+        scanSummary.supportByName[_normalizeName(primary.speciesName)];
+    final int totalFrames = scanSummary.windowFrameCount;
+    final double voteRatio = totalFrames <= 0 || support == null
+        ? 0.0
+        : support.framesSeen / totalFrames;
+    return _ResultWindowMetrics(
+      top1VoteRatio: voteRatio.clamp(0.0, 1.0),
+      windowFrameCount: totalFrames,
+      windowDurationMs: scanSummary.windowDurationMs,
+      stabilityWinCount: _primaryTrack?.stabilityWinCount ?? 0,
+      stabilityWindowSize: _stabilityEngine.config.stabilityWindowFramesM,
+    );
+  }
+
+  DetectionResultArgs _resultArgsFromCaptureSelection(
+    _CaptureSelection selection,
+    StableTrack? fallbackTrack,
+    String? photoPath, {
+    _ResultWindowMetrics? metrics,
+    bool isConfirmed = true,
+  }) {
     final primary = selection.primary;
-    final secondary = selection.isAmbiguous ? selection.secondary : null;
+    final candidates = selection.candidates
+        .take(3)
+        .map(_candidateFromDetection)
+        .toList(growable: false);
+    final secondary = selection.secondary;
+    final resultMetrics = metrics ??
+        _ResultWindowMetrics(
+          top1VoteRatio: fallbackTrack?.top1VoteRatio ?? 0.0,
+          windowFrameCount: fallbackTrack?.windowFrameCount ?? 0,
+          windowDurationMs: fallbackTrack?.windowDurationMs ?? 0,
+          stabilityWinCount: fallbackTrack?.stabilityWinCount ?? 0,
+          stabilityWindowSize: fallbackTrack?.stabilityWindowSize ??
+              _stabilityEngine.config.stabilityWindowFramesM,
+        );
     final bool isLichen = _isLichenDetection(
       classIndex: primary.sourceClassId,
       label: primary.speciesName,
@@ -1731,11 +1991,11 @@ class _DetectionPageState extends State<DetectionPage>
       top2ClassIndex: secondary?.sourceClassId,
       top1AvgConf: primary.finalScore,
       top2AvgConf: secondary?.finalScore,
-      top1VoteRatio: fallbackTrack.top1VoteRatio,
-      windowFrameCount: fallbackTrack.windowFrameCount,
-      windowDurationMs: fallbackTrack.windowDurationMs,
-      stabilityWinCount: fallbackTrack.stabilityWinCount,
-      stabilityWindowSize: fallbackTrack.stabilityWindowSize,
+      top1VoteRatio: resultMetrics.top1VoteRatio,
+      windowFrameCount: resultMetrics.windowFrameCount,
+      windowDurationMs: resultMetrics.windowDurationMs,
+      stabilityWinCount: resultMetrics.stabilityWinCount,
+      stabilityWindowSize: resultMetrics.stabilityWindowSize,
       timestamp: DateTime.now(),
       speciesId: _speciesIdForDetection(
         modelId: primary.modelId,
@@ -1754,28 +2014,65 @@ class _DetectionPageState extends State<DetectionPage>
       top2ModelId: secondary?.modelId,
       top2ModelDisplayName: secondary?.sourceDisplayName,
       top2SourceClassId: secondary?.sourceClassId,
+      candidates: candidates,
+      isConfirmed: isConfirmed,
     );
   }
 
-  DetectionResultArgs _uncertainResultArgsFromTrack(
-    StableTrack track,
-    String? photoPath,
-  ) {
-    final double confidence = track.lockedClassKey == null
-        ? track.top1AvgConf
-        : track.lockedAvgConf;
+  ObservationCandidate _candidateFromDetection(Detection detection) {
+    return ObservationCandidate(
+      label: detection.speciesName,
+      confidence: detection.finalScore,
+      classIndex: detection.sourceClassId,
+      speciesId: _speciesIdForDetection(
+        modelId: detection.modelId,
+        sourceClassId: detection.sourceClassId,
+        label: detection.speciesName,
+      ),
+      modelId: detection.modelId,
+      modelDisplayName: detection.sourceDisplayName,
+      sourceClassId: detection.sourceClassId,
+      rawConfidence: detection.rawConfidence,
+      calibratedConfidence: detection.calibratedConfidence,
+      finalScore: detection.finalScore,
+    );
+  }
+
+  DetectionResultArgs _uncertainResultArgsFromScan(
+    _ScanWindowSummary scanSummary,
+    String? photoPath, {
+    _CaptureSelection? possibleCaptureSelection,
+  }) {
+    final rankedSupports = scanSummary.rankedSupports;
+    final _ScanWindowSupport? livePossible = rankedSupports.isNotEmpty &&
+            rankedSupports.first.supportScore >=
+                _scanLivePossibleSupportThreshold
+        ? rankedSupports.first
+        : null;
+    final Detection? capturePossible = possibleCaptureSelection?.primary;
+    final String? possibleLabel =
+        capturePossible?.speciesName ?? livePossible?.label;
+    final double? possibleScore =
+        capturePossible?.finalScore ?? livePossible?.supportScore;
+    final int? possibleClassIndex =
+        capturePossible?.sourceClassId ?? livePossible?.classIndex;
+    final String? possibleModelId =
+        capturePossible?.modelId ?? livePossible?.modelId;
+    final String? possibleModelDisplayName =
+        capturePossible?.sourceDisplayName ?? livePossible?.modelDisplayName;
+    final double confidence = possibleScore ?? 0.0;
     return DetectionResultArgs(
       observationId: null,
       lockedLabel: 'Uncertain fungus detected',
-      top2Label: null,
-      top2ClassIndex: null,
+      top2Label: possibleLabel,
+      top2ClassIndex: possibleClassIndex,
       top1AvgConf: confidence,
-      top2AvgConf: null,
-      top1VoteRatio: track.top1VoteRatio,
-      windowFrameCount: track.windowFrameCount,
-      windowDurationMs: track.windowDurationMs,
-      stabilityWinCount: track.stabilityWinCount,
-      stabilityWindowSize: track.stabilityWindowSize,
+      top2AvgConf: possibleScore,
+      top1VoteRatio: 0.0,
+      windowFrameCount: scanSummary.windowFrameCount,
+      windowDurationMs: scanSummary.windowDurationMs,
+      stabilityWinCount: _primaryTrack?.stabilityWinCount ?? 0,
+      stabilityWindowSize: _stabilityEngine.config.stabilityWindowFramesM,
       timestamp: DateTime.now(),
       speciesId: null,
       classIndex: null,
@@ -1787,9 +2084,10 @@ class _DetectionPageState extends State<DetectionPage>
       rawConfidence: confidence,
       calibratedConfidence: confidence,
       finalScore: confidence,
-      top2ModelId: null,
-      top2ModelDisplayName: null,
-      top2SourceClassId: null,
+      top2ModelId: possibleModelId,
+      top2ModelDisplayName: possibleModelDisplayName,
+      top2SourceClassId: possibleClassIndex,
+      isConfirmed: false,
     );
   }
 
@@ -1968,6 +2266,7 @@ class _DetectionPageState extends State<DetectionPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _scanCountdownTimer?.cancel();
     _stopStreamAndDispose();
     super.dispose();
   }
@@ -2004,6 +2303,8 @@ class _DetectionPageState extends State<DetectionPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.inactive) {
+      _scanCountdownTimer?.cancel();
+      _isScanning = false;
       unawaited(_disposeCameraController());
     } else if (state == AppLifecycleState.resumed && _hasPermission) {
       _initCamera().then((_) => _startImageStream());
@@ -2054,8 +2355,11 @@ class _DetectionPageState extends State<DetectionPage>
                   primaryTrack,
                   DateTime.now().millisecondsSinceEpoch,
                 );
-                final String statusText = ui.statusText;
-                final IconData statusIcon = ui.statusIcon;
+                final String statusText = _isScanning
+                    ? 'Hold camera steady on the fungus'
+                    : ui.statusText;
+                final IconData statusIcon =
+                    _isScanning ? Icons.hourglass_top : ui.statusIcon;
                 final String? bannerTitle = ui.bannerTitle;
                 final String? bannerSubtitle = ui.bannerSubtitle;
                 final String? bannerDetail = ui.bannerDetail;
@@ -2163,27 +2467,36 @@ class _DetectionPageState extends State<DetectionPage>
                                         width: 220,
                                         child: ElevatedButton.icon(
                                           onPressed:
-                                              (primaryTrack != null &&
-                                                  isReady &&
-                                                  !_isCapturing)
-                                              ? () =>
-                                                    _handleCapture(primaryTrack)
-                                              : null,
-                                          icon: const Icon(Icons.camera_alt),
+                                              (_isCapturing || _isScanning)
+                                              ? null
+                                              : _startTimedScan,
+                                          icon: Icon(
+                                            _isScanning
+                                                ? Icons.hourglass_top
+                                                : Icons.center_focus_strong,
+                                          ),
                                           label: Text(
                                             _isCapturing
                                                 ? 'Capturing...'
-                                                : isReady
-                                                ? 'Capture'
-                                                : 'Not ready',
+                                                : _isScanning
+                                                ? 'Scanning... $_scanRemainingSeconds'
+                                                : 'Scan fungus',
                                           ),
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: _highlightGreen,
                                             foregroundColor: _deepGreen,
-                                            disabledBackgroundColor: _deepGreen
-                                                .withValues(alpha: 0.35),
+                                            disabledBackgroundColor:
+                                                (_isCapturing || _isScanning)
+                                                ? _highlightGreen.withValues(
+                                                    alpha: 0.85,
+                                                  )
+                                                : _deepGreen.withValues(
+                                                    alpha: 0.35,
+                                                  ),
                                             disabledForegroundColor:
-                                                _mutedWhite,
+                                                (_isCapturing || _isScanning)
+                                                ? _deepGreen
+                                                : _mutedWhite,
                                             elevation: 0,
                                             padding: const EdgeInsets.symmetric(
                                               vertical: 12,

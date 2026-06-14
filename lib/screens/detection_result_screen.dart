@@ -17,6 +17,7 @@ import '../services/settings_service.dart';
 import '../utils/formatting.dart';
 import '../utils/lichen_headline_gate.dart';
 import '../widgets/forest_background.dart';
+import '../widgets/global_distribution_map_preview.dart';
 import '../widgets/local_image_preview.dart';
 
 class DetectionResultScreen extends StatefulWidget {
@@ -87,14 +88,15 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
   }
 
   void _initializeSelection(DetectionResultArgs args) {
+    final candidates = _resultCandidates(args);
+    final primary = candidates.first;
     _selectedCandidateIndex = 0;
-    _selectedLabel = args.lockedLabel;
-    _selectedConfidence = args.top1AvgConf;
-    _selectedClassIndex = args.classIndex;
-    _selectedSpeciesId = args.speciesId;
-    final bool hasSecondary =
-        args.top2Label != null && args.top2AvgConf != null;
-    _resultLocked = args.isSavedView || !hasSecondary;
+    _selectedLabel = primary.label;
+    _selectedConfidence = primary.confidence;
+    _selectedClassIndex = primary.classIndex ?? primary.sourceClassId;
+    _selectedSpeciesId = primary.speciesId;
+    _resultLocked =
+        args.isSavedView || !args.isConfirmed || candidates.length < 2;
   }
 
   void _selectCandidate(int index) {
@@ -102,26 +104,73 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
     if (args == null) return;
     if (_resultLocked) return;
 
-    if (index == 0) {
-      setState(() {
-        _selectedCandidateIndex = 0;
-        _selectedLabel = args.lockedLabel;
-        _selectedConfidence = args.top1AvgConf;
-        _selectedClassIndex = args.classIndex;
-        _selectedSpeciesId = args.speciesId ?? _matchedSpecies?.id;
-      });
+    final candidates = _resultCandidates(args);
+    if (index < 0 || index >= candidates.length) {
       return;
     }
+    final candidate = candidates[index];
+    setState(() {
+      _selectedCandidateIndex = index;
+      _selectedLabel = candidate.label;
+      _selectedConfidence = candidate.confidence;
+      _selectedClassIndex = candidate.classIndex ?? candidate.sourceClassId;
+      _selectedSpeciesId =
+          candidate.speciesId ?? (index == 0 ? _matchedSpecies?.id : null);
+    });
+  }
 
-    if (index == 1 && args.top2Label != null && args.top2AvgConf != null) {
-      setState(() {
-        _selectedCandidateIndex = 1;
-        _selectedLabel = args.top2Label!;
-        _selectedConfidence = args.top2AvgConf!;
-        _selectedClassIndex = args.top2ClassIndex;
-        _selectedSpeciesId = null;
-      });
+  List<ObservationCandidate> _resultCandidates(DetectionResultArgs args) {
+    final explicit = args.candidates
+        .where(_isValidCandidate)
+        .take(3)
+        .toList(growable: false);
+    if (explicit.isNotEmpty) {
+      return explicit;
     }
+    final fallback = <ObservationCandidate>[
+      ObservationCandidate(
+        label: args.lockedLabel,
+        confidence: args.top1AvgConf,
+        classIndex: args.classIndex,
+        speciesId: args.speciesId,
+        modelId: args.modelId,
+        modelDisplayName: args.modelDisplayName,
+        sourceClassId: args.sourceClassId,
+        rawConfidence: args.rawConfidence,
+        calibratedConfidence: args.calibratedConfidence,
+        finalScore: args.finalScore,
+      ),
+    ];
+    if (args.top2Label != null &&
+        args.top2Label!.trim().isNotEmpty &&
+        args.top2AvgConf != null &&
+        args.top2AvgConf!.isFinite) {
+      fallback.add(
+        ObservationCandidate(
+          label: args.top2Label!,
+          confidence: args.top2AvgConf!,
+          classIndex: args.top2ClassIndex,
+          modelId: args.top2ModelId,
+          modelDisplayName: args.top2ModelDisplayName,
+          sourceClassId: args.top2SourceClassId,
+          rawConfidence: args.top2AvgConf,
+          calibratedConfidence: args.top2AvgConf,
+          finalScore: args.top2AvgConf,
+        ),
+      );
+    }
+    final validFallback =
+        fallback.where(_isValidCandidate).take(3).toList(growable: false);
+    return validFallback.isEmpty
+        ? fallback.take(1).toList(growable: false)
+        : validFallback;
+  }
+
+  bool _isValidCandidate(ObservationCandidate candidate) {
+    return candidate.label.trim().isNotEmpty &&
+        candidate.label.trim() != 'Unknown' &&
+        candidate.confidence.isFinite &&
+        candidate.confidence >= 0.0;
   }
 
   void _toggleLock() {
@@ -131,8 +180,25 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
     });
   }
 
+  String _candidateTitle(int index) {
+    switch (index) {
+      case 0:
+        return 'Primary Candidate';
+      case 1:
+        return 'Secondary Candidate';
+      case 2:
+        return 'Third Candidate';
+      default:
+        return 'Candidate ${index + 1}';
+    }
+  }
+
   Future<void> _saveObservation(DetectionResultArgs args) async {
     if (_saving) return;
+    if (!args.isConfirmed) {
+      _showMessage('This scan was not confirmed. It cannot be saved as a species.');
+      return;
+    }
 
     final label = _selectedLabel.trim();
     if (label.isEmpty || label == 'Unknown') {
@@ -158,16 +224,19 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
       if (args.photoPath != null) {
         photoPath = await _persistPhoto(args.photoPath!);
       }
-      final bool swapped = _selectedCandidateIndex == 1;
+      final candidates = _resultCandidates(args);
+      final selectedCandidate = candidates[_selectedCandidateIndex];
+      final savedCandidates = <ObservationCandidate>[
+        selectedCandidate,
+        ...candidates.where((candidate) => candidate != selectedCandidate),
+      ];
+      final ObservationCandidate? secondaryCandidate =
+          savedCandidates.length > 1 ? savedCandidates[1] : null;
       final String selectedSpeciesId = await _resolveSelectedSpeciesId(
         args: args,
-        swapped: swapped,
+        candidate: selectedCandidate,
         label: label,
       );
-      final String? top2LabelToStore = swapped ? args.lockedLabel : args.top2Label;
-      final double? top2ConfidenceToStore = swapped
-          ? args.top1AvgConf
-          : args.top2AvgConf;
       final settings = await _settingsService.loadSettings();
       CapturedLocation? capturedLocation;
       String? locationMessage;
@@ -199,23 +268,20 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
         id: _uuid.v4(),
         speciesId: selectedSpeciesId,
         classIndex: classIndex,
-        modelId: swapped ? args.top2ModelId : args.modelId,
-        modelDisplayName:
-            swapped ? args.top2ModelDisplayName : args.modelDisplayName,
-        sourceClassId: swapped ? args.top2SourceClassId : args.sourceClassId,
+        modelId: selectedCandidate.modelId,
+        modelDisplayName: selectedCandidate.modelDisplayName,
+        sourceClassId: selectedCandidate.sourceClassId,
         label: label,
         confidence: confidence,
-        rawConfidence: swapped ? args.top2AvgConf : args.rawConfidence,
-        calibratedConfidence:
-            swapped ? args.top2AvgConf : args.calibratedConfidence,
-        finalScore: swapped ? args.top2AvgConf : args.finalScore,
-        top2Label: top2LabelToStore,
-        top2Confidence: top2ConfidenceToStore,
-        top2ModelId: swapped ? args.modelId : args.top2ModelId,
-        top2ModelDisplayName:
-            swapped ? args.modelDisplayName : args.top2ModelDisplayName,
-        top2SourceClassId:
-            swapped ? args.sourceClassId : args.top2SourceClassId,
+        rawConfidence: selectedCandidate.rawConfidence,
+        calibratedConfidence: selectedCandidate.calibratedConfidence,
+        finalScore: selectedCandidate.finalScore ?? selectedCandidate.confidence,
+        top2Label: secondaryCandidate?.label,
+        top2Confidence: secondaryCandidate?.confidence,
+        top2ModelId: secondaryCandidate?.modelId,
+        top2ModelDisplayName: secondaryCandidate?.modelDisplayName,
+        top2SourceClassId: secondaryCandidate?.sourceClassId,
+        candidates: savedCandidates,
         top1VoteRatio: args.top1VoteRatio,
         windowFrameCount: args.windowFrameCount,
         windowDurationMs: args.windowDurationMs,
@@ -255,63 +321,36 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
   }
 
   Future<Species?> _loadMatchedSpecies(DetectionResultArgs args) async {
-    final Species? byModelClass = await _speciesRepository.getByModelClass(
-      args.modelId,
-      args.sourceClassId ?? args.classIndex,
+    return _speciesRepository.matchSpecies(
+      speciesId: args.speciesId,
+      modelId: args.modelId,
+      sourceClassId: args.sourceClassId ?? args.classIndex,
+      scientificName: args.lockedLabel,
+      label: args.lockedLabel,
     );
-    if (byModelClass != null) {
-      return byModelClass;
-    }
-
-    final String? speciesId = args.speciesId?.trim();
-    if (speciesId != null && speciesId.isNotEmpty) {
-      final Species? exact = await _speciesRepository.getById(speciesId);
-      if (exact != null) {
-        return exact;
-      }
-    }
-
-    final String normalizedLabel = args.lockedLabel.trim().toLowerCase();
-    if (normalizedLabel.isEmpty) {
-      return null;
-    }
-
-    final all = await _speciesRepository.loadSpecies();
-    for (final item in all) {
-      if (item.scientificName.trim().toLowerCase() == normalizedLabel) {
-        return item;
-      }
-      final String common = (item.commonName ?? '').trim().toLowerCase();
-      if (common.isNotEmpty && common == normalizedLabel) {
-        return item;
-      }
-    }
-    return null;
   }
 
   Future<String> _resolveSelectedSpeciesId({
     required DetectionResultArgs args,
-    required bool swapped,
+    required ObservationCandidate candidate,
     required String label,
   }) async {
-    final explicit = _selectedSpeciesId?.trim();
+    final explicit = candidate.speciesId?.trim() ?? _selectedSpeciesId?.trim();
+    final Species? matched = await _speciesRepository.matchSpecies(
+      speciesId: explicit,
+      modelId: candidate.modelId,
+      sourceClassId: candidate.sourceClassId ?? candidate.classIndex,
+      scientificName: label,
+      label: label,
+    );
+    if (matched != null) return matched.id;
     if (explicit != null && explicit.isNotEmpty) {
       return explicit;
     }
-    final Species? byModelClass = await _speciesRepository.getByModelClass(
-      swapped ? args.top2ModelId : args.modelId,
-      swapped
-          ? (args.top2SourceClassId ?? args.top2ClassIndex)
-          : (args.sourceClassId ?? args.classIndex),
-    );
-    if (byModelClass != null) {
-      return byModelClass.id;
-    }
-    if (!swapped && _matchedSpecies != null) {
+    if (candidate.label == args.lockedLabel && _matchedSpecies != null) {
       return _matchedSpecies!.id;
     }
-    final Species? byName = await _speciesRepository.getByScientificName(label);
-    return byName?.id ?? label;
+    return label;
   }
 
   Future<String?> _persistPhoto(String tempPath) async {
@@ -491,26 +530,33 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
       );
     }
 
-    final bool hasSecondaryCandidate =
-        args.top2Label != null && args.top2AvgConf != null;
-    final String top1Percent =
-        '${(args.top1AvgConf * 100).toStringAsFixed(1)}%';
+    final candidates = _resultCandidates(args);
+    final primaryCandidate = candidates.first;
+    final ObservationCandidate? secondaryCandidate =
+        candidates.length > 1 ? candidates[1] : null;
+    final bool hasMultipleCandidates = candidates.length > 1;
     final String votePercent =
         '${(args.top1VoteRatio * 100).toStringAsFixed(1)}%';
     final String durationSeconds = (args.windowDurationMs / 1000)
         .toStringAsFixed(1);
     final String capturedAt = _formatTimestamp(args.timestamp);
-    final String? top2Percent = hasSecondaryCandidate
-        ? '${(args.top2AvgConf! * 100).toStringAsFixed(1)}%'
-        : null;
-    final String? marginPercent = hasSecondaryCandidate
-        ? '${((args.top1AvgConf - args.top2AvgConf!) * 100).toStringAsFixed(1)}%'
-        : null;
-    final List<TopCandidate> topCandidates = [
-      TopCandidate(label: args.lockedLabel, probability: args.top1AvgConf),
-      if (hasSecondaryCandidate)
-        TopCandidate(label: args.top2Label!, probability: args.top2AvgConf!),
-    ];
+    final String resultStatusTitle = args.isConfirmed
+        ? 'Capture recheck confirmed'
+        : 'Uncertain scan result';
+    final String scanDetailText = args.stabilityWinCount > 0
+        ? 'Scan support: ${args.windowFrameCount} detections over ${durationSeconds}s, stable ${args.stabilityWinCount}/${args.stabilityWindowSize} frames'
+        : 'Scan support: ${args.windowFrameCount} detections over ${durationSeconds}s';
+    final String? marginPercent = secondaryCandidate == null
+        ? null
+        : '${((primaryCandidate.confidence - secondaryCandidate.confidence) * 100).toStringAsFixed(1)}%';
+    final List<TopCandidate> topCandidates = candidates
+        .map(
+          (candidate) => TopCandidate(
+            label: candidate.label,
+            probability: candidate.confidence,
+          ),
+        )
+        .toList(growable: false);
     final DecisionResult headlineDecision = decideHeadline(
       topK: topCandidates,
       isLichen: args.isLichen,
@@ -552,8 +598,8 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 12),
-                    const Text(
-                      'Stable detection captured',
+                    Text(
+                      resultStatusTitle,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -581,6 +627,16 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                               headlineDecision.explanationNote!,
                               style: const TextStyle(
                                 color: Color(0xFFD9EBD8),
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                          if (!args.isConfirmed) ...[
+                            const Text(
+                              'Capture recheck did not confirm a reliable species. Treat any candidate as a clue only.',
+                              style: TextStyle(
+                                color: Color(0xFFFFD58A),
                                 fontSize: 13,
                               ),
                             ),
@@ -627,36 +683,24 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                             ),
                           ),
                           const SizedBox(height: 6),
-                          _CandidateCard(
-                            title: 'Primary Candidate',
-                            label: args.lockedLabel,
-                            confidence: args.top1AvgConf,
-                            confidencePercent: top1Percent,
-                            isSelected: _selectedCandidateIndex == 0,
-                            isLocked: _resultLocked,
-                            onTap: (!_resultLocked && hasSecondaryCandidate)
-                                ? () => _selectCandidate(0)
-                                : null,
-                          ),
-                          const SizedBox(height: 8),
-                          if (hasSecondaryCandidate)
+                          for (int index = 0; index < candidates.length; index++) ...[
                             _CandidateCard(
-                              title: 'Secondary Candidate',
-                              label: args.top2Label ?? 'Unknown',
-                              confidence: args.top2AvgConf ?? 0.0,
-                              confidencePercent: top2Percent ?? '--',
-                              isSelected: _selectedCandidateIndex == 1,
+                              title: _candidateTitle(index),
+                              label: candidates[index].label,
+                              confidence: candidates[index].confidence,
+                              confidencePercent:
+                                  '${(candidates[index].confidence * 100).toStringAsFixed(1)}%',
+                              sourceLabel: candidates[index].modelDisplayName,
+                              isSelected: _selectedCandidateIndex == index,
                               isLocked: _resultLocked,
-                              onTap: _resultLocked
-                                  ? null
-                                  : () => _selectCandidate(1),
-                            )
-                          else
-                            const _CandidateEmptyCard(
-                              title: 'Secondary Candidate',
-                              message: 'Not available for this capture.',
+                              onTap: (!_resultLocked && hasMultipleCandidates)
+                                  ? () => _selectCandidate(index)
+                                  : null,
                             ),
-                          if (!_resultLocked && hasSecondaryCandidate) ...[
+                            if (index < candidates.length - 1)
+                              const SizedBox(height: 8),
+                          ],
+                          if (!_resultLocked && hasMultipleCandidates) ...[
                             const SizedBox(height: 6),
                             const Text(
                               'Tap a candidate to lock your saved label.',
@@ -676,7 +720,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                               ),
                             ),
                           Text(
-                            'Stable for ${args.stabilityWinCount}/${args.stabilityWindowSize} frames over ${durationSeconds}s',
+                            scanDetailText,
                             style: const TextStyle(
                               color: Color(0xCCFFFFFF),
                               fontSize: 13,
@@ -727,7 +771,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                     ),
                     if (args.isSavedView && args.observationId != null)
                       _buildFieldNotesPanel(args.observationId!),
-                    if (!args.isSavedView || hasSecondaryCandidate)
+                    if (!args.isSavedView || hasMultipleCandidates)
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
                         child: Wrap(
@@ -736,7 +780,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                           children: [
                             OutlinedButton.icon(
                               onPressed: (args.isSavedView ||
-                                      !hasSecondaryCandidate)
+                                      !hasMultipleCandidates)
                                   ? null
                                   : _toggleLock,
                               icon: Icon(
@@ -757,7 +801,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                                 shape: const StadiumBorder(),
                               ),
                             ),
-                            if (hasSecondaryCandidate &&
+                            if (hasMultipleCandidates &&
                                 primarySpeciesId != null)
                               OutlinedButton.icon(
                                 onPressed: () {
@@ -765,8 +809,15 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                                     '/species-detail',
                                     arguments: SpeciesDetailArgs(
                                       speciesId: primarySpeciesId,
-                                      comparePrimaryLabel: args.lockedLabel,
-                                      compareSecondaryLabel: args.top2Label,
+                                      comparePrimaryLabel:
+                                          primaryCandidate.label,
+                                      compareSecondaryLabel:
+                                          secondaryCandidate?.label,
+                                      source: args.isSavedView
+                                          ? SpeciesDetailSource
+                                                .existingObservation
+                                          : SpeciesDetailSource
+                                                .detectionResult,
                                     ),
                                   );
                                 },
@@ -787,6 +838,19 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                           ],
                         ),
                       ),
+                    const SizedBox(height: 16),
+                    GlobalDistributionMapPreview(
+                      scientificName: _matchedSpecies?.scientificName ??
+                          _selectedLabel,
+                      canonicalName: _matchedSpecies?.canonicalName,
+                      speciesId: selectedSpeciesId,
+                      modelId: primaryCandidate.modelId ?? args.modelId,
+                      sourceClassId: primaryCandidate.sourceClassId ??
+                          args.sourceClassId ??
+                          args.classIndex,
+                      observationLatitude: args.latitude,
+                      observationLongitude: args.longitude,
+                    ),
                   ],
                 ),
               ),
@@ -798,7 +862,12 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                   onPressed: () {
                     Navigator.of(context).pushNamed(
                       '/species-detail',
-                      arguments: SpeciesDetailArgs(speciesId: selectedSpeciesId),
+                      arguments: SpeciesDetailArgs(
+                        speciesId: selectedSpeciesId,
+                        source: args.isSavedView
+                            ? SpeciesDetailSource.existingObservation
+                            : SpeciesDetailSource.detectionResult,
+                      ),
                     );
                   },
                   icon: const Icon(Icons.nature),
@@ -834,9 +903,17 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: _saving ? null : () => _saveObservation(args),
+                  onPressed: (_saving || !args.isConfirmed)
+                      ? null
+                      : () => _saveObservation(args),
                   icon: const Icon(Icons.bookmark_add),
-                  label: Text(_saving ? 'Saving...' : 'Save Observation'),
+                  label: Text(
+                    _saving
+                        ? 'Saving...'
+                        : args.isConfirmed
+                        ? 'Save Observation'
+                        : 'Unconfirmed scan',
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF8FBFA1),
                     foregroundColor: Colors.white,
@@ -941,6 +1018,7 @@ class _CandidateCard extends StatelessWidget {
   final String label;
   final double confidence;
   final String confidencePercent;
+  final String? sourceLabel;
   final bool isSelected;
   final bool isLocked;
   final VoidCallback? onTap;
@@ -950,6 +1028,7 @@ class _CandidateCard extends StatelessWidget {
     required this.label,
     required this.confidence,
     required this.confidencePercent,
+    required this.sourceLabel,
     required this.isSelected,
     required this.isLocked,
     required this.onTap,
@@ -1003,6 +1082,16 @@ class _CandidateCard extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
+          if (sourceLabel != null && sourceLabel!.trim().isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Source: $sourceLabel',
+              style: const TextStyle(
+                color: Color(0xCCFFFFFF),
+                fontSize: 12.5,
+              ),
+            ),
+          ],
           const SizedBox(height: 6),
           Row(
             children: [
@@ -1041,46 +1130,6 @@ class _CandidateCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: content,
-      ),
-    );
-  }
-}
-
-class _CandidateEmptyCard extends StatelessWidget {
-  final String title;
-  final String message;
-
-  const _CandidateEmptyCard({required this.title, required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Color(0xFFE7F3E7),
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            message,
-            style: const TextStyle(
-              color: Color(0xCCFFFFFF),
-              fontSize: 13,
-            ),
-          ),
-        ],
       ),
     );
   }

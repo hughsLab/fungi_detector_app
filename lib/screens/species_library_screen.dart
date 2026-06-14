@@ -56,32 +56,6 @@ class _SpeciesLibraryScreenState extends State<SpeciesLibraryScreen> {
     );
   }
 
-  String _valueOrPlaceholder(String? value, {String placeholder = 'Not listed'}) {
-    final trimmed = value?.trim() ?? '';
-    return trimmed.isEmpty ? placeholder : trimmed;
-  }
-
-  Widget _sectionLabel(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: Colors.white,
-        fontWeight: FontWeight.w600,
-        fontSize: 12.5,
-      ),
-    );
-  }
-
-  Widget _sectionValue(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: Color(0xCCFFFFFF),
-        height: 1.3,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     const accentTextColor = Color(0xCCFFFFFF);
@@ -139,229 +113,134 @@ class _SpeciesLibraryScreenState extends State<SpeciesLibraryScreen> {
                               const SizedBox(height: 10),
                           itemBuilder: (context, index) {
                             final species = _species[index];
-                            final scientificName = _valueOrPlaceholder(
-                              species.scientificName,
-                              placeholder: 'Unknown',
-                            );
-                            final colloquialName = _valueOrPlaceholder(
-                              (species.colloquialName?.trim().isNotEmpty ??
-                                      false)
-                                  ? species.colloquialName
-                                  : species.commonName,
-                            );
-                            final shortDescription =
-                                _valueOrPlaceholder(species.shortDescription);
-                            final authority =
-                                _valueOrPlaceholder(species.authority);
-                            final habitat = _valueOrPlaceholder(species.habitat);
-                            final season = _valueOrPlaceholder(species.season);
-                            final distributionNote =
-                                _valueOrPlaceholder(species.distributionNote);
-                            final edibilityWarning = _valueOrPlaceholder(
-                              species.edibilityWarning,
-                              placeholder: 'No warning provided.',
-                            );
-                            final taxonomyPath = _valueOrPlaceholder(
-                              species.taxonomyPath,
-                            );
-                            final distributionParts = <String>[
-                              if (species.distributionCountry != null &&
-                                  species.distributionCountry!
-                                      .trim()
-                                      .isNotEmpty)
-                                species.distributionCountry!.trim(),
-                              if (species.distributionStates.isNotEmpty)
-                                'States: ${species.distributionStates.join(', ')}',
-                              if (species.distributionNote.trim().isNotEmpty)
-                                species.distributionNote.trim(),
-                            ];
-                            final distribution = distributionParts.isEmpty
-                                ? distributionNote
-                                : distributionParts.join(' | ');
-                            final similarNames =
-                                species.similarSpeciesNames.where((name) {
-                              return name.trim().isNotEmpty;
-                            }).toList();
-                            final similarIds =
-                                species.similarSpeciesIds.where((id) {
-                              return id.trim().isNotEmpty;
-                            }).toList();
-                            final keyFeatures = species.keyFeatures
-                                .where((feature) => feature.trim().isNotEmpty)
-                                .toList();
-                            final sourceTaxonomy = _valueOrPlaceholder(
-                              species.sourceTaxonomy,
-                              placeholder: 'Not listed',
-                            );
-                            final sourceDescription = _valueOrPlaceholder(
-                              species.sourceDescription,
-                              placeholder: 'Not listed',
-                            );
-                            final imageAsset = _valueOrPlaceholder(
-                              species.thumbnailAssetPath,
-                              placeholder: 'Not listed',
-                            );
-                            return Material(
-                              color: Colors.white.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(14),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(14),
-                                onTap: () => _openDetail(species),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(14),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'Scientific Name: $scientificName',
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 14.5,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  'Colloquial Name: $colloquialName',
-                                                  style: const TextStyle(
-                                                    color: accentTextColor,
-                                                    fontSize: 13,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          const Icon(
-                                            Icons.chevron_right,
-                                            color: Colors.white70,
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      _sectionLabel('Authority'),
-                                      const SizedBox(height: 4),
-                                      _sectionValue(authority),
-                                      const SizedBox(height: 10),
-                                      _sectionLabel('Description'),
-                                      const SizedBox(height: 4),
-                                      _sectionValue(shortDescription),
-                                      const SizedBox(height: 10),
-                                      _sectionLabel('Key identifying features'),
-                                      const SizedBox(height: 4),
-                                      keyFeatures.isEmpty
-                                          ? _sectionValue('None listed')
-                                          : Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: keyFeatures
-                                                  .map(
-                                                    (feature) => Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                        bottom: 4,
-                                                      ),
-                                                      child: Text(
-                                                        '- $feature',
-                                                        style: const TextStyle(
-                                                          color: accentTextColor,
-                                                          height: 1.3,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  )
-                                                  .toList(),
-                                            ),
-                                      const SizedBox(height: 10),
-                                      _sectionLabel('Habitat'),
-                                      const SizedBox(height: 4),
-                                      _sectionValue(habitat),
-                                      const SizedBox(height: 10),
-                                      _sectionLabel('Season'),
-                                      const SizedBox(height: 4),
-                                      _sectionValue(season),
-                                      const SizedBox(height: 10),
-                                      _sectionLabel('Distribution'),
-                                      const SizedBox(height: 4),
-                                      _sectionValue(distribution),
-                                      const SizedBox(height: 10),
-                                      _sectionLabel('Similar species'),
-                                      const SizedBox(height: 4),
-                                      similarNames.isEmpty && similarIds.isEmpty
-                                          ? _sectionValue('None listed')
-                                          : Wrap(
-                                              spacing: 6,
-                                              runSpacing: 6,
-                                              children: [
-                                                ...similarNames.map(
-                                                  (name) => Chip(
-                                                    label: Text(
-                                                      name,
-                                                      style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 11,
-                                                      ),
-                                                    ),
-                                                    backgroundColor: Colors
-                                                        .white
-                                                        .withValues(alpha: 0.12),
-                                                  ),
-                                                ),
-                                                ...similarIds.map(
-                                                  (id) => Chip(
-                                                    label: Text(
-                                                      id,
-                                                      style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 11,
-                                                      ),
-                                                    ),
-                                                    backgroundColor: Colors
-                                                        .white
-                                                        .withValues(alpha: 0.12),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                      const SizedBox(height: 10),
-                                      _sectionLabel('Taxonomy'),
-                                      const SizedBox(height: 4),
-                                      _sectionValue(taxonomyPath),
-                                      const SizedBox(height: 10),
-                                      _sectionLabel('Edibility warning'),
-                                      const SizedBox(height: 4),
-                                      _sectionValue(edibilityWarning),
-                                      const SizedBox(height: 10),
-                                      _sectionLabel('Image asset'),
-                                      const SizedBox(height: 4),
-                                      _sectionValue(imageAsset),
-                                      const SizedBox(height: 10),
-                                      _sectionLabel('Sources'),
-                                      const SizedBox(height: 4),
-                                      _sectionValue(
-                                        'Taxonomy: $sourceTaxonomy',
-                                      ),
-                                      const SizedBox(height: 2),
-                                      _sectionValue(
-                                        'Description: $sourceDescription',
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
+                            return _SpeciesLibraryTile(
+                              species: species,
+                              onTap: () => _openDetail(species),
                             );
                           },
                         ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SpeciesLibraryTile extends StatelessWidget {
+  final Species species;
+  final VoidCallback onTap;
+
+  const _SpeciesLibraryTile({
+    required this.species,
+    required this.onTap,
+  });
+
+  String _valueOrPlaceholder(
+    String? value, {
+    String placeholder = 'Not listed',
+  }) {
+    final trimmed = value?.trim() ?? '';
+    return trimmed.isEmpty ? placeholder : trimmed;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const accentTextColor = Color(0xCCFFFFFF);
+    final scientificName = _valueOrPlaceholder(
+      species.scientificName,
+      placeholder: 'Unknown',
+    );
+    final colloquialName = _valueOrPlaceholder(
+      (species.colloquialName?.trim().isNotEmpty ?? false)
+          ? species.colloquialName
+          : species.commonName,
+    );
+    final description = species.shortDescription?.trim() ?? '';
+    final thumbnailPath = species.thumbnailAssetPath?.trim() ?? '';
+
+    return Material(
+      color: Colors.white.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              if (thumbnailPath.isNotEmpty) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(
+                    thumbnailPath,
+                    width: 52,
+                    height: 52,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 52,
+                      height: 52,
+                      color: Colors.white.withValues(alpha: 0.12),
+                      child: const Icon(
+                        Icons.local_florist,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Scientific Name: $scientificName',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.5,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 1),
+                      child: Text(
+                        'Colloquial Name: $colloquialName',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: accentTextColor,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ),
+                    if (description.isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      Text(
+                        description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: accentTextColor,
+                          fontSize: 12.5,
+                          height: 1.25,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.chevron_right,
+                color: Colors.white70,
+                size: 22,
+              ),
+            ],
+          ),
         ),
       ),
     );

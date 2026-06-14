@@ -1,17 +1,25 @@
 import 'observation.dart';
 import 'field_note.dart';
 
+enum SpeciesDetailSource {
+  speciesLibrary,
+  detectionResult,
+  existingObservation,
+}
+
 class SpeciesDetailArgs {
   final String speciesId;
   final Observation? observation;
   final String? comparePrimaryLabel;
   final String? compareSecondaryLabel;
+  final SpeciesDetailSource source;
 
   const SpeciesDetailArgs({
     required this.speciesId,
     this.observation,
     this.comparePrimaryLabel,
     this.compareSecondaryLabel,
+    this.source = SpeciesDetailSource.speciesLibrary,
   });
 }
 
@@ -102,12 +110,14 @@ class DetectionResultArgs {
   final String? top2ModelId;
   final String? top2ModelDisplayName;
   final int? top2SourceClassId;
+  final List<ObservationCandidate> candidates;
   final String? photoPath;
   final double? latitude;
   final double? longitude;
   final String? locationLabel;
   final bool isLichen;
   final bool isSavedView;
+  final bool isConfirmed;
 
   const DetectionResultArgs({
     required this.observationId,
@@ -133,11 +143,13 @@ class DetectionResultArgs {
     this.top2ModelId,
     this.top2ModelDisplayName,
     this.top2SourceClassId,
+    this.candidates = const <ObservationCandidate>[],
     this.photoPath,
     this.latitude,
     this.longitude,
     this.locationLabel,
     required this.isLichen,
     this.isSavedView = false,
+    this.isConfirmed = true,
   });
 }

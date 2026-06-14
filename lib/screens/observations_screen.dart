@@ -34,6 +34,7 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
   List<Observation> _observations = [];
   Map<String, String> _speciesNames = {};
   Map<String, Species> _speciesById = {};
+  Map<String, Species> _speciesByModelClass = {};
   Map<String, String> _speciesIdByScientificName = {};
   Map<String, String> _tasColloquialById = {};
   Map<String, String> _tasColloquialByScientificName = {};
@@ -74,6 +75,11 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
     final tasColloquial = await tasColloquialFuture;
     final nameMap = {for (final item in species) item.id: item.displayName};
     final speciesById = {for (final item in species) item.id: item};
+    final speciesByModelClass = {
+      for (final item in species)
+        if (item.modelId != null && item.sourceClassId != null)
+          _modelClassKey(item.modelId!, item.sourceClassId!): item,
+    };
     final speciesIdByScientificName = <String, String>{};
     for (final item in species) {
       final normalized = _normalizeForLookup(item.scientificName);
@@ -103,6 +109,7 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
       _observations = observations;
       _speciesNames = nameMap;
       _speciesById = speciesById;
+      _speciesByModelClass = speciesByModelClass;
       _speciesIdByScientificName = speciesIdByScientificName;
       _tasColloquialById = tasColloquial.byId;
       _tasColloquialByScientificName = tasColloquial.byScientificName;
@@ -196,6 +203,10 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
 
   String _normalizeForLookup(String? value) => value?.trim().toLowerCase() ?? '';
 
+  String _modelClassKey(String modelId, int sourceClassId) {
+    return '$modelId:$sourceClassId';
+  }
+
   Future<_TasColloquialMaps> _loadTasColloquialMaps() async {
     try {
       final String raw = await rootBundle.loadString('assets/data/species_tas.json');
@@ -253,6 +264,16 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
   }
 
   Species? _speciesForObservation(Observation observation) {
+    final String? modelId = observation.modelId?.trim();
+    final int? sourceClassId = observation.sourceClassId ?? observation.classIndex;
+    if (modelId != null && modelId.isNotEmpty && sourceClassId != null) {
+      final Species? byModelClass =
+          _speciesByModelClass[_modelClassKey(modelId, sourceClassId)];
+      if (byModelClass != null) {
+        return byModelClass;
+      }
+    }
+
     final String speciesId = observation.speciesId.trim();
     if (speciesId.isNotEmpty) {
       final Species? byId = _speciesById[speciesId];
@@ -375,6 +396,7 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
         observationId: observation.id,
         lockedLabel: label,
         top2Label: observation.top2Label,
+        top2ClassIndex: observation.top2SourceClassId,
         top1AvgConf: observation.confidence ?? 0.0,
         top2AvgConf: observation.top2Confidence,
         top1VoteRatio: observation.top1VoteRatio ?? 0.0,
@@ -396,6 +418,7 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
         top2ModelId: observation.top2ModelId,
         top2ModelDisplayName: observation.top2ModelDisplayName,
         top2SourceClassId: observation.top2SourceClassId,
+        candidates: observation.candidates,
         photoPath: observation.photoPath,
         latitude: observation.latitude,
         longitude: observation.longitude,

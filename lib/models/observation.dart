@@ -1,5 +1,61 @@
 enum ObservationLocationSource { deviceGps, exifGps, none }
 
+class ObservationCandidate {
+  final String label;
+  final double confidence;
+  final int? classIndex;
+  final String? speciesId;
+  final String? modelId;
+  final String? modelDisplayName;
+  final int? sourceClassId;
+  final double? rawConfidence;
+  final double? calibratedConfidence;
+  final double? finalScore;
+
+  const ObservationCandidate({
+    required this.label,
+    required this.confidence,
+    this.classIndex,
+    this.speciesId,
+    this.modelId,
+    this.modelDisplayName,
+    this.sourceClassId,
+    this.rawConfidence,
+    this.calibratedConfidence,
+    this.finalScore,
+  });
+
+  factory ObservationCandidate.fromJson(Map<String, dynamic> json) {
+    return ObservationCandidate(
+      label: json['label']?.toString() ?? '',
+      confidence: _parseDouble(json['confidence']) ?? 0.0,
+      classIndex: _parseInt(json['classIndex']),
+      speciesId: json['speciesId']?.toString(),
+      modelId: json['modelId']?.toString(),
+      modelDisplayName: json['modelDisplayName']?.toString(),
+      sourceClassId: _parseInt(json['sourceClassId']),
+      rawConfidence: _parseDouble(json['rawConfidence']),
+      calibratedConfidence: _parseDouble(json['calibratedConfidence']),
+      finalScore: _parseDouble(json['finalScore']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'label': label,
+      'confidence': confidence,
+      'classIndex': classIndex,
+      'speciesId': speciesId,
+      'modelId': modelId,
+      'modelDisplayName': modelDisplayName,
+      'sourceClassId': sourceClassId,
+      'rawConfidence': rawConfidence,
+      'calibratedConfidence': calibratedConfidence,
+      'finalScore': finalScore,
+    };
+  }
+}
+
 class Observation {
   final String id;
   final String speciesId;
@@ -18,6 +74,7 @@ class Observation {
   final String? top2ModelId;
   final String? top2ModelDisplayName;
   final int? top2SourceClassId;
+  final List<ObservationCandidate> candidates;
   final double? top1VoteRatio;
   final int? windowFrameCount;
   final int? windowDurationMs;
@@ -52,6 +109,7 @@ class Observation {
     this.top2ModelId,
     this.top2ModelDisplayName,
     this.top2SourceClassId,
+    this.candidates = const <ObservationCandidate>[],
     this.top1VoteRatio,
     this.windowFrameCount,
     this.windowDurationMs,
@@ -155,9 +213,8 @@ class Observation {
           : (json['top2Confidence'] as num).toDouble(),
       top2ModelId: json['top2ModelId']?.toString(),
       top2ModelDisplayName: json['top2ModelDisplayName']?.toString(),
-      top2SourceClassId: json['top2SourceClassId'] is num
-          ? (json['top2SourceClassId'] as num).toInt()
-          : int.tryParse(json['top2SourceClassId']?.toString() ?? ''),
+      top2SourceClassId: _parseInt(json['top2SourceClassId']),
+      candidates: _parseCandidates(json['candidates']),
       top1VoteRatio: json['top1VoteRatio'] == null
           ? null
           : (json['top1VoteRatio'] as num).toDouble(),
@@ -210,6 +267,7 @@ class Observation {
       'top2ModelId': top2ModelId,
       'top2ModelDisplayName': top2ModelDisplayName,
       'top2SourceClassId': top2SourceClassId,
+      'candidates': candidates.map((candidate) => candidate.toJson()).toList(),
       'top1VoteRatio': top1VoteRatio,
       'windowFrameCount': windowFrameCount,
       'windowDurationMs': windowDurationMs,
@@ -273,6 +331,42 @@ double? _parseDouble(dynamic value) {
     return value.toDouble();
   }
   return double.tryParse(value.toString());
+}
+
+int? _parseInt(dynamic value) {
+  if (value == null) {
+    return null;
+  }
+  if (value is int) {
+    return value;
+  }
+  if (value is num) {
+    return value.toInt();
+  }
+  return int.tryParse(value.toString());
+}
+
+List<ObservationCandidate> _parseCandidates(dynamic value) {
+  if (value is! List) {
+    return const <ObservationCandidate>[];
+  }
+  final candidates = <ObservationCandidate>[];
+  for (final item in value) {
+    if (item is Map<String, dynamic>) {
+      candidates.add(ObservationCandidate.fromJson(item));
+    } else if (item is Map) {
+      candidates.add(
+        ObservationCandidate.fromJson(
+          item.map((key, value) => MapEntry(key.toString(), value)),
+        ),
+      );
+    }
+  }
+  return candidates
+      .where((candidate) =>
+          candidate.label.trim().isNotEmpty &&
+          candidate.confidence.isFinite)
+      .toList(growable: false);
 }
 
 DateTime? _parseDateTime(dynamic value) {

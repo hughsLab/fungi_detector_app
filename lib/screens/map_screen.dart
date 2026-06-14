@@ -1,10 +1,8 @@
-import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/field_note.dart';
@@ -305,6 +303,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         observationId: observation.id,
         lockedLabel: _displayNameFor(observation),
         top2Label: observation.top2Label,
+        top2ClassIndex: observation.top2SourceClassId,
         top1AvgConf: observation.confidence ?? 0.0,
         top2AvgConf: observation.top2Confidence,
         top1VoteRatio: observation.top1VoteRatio ?? 0.0,
@@ -326,6 +325,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         top2ModelId: observation.top2ModelId,
         top2ModelDisplayName: observation.top2ModelDisplayName,
         top2SourceClassId: observation.top2SourceClassId,
+        candidates: observation.candidates,
         photoPath: observation.photoPath,
         latitude: observation.latitude,
         longitude: observation.longitude,
@@ -334,39 +334,6 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         isSavedView: true,
       ),
     );
-  }
-
-  Future<void> _openExternalMaps(Observation observation) async {
-    final location = observation.location;
-    if (location == null) return;
-    final lat = location.latitude;
-    final lon = location.longitude;
-    final label = Uri.encodeComponent(_displayNameFor(observation));
-
-    final Uri platformUri = Platform.isIOS
-        ? Uri.parse('http://maps.apple.com/?ll=$lat,$lon&q=$label')
-        : Uri.parse('geo:$lat,$lon?q=$lat,$lon($label)');
-    final Uri fallback = Uri.parse(
-      'https://www.openstreetmap.org/?mlat=$lat&mlon=$lon#map=16/$lat/$lon',
-    );
-
-    final bool launched = await _tryLaunch(platformUri);
-    if (!launched) {
-      await _tryLaunch(fallback);
-    }
-  }
-
-  Future<bool> _tryLaunch(Uri uri) async {
-    try {
-      final result = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!result) {
-        _showMessage('Unable to open external maps.');
-      }
-      return result;
-    } catch (_) {
-      _showMessage('No map app available for this action.');
-      return false;
-    }
   }
 
   void _showMessage(String message) {
@@ -681,104 +648,27 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         ),
                         const SizedBox(height: 4),
                         _noteList(locationNotes),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                  _openNoteEditor(
-                                    observationId: observation.id,
-                                  );
-                                },
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                  side: const BorderSide(color: Colors.white54),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 10,
-                                  ),
-                                  shape: const StadiumBorder(),
-                                ),
-                                child: const Text('Add note for observation'),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: (lat == null || lon == null)
-                                    ? null
-                                    : () {
-                                        Navigator.of(context).pop();
-                                        _openNoteEditor(
-                                          location: LocationRef(
-                                            id: _uuid.v4(),
-                                            lat: lat,
-                                            lon: lon,
-                                            label: observation.locationLabel,
-                                            accuracyMeters:
-                                                observation.accuracyMeters,
-                                            capturedAt:
-                                                observation.capturedAt ??
-                                                DateTime.now(),
-                                          ),
-                                        );
-                                      },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF8FBFA1),
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 10,
-                                  ),
-                                  shape: const StadiumBorder(),
-                                ),
-                                child: const Text('Add note here'),
-                              ),
-                            ),
-                          ],
-                        ),
                       ],
                     );
                   },
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          _openExternalMaps(observation);
-                        },
-                        icon: const Icon(Icons.open_in_new),
-                        label: const Text('Open in maps'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white54),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: const StadiumBorder(),
-                        ),
-                      ),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _openObservation(observation);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF8FBFA1),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: const StadiumBorder(),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          _openObservation(observation);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF8FBFA1),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: const StadiumBorder(),
-                        ),
-                        child: const Text('View observation'),
-                      ),
-                    ),
-                  ],
+                    child: const Text('Back to observation card'),
+                  ),
                 ),
               ],
             ),

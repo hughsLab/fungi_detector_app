@@ -1,12 +1,6 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 
-import '../repositories/field_notes_repository.dart';
 import '../repositories/observation_repository.dart';
-import '../services/attachment_storage_service.dart';
 import '../services/map_tile_cache_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/forest_background.dart';
@@ -22,22 +16,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final SettingsService _settingsService = SettingsService.instance;
   final ObservationRepository _observationRepository =
       ObservationRepository.instance;
-  final FieldNotesRepository _fieldNotesRepository =
-      FieldNotesRepository.instance;
-  final AttachmentStorageService _attachmentStorageService =
-      AttachmentStorageService.instance;
   final MapTileCacheService _mapTileCacheService = MapTileCacheService.instance;
 
   AppSettings? _settings;
   bool _loading = true;
-  int? _modelSizeBytes;
-  int? _storageBytes;
-  int? _fieldNotesBytes;
-  int? _fieldNotesThumbBytes;
-  int? _tileCacheBytes;
-  int? _tileCacheTileCount;
-  int? _tileCacheHits;
-  int? _tileCacheMisses;
 
   @override
   void initState() {
@@ -47,53 +29,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     final settings = await _settingsService.loadSettings();
-    final modelSize = await _loadModelSize();
-    final storageSize = await _loadStorageUsage();
-    final fieldNotesBytes = await _fieldNotesRepository.getStorageBytes();
-    final fieldNotesThumbBytes = await _attachmentStorageService
-        .getThumbnailCacheBytes();
     await _mapTileCacheService.ensureInitialized(
       cacheSoftLimitMb: settings.mapTileCacheMaxSizeMb,
       maxDatabaseSizeKiB: settings.mapTileCacheMaxSizeMb * 1024,
     );
-    final tileStats = await _mapTileCacheService.getCacheStats();
     if (!mounted) return;
     setState(() {
       _settings = settings;
-      _modelSizeBytes = modelSize;
-      _storageBytes = storageSize;
-      _fieldNotesBytes = fieldNotesBytes;
-      _fieldNotesThumbBytes = fieldNotesThumbBytes;
-      _tileCacheBytes = tileStats.sizeBytes;
-      _tileCacheTileCount = tileStats.tileCount;
-      _tileCacheHits = tileStats.hits;
-      _tileCacheMisses = tileStats.misses;
       _loading = false;
     });
-  }
-
-  Future<int?> _loadModelSize() async {
-    try {
-      final data = await rootBundle.load(
-        'assets/models/yolo11n_float32.tflite',
-      );
-      return data.lengthInBytes;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<int?> _loadStorageUsage() async {
-    try {
-      final directory = await getApplicationSupportDirectory();
-      final file = File('${directory.path}/observations.json');
-      if (!await file.exists()) {
-        return 0;
-      }
-      return await file.length();
-    } catch (_) {
-      return null;
-    }
   }
 
   Future<void> _updateSettings(AppSettings settings) async {
@@ -107,11 +51,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _clearLocalData() async {
     await _observationRepository.clearObservations();
     await _settingsService.setDisclaimerAcknowledged(false);
-    final storageSize = await _loadStorageUsage();
-    if (!mounted) return;
-    setState(() {
-      _storageBytes = storageSize;
-    });
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
@@ -120,40 +59,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _clearMapCache() async {
     await _mapTileCacheService.clearCache();
-    final tileStats = await _mapTileCacheService.getCacheStats();
-    if (!mounted) return;
-    setState(() {
-      _tileCacheBytes = tileStats.sizeBytes;
-      _tileCacheTileCount = tileStats.tileCount;
-      _tileCacheHits = tileStats.hits;
-      _tileCacheMisses = tileStats.misses;
-    });
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Cached map tiles cleared.')));
-  }
-
-  Future<void> _pruneMapCache() async {
-    final removed = await _mapTileCacheService.pruneCacheToSoftLimit();
-    final tileStats = await _mapTileCacheService.getCacheStats();
-    if (!mounted) return;
-    setState(() {
-      _tileCacheBytes = tileStats.sizeBytes;
-      _tileCacheTileCount = tileStats.tileCount;
-      _tileCacheHits = tileStats.hits;
-      _tileCacheMisses = tileStats.misses;
-    });
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          removed > 0
-              ? 'Pruned $removed old tiles to stay under cache limit.'
-              : 'Cache is already within the configured limit.',
-        ),
-      ),
-    );
+    ).showSnackBar(const SnackBar(content: Text('Offline maps cleared.')));
   }
 
   Future<void> _updateMapCacheLimit(int limitMb) async {
@@ -164,33 +73,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final updated = current.copyWith(mapTileCacheMaxSizeMb: limitMb);
     await _updateSettings(updated);
     await _mapTileCacheService.configureCacheLimitMb(limitMb);
-    final tileStats = await _mapTileCacheService.getCacheStats();
-    if (!mounted) return;
-    setState(() {
-      _tileCacheBytes = tileStats.sizeBytes;
-      _tileCacheTileCount = tileStats.tileCount;
-      _tileCacheHits = tileStats.hits;
-      _tileCacheMisses = tileStats.misses;
-    });
-  }
-
-  Future<void> _clearFieldNoteThumbnails() async {
-    await _attachmentStorageService.clearThumbnails();
-    final fieldNotesBytes = await _fieldNotesRepository.getStorageBytes();
-    final thumbBytes = await _attachmentStorageService.getThumbnailCacheBytes();
-    if (!mounted) return;
-    setState(() {
-      _fieldNotesBytes = fieldNotesBytes;
-      _fieldNotesThumbBytes = thumbBytes;
-    });
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Field note thumbnails cleared.')),
-    );
-  }
-
-  void _openDisclaimer() {
-    Navigator.of(context).pushNamed('/disclaimer');
   }
 
   void _openAbout() {
@@ -217,26 +99,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   const _SectionHeader(title: 'Detection'),
                   const SizedBox(height: 12),
-                  Text(
-                    'Confidence threshold: ${(_settings!.confidenceThreshold * 100).toStringAsFixed(0)}%',
-                    style: const TextStyle(color: accentTextColor),
-                  ),
-                  Slider(
-                    value: _settings!.confidenceThreshold,
-                    min: 0.1,
-                    max: 1,
-                    divisions: 18,
-                    activeColor: const Color(0xFF8FBFA1),
-                    inactiveColor: Colors.white24,
-                    onChanged: (value) {
-                      _updateSettings(
-                        _settings!.copyWith(confidenceThreshold: value),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 8),
                   const Text(
-                    'Camera performance preset',
+                    'Camera speed / accuracy',
                     style: TextStyle(color: Colors.white),
                   ),
                   const SizedBox(height: 6),
@@ -247,21 +111,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       DropdownMenuItem(
                         value: 'Low',
                         child: Text(
-                          'Low',
+                          'Fast',
                           style: TextStyle(color: Colors.white),
                         ),
                       ),
                       DropdownMenuItem(
                         value: 'Medium',
                         child: Text(
-                          'Medium',
+                          'Balanced',
                           style: TextStyle(color: Colors.white),
                         ),
                       ),
                       DropdownMenuItem(
                         value: 'High',
                         child: Text(
-                          'High',
+                          'Accurate',
                           style: TextStyle(color: Colors.white),
                         ),
                       ),
@@ -282,7 +146,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const _SectionHeader(title: 'Privacy'),
+                  const _SectionHeader(title: 'Location & Privacy'),
                   const SizedBox(height: 8),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
@@ -293,18 +157,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       );
                     },
                     title: const Text(
-                      'Location tagging',
+                      'Save location with observations',
                       style: TextStyle(color: Colors.white),
                     ),
                     subtitle: const Text(
-                      'Store coarse lat/lon with observations',
+                      'Adds an approximate location to saved fungi records.',
                       style: TextStyle(color: accentTextColor),
                     ),
                     activeColor: const Color(0xFF8FBFA1),
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Location label mode',
+                    'Location label',
                     style: TextStyle(color: Colors.white),
                   ),
                   const SizedBox(height: 6),
@@ -315,7 +179,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       DropdownMenuItem(
                         value: LocationLabelMode.locality,
                         child: Text(
-                          'Locality name (offline dataset)',
+                          'Nearby locality',
                           style: TextStyle(color: Colors.white),
                         ),
                       ),
@@ -342,29 +206,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  _InfoRow(
-                    label: 'Local usage (approx.)',
-                    value: _storageBytes == null
-                        ? 'Unknown'
-                        : _formatBytes(_storageBytes!),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: _clearLocalData,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white54),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: const StadiumBorder(),
-                      ),
-                      child: const Text('Clear local data'),
-                    ),
-                  ),
                   const SizedBox(height: 20),
-                  const _SectionHeader(title: 'Map'),
+                  const _SectionHeader(title: 'Offline Maps'),
                   const SizedBox(height: 8),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
@@ -375,18 +218,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       );
                     },
                     title: const Text(
-                      'Map tile caching',
+                      'Save map areas for offline use',
                       style: TextStyle(color: Colors.white),
                     ),
                     subtitle: const Text(
-                      'Cache tiles you view for offline use',
+                      'Stores viewed map areas for offline use.',
                       style: TextStyle(color: accentTextColor),
                     ),
                     activeColor: const Color(0xFF8FBFA1),
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Cache size cap',
+                    'Offline map storage limit',
                     style: TextStyle(color: Colors.white),
                   ),
                   const SizedBox(height: 6),
@@ -423,37 +266,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  _InfoRow(
-                    label: 'Map tile cache (approx.)',
-                    value: _tileCacheBytes == null
-                        ? 'Unknown'
-                        : _formatBytes(_tileCacheBytes!),
-                  ),
-                  _InfoRow(
-                    label: 'Cached tiles',
-                    value: _tileCacheTileCount?.toString() ?? 'Unknown',
-                  ),
-                  _InfoRow(
-                    label: 'Cache hits / misses',
-                    value: (_tileCacheHits == null || _tileCacheMisses == null)
-                        ? 'Unknown'
-                        : '${_tileCacheHits!} / ${_tileCacheMisses!}',
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: _pruneMapCache,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white54),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: const StadiumBorder(),
-                      ),
-                      child: const Text('Prune cache to size limit'),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
@@ -464,7 +276,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: const StadiumBorder(),
                       ),
-                      child: const Text('Clear cached map tiles'),
+                      child: const Text('Clear offline maps'),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -480,75 +292,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const _SectionHeader(title: 'Field Notes'),
-                  const SizedBox(height: 8),
-                  _InfoRow(
-                    label: 'Field notes storage',
-                    value: _fieldNotesBytes == null
-                        ? 'Unknown'
-                        : _formatBytes(_fieldNotesBytes!),
-                  ),
-                  _InfoRow(
-                    label: 'Thumbnail cache',
-                    value: _fieldNotesThumbBytes == null
-                        ? 'Unknown'
-                        : _formatBytes(_fieldNotesThumbBytes!),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: _clearFieldNoteThumbnails,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white54),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: const StadiumBorder(),
-                      ),
-                      child: const Text('Clear thumbnails cache'),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: null,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white54,
-                        side: const BorderSide(color: Colors.white24),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: const StadiumBorder(),
-                      ),
-                      child: const Text('Export / backup (coming soon)'),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const _SectionHeader(title: 'Model Info'),
-                  const SizedBox(height: 8),
-                  const _InfoRow(
-                    label: 'Model',
-                    value: 'YOLOv11n custom-trained',
-                  ),
-                  const _InfoRow(
-                    label: 'Species set',
-                    value: 'Australia-wide species set',
-                  ),
-                  const _InfoRow(
-                    label: 'Inference',
-                    value: 'Offline inference',
-                  ),
-                  const _InfoRow(
-                    label: 'Model file',
-                    value: 'yolo11n_float32.tflite',
-                  ),
-                  _InfoRow(
-                    label: 'Model size',
-                    value: _modelSizeBytes == null
-                        ? 'Unknown'
-                        : _formatBytes(_modelSizeBytes!),
-                  ),
-                  const SizedBox(height: 20),
-                  const _SectionHeader(title: 'Safety'),
+                  const _SectionHeader(title: 'Saved Data'),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -557,27 +301,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Text(
-                      'AI results are probabilistic and must not be used for edibility decisions.',
+                      'Observations and field notes are stored on this device.',
                       style: TextStyle(color: accentTextColor, height: 1.4),
                     ),
                   ),
                   const SizedBox(height: 10),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text(
-                      'Safety Disclaimer',
-                      style: TextStyle(color: Colors.white),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: _clearLocalData,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white54),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: const StadiumBorder(),
+                      ),
+                      child: const Text('Clear local data'),
                     ),
-                    subtitle: const Text(
-                      'Review the required safety notice',
-                      style: TextStyle(color: accentTextColor),
-                    ),
-                    trailing: const Icon(
-                      Icons.chevron_right,
-                      color: Colors.white70,
-                    ),
-                    onTap: _openDisclaimer,
                   ),
+                  const SizedBox(height: 20),
+                  const _SectionHeader(title: 'About'),
+                  const SizedBox(height: 8),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text(
@@ -600,39 +344,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  String _formatBytes(int bytes) {
-    if (bytes < 1024) {
-      return '$bytes B';
-    }
-    final kb = bytes / 1024;
-    if (kb < 1024) {
-      return '${kb.toStringAsFixed(1)} KB';
-    }
-    final mb = kb / 1024;
-    return '${mb.toStringAsFixed(1)} MB';
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _InfoRow({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    const accentTextColor = Color(0xCCFFFFFF);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: accentTextColor)),
-          Text(value, style: const TextStyle(color: Colors.white)),
-        ],
-      ),
-    );
-  }
 }
 
 class _SectionHeader extends StatelessWidget {

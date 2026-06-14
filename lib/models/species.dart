@@ -3,6 +3,7 @@ class Species {
   final String? modelId;
   final int? sourceClassId;
   final String scientificName;
+  final String? canonicalName;
   final String? authority;
   final String? commonName;
   final String? colloquialName;
@@ -32,6 +33,7 @@ class Species {
     required this.modelId,
     required this.sourceClassId,
     required this.scientificName,
+    required this.canonicalName,
     required this.authority,
     required this.commonName,
     required this.colloquialName,
@@ -133,6 +135,8 @@ class Species {
           ? (json['sourceClassId'] as num).toInt()
           : int.tryParse(json['sourceClassId']?.toString() ?? ''),
       scientificName: json['scientificName']?.toString() ?? '',
+      canonicalName:
+          json['canonicalName']?.toString() ?? taxonomySpecies,
       authority: json['authority']?.toString(),
       commonName: json['commonName']?.toString(),
       colloquialName: json['colloquialName']?.toString(),

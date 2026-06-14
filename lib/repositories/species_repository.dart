@@ -11,6 +11,8 @@ class SpeciesRepository {
 
   List<Species>? _cache;
   Map<String, Species>? _byModelClassCache;
+  Map<String, Species>? _byScientificNameCache;
+  Map<String, Species>? _byCanonicalNameCache;
 
   static const String model1Id = 'model_1';
   static const String model2Id = 'model_2';
@@ -39,6 +41,14 @@ class SpeciesRepository {
         if (item.modelId != null && item.sourceClassId != null)
           _modelClassKey(item.modelId!, item.sourceClassId!): item,
     };
+    _byScientificNameCache = _buildNameCache(
+      _cache!,
+      (species) => species.scientificName,
+    );
+    _byCanonicalNameCache = _buildNameCache(
+      _cache!,
+      (species) => species.canonicalName,
+    );
     return _cache!;
   }
 
@@ -64,13 +74,40 @@ class SpeciesRepository {
     if (normalized.isEmpty) {
       return null;
     }
+    await loadSpecies();
+    return _byScientificNameCache?[normalized] ??
+        _byCanonicalNameCache?[normalized];
+  }
+
+  Future<Species?> matchSpecies({
+    String? speciesId,
+    String? modelId,
+    int? sourceClassId,
+    String? scientificName,
+    String? label,
+  }) async {
     final species = await loadSpecies();
-    for (final item in species) {
-      if (_normalizeForLookup(item.scientificName) == normalized) {
-        return item;
+    final Species? byModelClass = await getByModelClass(modelId, sourceClassId);
+    if (byModelClass != null) {
+      return byModelClass;
+    }
+
+    final String normalizedId = speciesId?.trim() ?? '';
+    if (normalizedId.isNotEmpty) {
+      for (final item in species) {
+        if (item.id == normalizedId) {
+          return item;
+        }
       }
     }
-    return null;
+
+    final Species? byScientificName =
+        await getByScientificName(scientificName ?? '');
+    if (byScientificName != null) {
+      return byScientificName;
+    }
+
+    return getByScientificName(label ?? '');
   }
 
   Future<List<Species>> search(String query) async {
@@ -92,6 +129,20 @@ class SpeciesRepository {
 
   String _modelClassKey(String modelId, int sourceClassId) {
     return '$modelId:$sourceClassId';
+  }
+
+  Map<String, Species> _buildNameCache(
+    List<Species> species,
+    String? Function(Species species) nameFor,
+  ) {
+    final map = <String, Species>{};
+    for (final item in species) {
+      final normalized = _normalizeForLookup(nameFor(item));
+      if (normalized.isNotEmpty && !map.containsKey(normalized)) {
+        map[normalized] = item;
+      }
+    }
+    return map;
   }
 
   Future<List<Species>> _loadSpeciesFromAsset({

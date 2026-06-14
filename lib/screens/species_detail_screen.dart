@@ -8,6 +8,7 @@ import '../repositories/field_notes_repository.dart';
 import '../repositories/species_repository.dart';
 import '../utils/formatting.dart';
 import '../widgets/forest_background.dart';
+import '../widgets/global_distribution_map_preview.dart';
 
 class SpeciesDetailScreen extends StatefulWidget {
   const SpeciesDetailScreen({super.key});
@@ -57,6 +58,10 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
       '/save-observation',
       arguments: SaveObservationArgs(preselectedSpeciesId: speciesId),
     );
+  }
+
+  void _returnToObservationCard() {
+    Navigator.of(context).pop();
   }
 
   String? _extractEcologicalRole(Species species) {
@@ -296,6 +301,10 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                           ? null
                           : _normalizeLabel(compareSecondaryLabel);
                   final bool isCompareFlow = compareSecondaryNormalized != null;
+                  final bool fromExistingObservation =
+                      _args?.source == SpeciesDetailSource.existingObservation;
+                  const String safetyDisclaimerText =
+                      'AI identification is probabilistic and may be wrong. Do not use this app to decide whether a fungus is edible, toxic, safe to touch, or safe for animals. Never eat wild fungi unless confirmed by a qualified expert. Seek urgent medical or poisons advice if ingestion or poisoning is suspected.';
 
                   final similarNames = species.similarSpeciesNames
                       .where((name) => name.trim().isNotEmpty)
@@ -446,7 +455,7 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                                 _sectionTitle('Ecological Role'),
                                 const SizedBox(height: 6),
                                 Text(
-                                  ecologicalRole!,
+                                  ecologicalRole,
                                   style: const TextStyle(
                                     color: accentTextColor,
                                     height: 1.4,
@@ -517,6 +526,16 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                                 ),
                               ),
                         const SizedBox(height: 16),
+                        GlobalDistributionMapPreview(
+                          scientificName: species.scientificName,
+                          canonicalName: species.canonicalName,
+                          speciesId: species.id,
+                          modelId: species.modelId,
+                          sourceClassId: species.sourceClassId,
+                          observationLatitude: observation?.latitude,
+                          observationLongitude: observation?.longitude,
+                        ),
+                        const SizedBox(height: 16),
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
@@ -525,7 +544,10 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                           ),
                           child: const Text(
                             'AI results are probabilistic and must not be used for edibility decisions.',
-                            style: TextStyle(color: accentTextColor, height: 1.4),
+                            style: TextStyle(
+                              color: accentTextColor,
+                              height: 1.4,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -560,9 +582,11 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
+                            initiallyExpanded: true,
                             children: [
                               Padding(
-                                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                                padding:
+                                    const EdgeInsets.fromLTRB(12, 0, 12, 12),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -575,23 +599,11 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                                       const SizedBox(height: 6),
                                     ],
                                     const Text(
-                    '- ',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    const Text(
-                                      'AI identification is probabilistic.',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    const Text(
-                                      'Always consult experts before handling or eating.',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    const Text(
-                                      'Edibility or toxicity cannot be confirmed by this app.',
-                                      style: TextStyle(color: Colors.white),
+                                      safetyDisclaimerText,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        height: 1.4,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -603,7 +615,9 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () => _openSaveObservation(species.id),
+                            onPressed: fromExistingObservation
+                                ? _returnToObservationCard
+                                : () => _openSaveObservation(species.id),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF8FBFA1),
                               foregroundColor: Colors.white,
@@ -612,9 +626,11 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                                   const EdgeInsets.symmetric(vertical: 16),
                               shape: const StadiumBorder(),
                             ),
-                            child: const Text(
-                              'Save Observation',
-                              style: TextStyle(
+                            child: Text(
+                              fromExistingObservation
+                                  ? 'Back to Observation Card'
+                                  : 'Save Observation',
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
