@@ -8,16 +8,19 @@ import '../models/field_note.dart';
 import '../models/navigation_args.dart';
 import '../models/observation.dart';
 import '../models/species.dart';
+import '../models/species_map_marker.dart';
 import '../repositories/field_notes_repository.dart';
 import '../repositories/observation_repository.dart';
 import '../repositories/species_repository.dart';
 import '../services/location_capture_service.dart';
 import '../services/location_label_service.dart';
 import '../services/settings_service.dart';
+import '../services/species_map_location_resolver.dart';
 import '../utils/formatting.dart';
 import '../utils/lichen_headline_gate.dart';
 import '../widgets/forest_background.dart';
 import '../widgets/global_distribution_map_preview.dart';
+import '../widgets/key_features_section.dart';
 import '../widgets/local_image_preview.dart';
 
 class DetectionResultScreen extends StatefulWidget {
@@ -579,6 +582,9 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
         args.latitude != null && args.longitude != null;
     final _StabilityBadgeData stability =
         _stabilityFromVoteRatio(args.top1VoteRatio);
+    final distributionMarkers = _matchedSpecies == null
+        ? const <SpeciesMapMarker>[]
+        : SpeciesMapLocationResolver.instance.resolveMarkers(_matchedSpecies!);
 
     return Scaffold(
       appBar: AppBar(
@@ -757,12 +763,21 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                         final Species? species = snapshot.data;
                         if (species == null) {
                           return const _ResultCard(
-                            child: Text(
-                              'No matching species card found for this capture.',
-                              style: TextStyle(
-                                color: Color(0xCCFFFFFF),
-                                fontSize: 13,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'No matching species card found for this capture.',
+                                  style: TextStyle(
+                                    color: Color(0xCCFFFFFF),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                SizedBox(height: 12),
+                                KeyFeaturesSection(
+                                  features: <String>[],
+                                ),
+                              ],
                             ),
                           );
                         }
@@ -850,6 +865,9 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                           args.classIndex,
                       observationLatitude: args.latitude,
                       observationLongitude: args.longitude,
+                      markers: distributionMarkers,
+                      emptyText:
+                          'Location data not available for this species.',
                     ),
                   ],
                 ),
@@ -1264,14 +1282,8 @@ class _SpeciesSnapshotCard extends StatelessWidget {
           ),
           if (description.isNotEmpty)
             _InfoLine(label: 'Description', value: description),
-          if (species.keyFeatures.isNotEmpty)
-            _InfoLine(
-              label: 'Key features',
-              value: species.keyFeatures
-                  .where((f) => f.trim().isNotEmpty)
-                  .map((f) => '- ${f.trim()}')
-                  .join('\n'),
-            ),
+          const SizedBox(height: 8),
+          KeyFeaturesSection(features: species.keyFeatures),
           if (habitat.isNotEmpty) _InfoLine(label: 'Habitat', value: habitat),
           if (season.isNotEmpty) _InfoLine(label: 'Season', value: season),
           if (distribution.isNotEmpty)

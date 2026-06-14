@@ -21,6 +21,7 @@ class Species {
   final String distributionNote;
   final String? distributionCountry;
   final List<String> distributionStates;
+  final SpeciesLocation location;
   final String? habitat;
   final String? season;
   final String? edibilityWarning;
@@ -51,6 +52,7 @@ class Species {
     required this.distributionNote,
     required this.distributionCountry,
     required this.distributionStates,
+    required this.location,
     required this.habitat,
     required this.season,
     required this.edibilityWarning,
@@ -86,6 +88,8 @@ class Species {
           .toList();
       distributionNote = distribution['note']?.toString();
     }
+
+    final location = SpeciesLocation.fromJson(json['location']);
 
     String? computedNote =
         json['distributionNote']?.toString() ?? distributionNote;
@@ -155,6 +159,7 @@ class Species {
       distributionNote: computedNote ?? '',
       distributionCountry: distributionCountry,
       distributionStates: distributionStates,
+      location: location,
       habitat: json['habitat']?.toString(),
       season: json['season']?.toString(),
       edibilityWarning: json['edibilityWarning']?.toString(),
@@ -184,4 +189,48 @@ class Species {
       taxonomySpecies,
     ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' > ');
   }
+}
+
+class SpeciesLocation {
+  final List<String> global;
+  final List<String> australiaStates;
+  final List<String> regionalNotes;
+
+  const SpeciesLocation({
+    required this.global,
+    required this.australiaStates,
+    required this.regionalNotes,
+  });
+
+  factory SpeciesLocation.fromJson(dynamic json) {
+    if (json is! Map<String, dynamic>) {
+      return const SpeciesLocation(
+        global: <String>[],
+        australiaStates: <String>[],
+        regionalNotes: <String>[],
+      );
+    }
+    final australia = json['australia'];
+    final List<String> states = australia is Map<String, dynamic>
+        ? (australia['states'] as List<dynamic>? ?? const <dynamic>[])
+            .map((item) => item.toString())
+            .where((item) => item.trim().isNotEmpty)
+            .toList()
+        : const <String>[];
+    return SpeciesLocation(
+      global: (json['global'] as List<dynamic>? ?? const <dynamic>[])
+          .map((item) => item.toString())
+          .where((item) => item.trim().isNotEmpty)
+          .toList(),
+      australiaStates: states,
+      regionalNotes: (json['regionalNotes'] as List<dynamic>? ??
+              const <dynamic>[])
+          .map((item) => item.toString())
+          .where((item) => item.trim().isNotEmpty)
+          .toList(),
+    );
+  }
+
+  bool get isEmpty =>
+      global.isEmpty && australiaStates.isEmpty && regionalNotes.isEmpty;
 }

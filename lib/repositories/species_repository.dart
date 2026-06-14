@@ -23,8 +23,8 @@ class SpeciesRepository {
     }
     final _TasColloquialMaps tasColloquial = await _loadTasColloquialMaps();
     final List<Species> model1Species = await _loadSpeciesFromAsset(
-      assetPath: 'assets/data/species.json',
-      fallbackAssetPath: 'assets/data/species_tas.json',
+      assetPath: 'assets/data/species_tas.json',
+      fallbackAssetPath: 'assets/data/species.json',
       modelId: model1Id,
       namespaceIds: false,
       colloquialFallback: tasColloquial,

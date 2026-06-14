@@ -6,9 +6,11 @@ import '../models/observation.dart';
 import '../models/species.dart';
 import '../repositories/field_notes_repository.dart';
 import '../repositories/species_repository.dart';
+import '../services/species_map_location_resolver.dart';
 import '../utils/formatting.dart';
 import '../widgets/forest_background.dart';
 import '../widgets/global_distribution_map_preview.dart';
+import '../widgets/key_features_section.dart';
 
 class SpeciesDetailScreen extends StatefulWidget {
   const SpeciesDetailScreen({super.key});
@@ -339,6 +341,11 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                       season.isEmpty ? {} : _parseSeasonalityMonths(season);
                   final String? ecologicalRole = _extractEcologicalRole(species);
                   final distributionNote = species.distributionNote.trim();
+                  final location = species.location;
+                  final distributionMarkers =
+                      SpeciesMapLocationResolver.instance.resolveMarkers(
+                    species,
+                  );
                   final edibilityWarning = species.edibilityWarning?.trim() ?? '';
                   final String colloquialName = (species.colloquialName
                                   ?.trim()
@@ -435,9 +442,9 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _sectionTitle('Key Identifying Features'),
-                              const SizedBox(height: 6),
-                              _BulletList(items: species.keyFeatures),
+                              KeyFeaturesSection(
+                                features: species.keyFeatures,
+                              ),
                               if (habitat.isNotEmpty) ...[
                                 const SizedBox(height: 12),
                                 _sectionTitle('Habitat'),
@@ -525,6 +532,44 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                                   height: 1.4,
                                 ),
                               ),
+                        if (!location.isEmpty) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _sectionTitle('Location'),
+                                if (location.global.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  _LocationLine(
+                                    label: 'Global',
+                                    value: location.global.join(', '),
+                                  ),
+                                ],
+                                if (location.australiaStates.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  _LocationLine(
+                                    label: 'Australia',
+                                    value: location.australiaStates.join(', '),
+                                  ),
+                                ],
+                                if (location.regionalNotes.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  _BulletList(
+                                    items: location.regionalNotes,
+                                    emptyText: 'No regional notes listed.',
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 16),
                         GlobalDistributionMapPreview(
                           scientificName: species.scientificName,
@@ -534,6 +579,9 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                           sourceClassId: species.sourceClassId,
                           observationLatitude: observation?.latitude,
                           observationLongitude: observation?.longitude,
+                          markers: distributionMarkers,
+                          emptyText:
+                              'Location data not available for this species.',
                         ),
                         const SizedBox(height: 16),
                         Container(
@@ -807,15 +855,19 @@ class _CompareChipRow extends StatelessWidget {
 
 class _BulletList extends StatelessWidget {
   final List<String> items;
+  final String emptyText;
 
-  const _BulletList({required this.items});
+  const _BulletList({
+    required this.items,
+    this.emptyText = 'No identifying features listed.',
+  });
 
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return const Text(
-        'No identifying features listed.',
-        style: TextStyle(color: Color(0xCCFFFFFF)),
+      return Text(
+        emptyText,
+        style: const TextStyle(color: Color(0xCCFFFFFF)),
       );
     }
 
@@ -846,6 +898,38 @@ class _BulletList extends StatelessWidget {
             ),
           )
           .toList(),
+    );
+  }
+}
+
+class _LocationLine extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _LocationLine({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(
+          color: Color(0xCCFFFFFF),
+          height: 1.35,
+        ),
+        children: [
+          TextSpan(
+            text: '$label: ',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          TextSpan(text: value),
+        ],
+      ),
     );
   }
 }

@@ -13,6 +13,7 @@ import '../repositories/species_repository.dart';
 import '../services/settings_service.dart';
 import '../utils/formatting.dart';
 import '../widgets/forest_background.dart';
+import '../widgets/key_features_section.dart';
 import '../widgets/local_image_preview.dart';
 
 class ObservationsScreen extends StatefulWidget {
@@ -362,11 +363,13 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
+        final Species? species = _speciesForObservation(observation);
         final String scientificName = _scientificNameFor(observation);
         return _ObservationDetailSheet(
           observation: observation,
           scientificName: scientificName,
           colloquialName: _getObservationColloquialName(observation),
+          keyFeatures: species?.keyFeatures ?? const <String>[],
           confidenceColor: _confidenceColor(observation.confidence),
           onOpenMap: observation.location == null
               ? null
@@ -888,6 +891,7 @@ class _ObservationDetailSheet extends StatelessWidget {
   final Observation observation;
   final String scientificName;
   final String? colloquialName;
+  final List<String> keyFeatures;
   final Color confidenceColor;
   final VoidCallback? onOpenMap;
   final VoidCallback onViewFull;
@@ -898,6 +902,7 @@ class _ObservationDetailSheet extends StatelessWidget {
     required this.observation,
     required this.scientificName,
     required this.colloquialName,
+    required this.keyFeatures,
     required this.confidenceColor,
     required this.onOpenMap,
     required this.onViewFull,
@@ -1028,6 +1033,11 @@ class _ObservationDetailSheet extends StatelessWidget {
                 label: 'Notes',
                 value: observation.notes!.trim(),
               ),
+            const SizedBox(height: 12),
+            KeyFeaturesSection(
+              features: keyFeatures,
+              contained: true,
+            ),
             const SizedBox(height: 12),
             const Text(
               'Field Notes',

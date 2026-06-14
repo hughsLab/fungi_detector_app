@@ -18,8 +18,14 @@ void main() {
     expect(species.length, greaterThanOrEqualTo(273));
     expect(model1?.id, '0');
     expect(model1?.scientificName, 'Aleuria aurantia');
+    expect(model1?.keyFeatures, isNotEmpty);
+    expect(model1?.location.global, contains('Australia'));
+    expect(model1?.location.australiaStates, contains('Tasmania'));
     expect(model2?.id, 'model_2:0');
     expect(model2?.scientificName, 'Agaricus campestris');
+    expect(model2?.keyFeatures, isNotEmpty);
+    expect(model2?.location.global, contains('Australia'));
+    expect(model2?.location.australiaStates, contains('Tasmania'));
   });
 
   test('stable model and class identifiers beat ambiguous species ids', () async {
@@ -41,5 +47,21 @@ void main() {
     );
 
     expect(match, isNull);
+  });
+
+  test('matches enriched species by stable identifiers and scientific name', () async {
+    final byModelClass = await SpeciesRepository.instance.matchSpecies(
+      modelId: SpeciesRepository.model2Id,
+      sourceClassId: 0,
+      label: 'field mushroom',
+    );
+    final byScientificName = await SpeciesRepository.instance.matchSpecies(
+      scientificName: 'Aleuria aurantia',
+    );
+
+    expect(byModelClass?.scientificName, 'Agaricus campestris');
+    expect(byModelClass?.keyFeatures, isNotEmpty);
+    expect(byScientificName?.scientificName, 'Aleuria aurantia');
+    expect(byScientificName?.keyFeatures, isNotEmpty);
   });
 }
