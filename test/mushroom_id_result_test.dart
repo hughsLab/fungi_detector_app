@@ -70,6 +70,75 @@ void main() {
     expect(result.hasConfidentTopSuggestion, isFalse);
   });
 
+  test('parses raw Kindwise mushroom identification response', () {
+    final result = MushroomIdResult.fromJson({
+      'result': {
+        'classification': {
+          'suggestions': [
+            {
+              'id': '509e11b658e98f03',
+              'name': 'Amanita muscaria',
+              'probability': 0.6575,
+              'similar_images': [
+                {
+                  'url':
+                      'https://mushroom-id.example/similar_images/full.jpg',
+                  'url_small':
+                      'https://mushroom-id.example/similar_images/small.jpg',
+                  'license_name': 'CC BY-NC-ND 4.0',
+                  'citation': 'Example',
+                  'similarity': 0.694,
+                },
+              ],
+              'details': {
+                'common_names': [
+                  'Fly agaric',
+                  'Fly Amanita',
+                ],
+                'taxonomy': {
+                  'class': 'Agaricomycetes',
+                  'genus': 'Amanita',
+                  'order': 'Agaricales',
+                  'family': 'Amanitaceae',
+                  'phylum': 'Basidiomycota',
+                  'kingdom': 'Fungi',
+                },
+                'url': 'https://en.wikipedia.org/wiki/Amanita_muscaria',
+                'rank': 'species',
+                'edibility': 'poisonous',
+                'description': {
+                  'value':
+                      'Amanita muscaria, commonly known as the fly agaric.',
+                },
+              },
+            },
+            {
+              'id': 'afb97d5e96f40460',
+              'name': 'Amanita flavoconia',
+              'probability': 0.1455,
+              'details': {
+                'common_names': ['Yellow Patches'],
+                'url': 'https://en.wikipedia.org/wiki/Amanita_flavoconia',
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    final top = result.topSuggestion;
+    expect(top?.scientificName, 'Amanita muscaria');
+    expect(top?.confidencePercent, 65.75);
+    expect(top?.commonNames, ['Fly agaric', 'Fly Amanita']);
+    expect(top?.edibility, 'poisonous');
+    expect(top?.description, contains('fly agaric'));
+    expect(top?.url, 'https://en.wikipedia.org/wiki/Amanita_muscaria');
+    expect(top?.taxonomy['genus'], 'Amanita');
+    expect(top?.similarImages.single.urlSmall, contains('small.jpg'));
+    expect(top?.similarImages.single.licenseName, 'CC BY-NC-ND 4.0');
+    expect(result.alternatives.single.scientificName, 'Amanita flavoconia');
+  });
+
   test('maps online result into observation draft', () {
     final result = MushroomIdResult.fromJson({
       'topSuggestion': {

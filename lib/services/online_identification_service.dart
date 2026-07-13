@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
+import '../config/app_secrets.dart';
 import '../models/mushroom_id_result.dart';
 
 class OnlineIdentificationLocation {
@@ -46,9 +47,11 @@ class OnlineIdentificationService {
     FirebaseAuth? firebaseAuth,
     FirebaseApp? firebaseApp,
     HttpClient? httpClient,
+    String? mushroomIdApiKey,
   })  : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
         _firebaseApp = firebaseApp ?? Firebase.app(),
-        _httpClient = httpClient;
+        _httpClient = httpClient,
+        _mushroomIdApiKey = mushroomIdApiKey;
 
   static final OnlineIdentificationService instance =
       OnlineIdentificationService();
@@ -59,10 +62,15 @@ class OnlineIdentificationService {
     defaultValue: 'australia-southeast1',
   );
   static const String _functionName = 'identifyMushroomOnline';
+  static const String _kindwiseHost = 'mushroom.kindwise.com';
+  static const String _kindwisePath = '/api/v1/identification';
+  static const String _kindwiseDetails =
+      'common_names,url,description,edibility,toxicity,look_alikes,taxonomy,rank';
 
   final FirebaseAuth _firebaseAuth;
   final FirebaseApp _firebaseApp;
   final HttpClient? _httpClient;
+  final String? _mushroomIdApiKey;
 
   Future<MushroomIdResult> identifyPhoto({
     required String photoPath,
@@ -96,87 +104,102 @@ class OnlineIdentificationService {
       );
     }
 
-    final user = _firebaseAuth.currentUser;
-    if (user == null) {
-      throw const OnlineIdentificationException(
-        'auth-required',
-        'Sign in before using online identification.',
-      );
-    }
-
-    final token = await user.getIdToken();
-    if (token == null || token.trim().isEmpty) {
-      throw const OnlineIdentificationException(
-        'auth-required',
-        'Could not verify your sign-in for online identification.',
-      );
-    }
-
     final bytes = await file.readAsBytes();
     final imageBase64 = base64Encode(bytes);
     _debugLog('imageBase64 length: ${imageBase64.length}');
-    final body = jsonEncode({
-      'imageBase64': imageBase64,
-      'location': location?.toJson(),
-    });
-
-    final client = _httpClient ?? HttpClient();
-    client.connectionTimeout = const Duration(seconds: 15);
+    final directApiKey =
+        (_mushroomIdApiKey ?? AppSecrets.mushroomIdApiKey)?.trim();
     try {
+      if (directApiKey != null && directApiKey.isNotEmpty) {
+        _debugLog('direct Kindwise request selected');
+        return await _identifyWithKindwise(
+          imageBase64: imageBase64,
+          apiKey: directApiKey,
+        );
+      }
+
+      final user = _firebaseAuth.currentUser;
+      if (user == null) {
+        throw const OnlineIdentificationException(
+          'auth-required',
+          'Sign in before using online identification.',
+        );
+      }
+
+      final token = await user.getIdToken();
+      if (token == null || token.trim().isEmpty) {
+        throw const OnlineIdentificationException(
+          'auth-required',
+          'Could not verify your sign-in for online identification.',
+        );
+      }
+
+      final body = jsonEncode({
+        'imageBase64': imageBase64,
+        'location': location?.toJson(),
+      });
+      final client = _httpClient ?? HttpClient();
+      client.connectionTimeout = const Duration(seconds: 15);
       _debugLog('backend request started');
       final endpoint = _endpointUri();
       _debugLog('backend HTTP endpoint: $endpoint');
-      final request = await client.postUrl(endpoint).timeout(
-            const Duration(seconds: 20),
-          );
-      request.headers.contentType = ContentType.json;
-      request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
-      request.add(utf8.encode(body));
+      try {
+        final request = await client.postUrl(endpoint).timeout(
+              const Duration(seconds: 20),
+            );
+        request.headers.contentType = ContentType.json;
+        request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
+        request.add(utf8.encode(body));
 
-      final response = await request.close().timeout(
-            const Duration(seconds: 60),
-          );
-      final raw = await response.transform(utf8.decoder).join();
-      _debugLog('backend response status: ${response.statusCode}');
-      _debugLog(
-        'backend response content-type: '
-        '${response.headers.contentType?.mimeType ?? 'unknown'}',
-      );
-      final decoded = _tryDecodeResponse(raw);
-      _debugLog('backend response was JSON: ${decoded != null}');
-
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        final backendError = _backendErrorCode(decoded);
+        final response = await request.close().timeout(
+              const Duration(seconds: 60),
+            );
+        final raw = await response.transform(utf8.decoder).join();
+        _debugLog('backend response status: ${response.statusCode}');
         _debugLog(
-          'backend response failure: '
-          '${backendError ?? response.statusCode}',
+          'backend response content-type: '
+          '${response.headers.contentType?.mimeType ?? 'unknown'}',
         );
-        final backendMessage = decoded?['message']?.toString();
-        final message = _messageForBackendError(
-          backendError,
-          response.statusCode,
-          backendMessage,
-        );
-        _debugLog(
-          'backend error message: '
-          '${backendMessage ?? message}',
-        );
-        throw OnlineIdentificationException(
-          backendError ?? 'backend_unavailable',
-          message,
-        );
-      }
+        final decoded = _tryDecodeResponse(raw);
+        _debugLog('backend response was JSON: ${decoded != null}');
 
-      if (decoded == null) {
-        throw const FormatException('Response was not valid JSON.');
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          final backendError = _backendErrorCode(decoded);
+          _debugLog(
+            'backend response failure: '
+            '${backendError ?? response.statusCode}',
+          );
+          final backendMessage = decoded?['message']?.toString();
+          final message = _messageForBackendError(
+            backendError,
+            response.statusCode,
+            backendMessage,
+          );
+          _debugLog(
+            'backend error message: '
+            '${backendMessage ?? message}',
+          );
+          throw OnlineIdentificationException(
+            backendError ?? 'backend_unavailable',
+            message,
+          );
+        }
+
+        if (decoded == null) {
+          throw const FormatException('Response was not valid JSON.');
+        }
+        final result = MushroomIdResult.fromJson(decoded);
+        _debugLog('backend response success');
+        _debugLog(
+          'parsed top suggestion: '
+          '${result.topSuggestion?.scientificName ?? 'none'}',
+        );
+        return result;
+      } finally {
+        if (_httpClient == null) {
+          client.close(force: false);
+        }
       }
-      final result = MushroomIdResult.fromJson(decoded);
-      _debugLog('backend response success');
-      _debugLog(
-        'parsed top suggestion: '
-        '${result.topSuggestion?.scientificName ?? 'none'}',
-      );
-      return result;
     } on OnlineIdentificationException catch (e) {
       _debugLog('online identification failed: OnlineIdentificationException');
       _debugLog('exception runtimeType: ${e.runtimeType}');
@@ -214,6 +237,59 @@ class OnlineIdentificationService {
         'backend_unavailable',
         'Online identification backend is unavailable right now.',
       );
+    }
+  }
+
+  Future<MushroomIdResult> _identifyWithKindwise({
+    required String imageBase64,
+    required String apiKey,
+  }) async {
+    final body = jsonEncode({
+      'images': <String>[imageBase64],
+      'similar_images': true,
+    });
+    final client = _httpClient ?? HttpClient();
+    client.connectionTimeout = const Duration(seconds: 15);
+    try {
+      final endpoint = _kindwiseEndpointUri();
+      _debugLog('Kindwise HTTP endpoint: $endpoint');
+      _debugLog('Kindwise image count: 1');
+      final request = await client.postUrl(endpoint).timeout(
+            const Duration(seconds: 20),
+          );
+      request.headers.contentType = ContentType.json;
+      request.headers.set('Api-Key', apiKey);
+      request.add(utf8.encode(body));
+
+      final response = await request.close().timeout(
+            const Duration(seconds: 60),
+          );
+      final raw = await response.transform(utf8.decoder).join();
+      _debugLog('Kindwise response status: ${response.statusCode}');
+      final decoded = _tryDecodeResponse(raw);
+      _debugLog('Kindwise response was JSON: ${decoded != null}');
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw OnlineIdentificationException(
+          _kindwiseErrorCode(response.statusCode),
+          _kindwiseErrorMessage(response.statusCode, decoded),
+        );
+      }
+      if (decoded == null) {
+        throw const FormatException('Response was not valid JSON.');
+      }
+
+      final result = MushroomIdResult.fromJson(decoded);
+      if (result.topSuggestion == null) {
+        throw const OnlineIdentificationException(
+          'no_suggestions',
+          'No online identification suggestions were returned for this image.',
+        );
+      }
+      _debugLog(
+        'parsed top suggestion: '
+        '${result.topSuggestion?.scientificName ?? 'none'}',
+      );
+      return result;
     } finally {
       if (_httpClient == null) {
         client.close(force: false);
@@ -226,6 +302,40 @@ class OnlineIdentificationService {
     return Uri.https(
       '$_functionRegion-$projectId.cloudfunctions.net',
       '/$_functionName',
+    );
+  }
+
+  Uri _kindwiseEndpointUri() {
+    return Uri.https(_kindwiseHost, _kindwisePath, {
+      'details': _kindwiseDetails,
+    });
+  }
+
+  String _kindwiseErrorCode(int statusCode) {
+    if (statusCode == 401 || statusCode == 403) {
+      return 'backend_config_missing';
+    }
+    if (statusCode == 402 || statusCode == 429) {
+      return 'quota_or_credits_unavailable';
+    }
+    if (statusCode == 413) {
+      return 'image-too-large';
+    }
+    if (statusCode >= 500) {
+      return 'provider-unavailable';
+    }
+    return 'mushroom_id_http_error';
+  }
+
+  String _kindwiseErrorMessage(
+    int statusCode,
+    Map<String, dynamic>? decoded,
+  ) {
+    final providerMessage = decoded?['message']?.toString();
+    return _messageForBackendError(
+      _kindwiseErrorCode(statusCode),
+      statusCode,
+      providerMessage,
     );
   }
 

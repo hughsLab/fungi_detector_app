@@ -18,13 +18,21 @@ class MushroomIdResult {
   });
 
   factory MushroomIdResult.fromJson(Map<String, dynamic> json) {
+    final rawSuggestions = _parseProviderSuggestionList(
+      _readProviderSuggestions(json),
+    );
+    final parsedTopSuggestion = _parseSuggestion(json['topSuggestion']);
+    final parsedAlternatives = _parseSuggestionList(json['alternatives']);
     return MushroomIdResult(
       source: json['source']?.toString() ?? 'mushroom.id',
       onlineIdentification: json['onlineIdentification'] is bool
           ? json['onlineIdentification'] as bool
           : true,
-      topSuggestion: _parseSuggestion(json['topSuggestion']),
-      alternatives: _parseSuggestionList(json['alternatives']),
+      topSuggestion: parsedTopSuggestion ??
+          (rawSuggestions.isEmpty ? null : rawSuggestions.first),
+      alternatives: parsedAlternatives.isNotEmpty || rawSuggestions.isEmpty
+          ? parsedAlternatives
+          : rawSuggestions.skip(1).take(4).toList(growable: false),
       warnings: _parseStringList(json['warnings']),
       regionSupported: json['regionSupported'] is bool
           ? json['regionSupported'] as bool
@@ -79,22 +87,29 @@ class MushroomIdSuggestion {
   });
 
   factory MushroomIdSuggestion.fromJson(Map<String, dynamic> json) {
+    final details = _parseDynamicMap(json['details']);
     final probability = _parseDouble(json['probability']) ?? 0.0;
     return MushroomIdSuggestion(
       scientificName: json['scientificName']?.toString() ??
           json['name']?.toString() ??
+          details['scientific_name']?.toString() ??
+          details['scientificName']?.toString() ??
           '',
       probability: probability,
       confidencePercent: _parseDouble(json['confidencePercent']) ??
           (probability * 100.0),
-      commonNames: _parseStringList(json['commonNames']),
-      edibility: _nonEmpty(json['edibility']),
-      toxicity: _nonEmpty(json['toxicity']),
-      rank: _nonEmpty(json['rank']),
-      description: _nonEmpty(json['description']),
-      url: _nonEmpty(json['url']),
-      taxonomy: _parseStringMap(json['taxonomy']),
-      similarImages: _parseSimilarImages(json['similarImages']),
+      commonNames: _parseStringList(
+        json['commonNames'] ?? json['common_names'] ?? details['common_names'],
+      ),
+      edibility: _nonEmpty(json['edibility'] ?? details['edibility']),
+      toxicity: _nonEmpty(json['toxicity'] ?? details['toxicity']),
+      rank: _nonEmpty(json['rank'] ?? details['rank']),
+      description: _descriptionText(json['description'] ?? details['description']),
+      url: _nonEmpty(json['url'] ?? details['url']),
+      taxonomy: _parseStringMap(json['taxonomy'] ?? details['taxonomy']),
+      similarImages: _parseSimilarImages(
+        json['similarImages'] ?? json['similar_images'],
+      ),
     );
   }
 
@@ -153,6 +168,25 @@ class MushroomIdSimilarImage {
   }
 }
 
+dynamic _readProviderSuggestions(Map<String, dynamic> json) {
+  final result = _parseDynamicMap(json['result']);
+  final resultClassification = _parseDynamicMap(result['classification']);
+  final classification = _parseDynamicMap(json['classification']);
+  return resultClassification['suggestions'] ??
+      classification['suggestions'] ??
+      json['suggestions'];
+}
+
+List<MushroomIdSuggestion> _parseProviderSuggestionList(dynamic value) {
+  if (value is! List) {
+    return const <MushroomIdSuggestion>[];
+  }
+  return value
+      .map(_parseSuggestion)
+      .whereType<MushroomIdSuggestion>()
+      .toList(growable: false);
+}
+
 MushroomIdSuggestion? _parseSuggestion(dynamic value) {
   if (value is Map<String, dynamic>) {
     final suggestion = MushroomIdSuggestion.fromJson(value);
@@ -165,6 +199,16 @@ MushroomIdSuggestion? _parseSuggestion(dynamic value) {
     return suggestion.scientificName.trim().isEmpty ? null : suggestion;
   }
   return null;
+}
+
+Map<String, dynamic> _parseDynamicMap(dynamic value) {
+  if (value is Map<String, dynamic>) {
+    return value;
+  }
+  if (value is Map) {
+    return value.map((key, value) => MapEntry(key.toString(), value));
+  }
+  return const <String, dynamic>{};
 }
 
 List<MushroomIdSuggestion> _parseSuggestionList(dynamic value) {
@@ -229,6 +273,13 @@ double? _parseDouble(dynamic value) {
     return value.toDouble();
   }
   return double.tryParse(value.toString());
+}
+
+String? _descriptionText(dynamic value) {
+  if (value is Map) {
+    return _nonEmpty(value['value'] ?? value['text']);
+  }
+  return _nonEmpty(value);
 }
 
 String? _nonEmpty(dynamic value) {

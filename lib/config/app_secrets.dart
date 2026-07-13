@@ -70,6 +70,8 @@ class AppSecrets {
 
   static const _googleWebClientId =
       String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
+  static const _mushroomIdApiKey =
+      String.fromEnvironment('MUSHROOM_ID_API_KEY');
 
   static String get firebaseAndroidApiKey =>
       _require('FIREBASE_ANDROID_API_KEY', _firebaseAndroidApiKey);
@@ -166,6 +168,9 @@ class AppSecrets {
 
   static String requireGoogleWebClientId() =>
       _require('GOOGLE_WEB_CLIENT_ID', _googleWebClientId);
+
+  static String? get mushroomIdApiKey =>
+      _optional('MUSHROOM_ID_API_KEY', _mushroomIdApiKey);
 
   static String _require(String key, String dartDefineValue) {
     final value = _value(key, dartDefineValue);
