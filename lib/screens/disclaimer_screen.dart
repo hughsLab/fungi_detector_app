@@ -46,7 +46,7 @@ class DisclaimerScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             const Text(
-              'This app provides offline AI assistance only.',
+              'This app provides AI-assisted identification and field notes.',
               style: TextStyle(
                 color: Color(0xCCFFFFFF),
                 height: 1.4,

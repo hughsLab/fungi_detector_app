@@ -88,6 +88,7 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
     });
 
     try {
+      final settings = await _settingsService.loadSettings();
       CapturedLocation? capturedLocation;
       String? locationMessage;
       ObservationLocationSource locationSource = ObservationLocationSource.none;
@@ -121,6 +122,9 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
         label: species.commonName?.isNotEmpty == true
             ? species.commonName!
             : species.scientificName,
+        scientificName: species.scientificName,
+        commonName: species.commonName,
+        colloquialName: species.colloquialName,
         confidence: _includeConfidence ? _confidenceValue : null,
         createdAt: DateTime.now(),
         photoPath: null,
@@ -133,6 +137,9 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
         notes: _notesController.text.trim().isEmpty
             ? null
             : _notesController.text.trim(),
+        detectionSource: 'manual',
+        identificationSource: 'manual',
+        isPublic: settings.shareObservationsOnPublicMap,
       );
 
       await _observationRepository.saveObservation(observation);
@@ -153,10 +160,11 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
         SnackBar(content: Text('Failed to save observation: $e')),
       );
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _saving = false;
-      });
+      if (mounted) {
+        setState(() {
+          _saving = false;
+        });
+      }
     }
   }
 

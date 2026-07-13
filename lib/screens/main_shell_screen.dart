@@ -6,7 +6,7 @@ import 'observations_screen.dart';
 class MainShellScreen extends StatefulWidget {
   final int initialIndex;
 
-  const MainShellScreen({super.key, this.initialIndex = 2});
+  const MainShellScreen({super.key, this.initialIndex = 0});
 
   @override
   State<MainShellScreen> createState() => _MainShellScreenState();
@@ -19,46 +19,93 @@ class _MainShellScreenState extends State<MainShellScreen> {
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialIndex.clamp(1, 2);
+    _currentIndex = widget.initialIndex.clamp(0, 3);
     _shellTabs = [
-      const ObservationsScreen(),
       HomeScreen(onSelectTab: _onTabSelected),
+      const ObservationsScreen(),
     ];
   }
 
   void _onTabSelected(int index) {
-    if (index == 0) {
-      Navigator.of(context).pushNamed('/detect');
-      return;
+    switch (index) {
+      case 0:
+        if (_currentIndex == 0) return;
+        setState(() => _currentIndex = 0);
+        return;
+      case 1:
+        Navigator.of(context).pushNamed('/detect');
+        return;
+      case 2:
+        if (_currentIndex == 2) return;
+        setState(() => _currentIndex = 2);
+        return;
+      case 3:
+        Navigator.of(context).pushNamed('/species-library');
+        return;
     }
-    if (index == _currentIndex) return;
-    setState(() {
-      _currentIndex = index;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final shellIndex = _currentIndex == 2 ? 1 : 0;
+
     return Scaffold(
-      body: IndexedStack(index: _currentIndex - 1, children: _shellTabs),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFF0F3D2E),
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white70,
-        onTap: _onTabSelected,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.center_focus_strong),
-            label: 'Detect',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.collections_bookmark),
-            label: 'Observations',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        ],
+      body: IndexedStack(index: shellIndex, children: _shellTabs),
+      bottomNavigationBar: NavigationBarTheme(
+        data: NavigationBarThemeData(
+          iconTheme: WidgetStateProperty.resolveWith((states) {
+            final selected = states.contains(WidgetState.selected);
+            return IconThemeData(
+              color: selected
+                  ? const Color(0xFF2D774E)
+                  : const Color(0xD9FFFFFF),
+              size: selected ? 25 : 24,
+            );
+          }),
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            final selected = states.contains(WidgetState.selected);
+            return TextStyle(
+              color: selected
+                  ? Colors.white
+                  : const Color(0xCCFFFFFF),
+              fontSize: 11.5,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+            );
+          }),
+        ),
+        child: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: _onTabSelected,
+          height: 72,
+          elevation: 8,
+          backgroundColor: const Color(0xFF1F6F47),
+          indicatorColor: const Color(0xFFE3F2E8),
+          surfaceTintColor: Colors.transparent,
+          shadowColor: const Color(0x66244A35),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home_rounded),
+              label: 'Home',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.center_focus_strong_outlined),
+              selectedIcon: Icon(Icons.center_focus_strong_rounded),
+              label: 'Detect',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.collections_bookmark_outlined),
+              selectedIcon: Icon(Icons.collections_bookmark_rounded),
+              label: 'Observations',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.menu_book_outlined),
+              selectedIcon: Icon(Icons.menu_book_rounded),
+              label: 'Library',
+            ),
+          ],
+        ),
       ),
     );
   }

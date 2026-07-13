@@ -694,7 +694,7 @@ class _FieldNotesShortcut extends StatelessWidget {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Offline notes, photos, and links',
+                      'Local notes, photos, and links',
                       style: TextStyle(
                         color: Color(0xCCFFFFFF),
                         fontSize: 12.5,

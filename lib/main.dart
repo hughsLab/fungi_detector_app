@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'debug/detection_batch_test_runner.dart';
 import 'firebase_options.dart';
 import 'screens/about_screen.dart';
+import 'screens/choose_username_screen.dart';
 import 'screens/detection_page.dart';
 import 'screens/detection_result_screen.dart';
 import 'screens/disclaimer_screen.dart';
@@ -15,6 +16,7 @@ import 'screens/field_notes_screen.dart';
 import 'screens/main_shell_screen.dart';
 import 'screens/map_screen.dart';
 import 'screens/observations_screen.dart';
+import 'screens/online_identification_result_screen.dart';
 import 'screens/save_observation_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/signin_screen.dart';
@@ -23,6 +25,7 @@ import 'screens/species_detail_screen.dart';
 import 'screens/species_library_screen.dart';
 import 'screens/startup_screen.dart';
 import 'screens/welcome_screen.dart';
+import 'repositories/user_profile_repository.dart';
 import 'services/auth_service.dart';
 import 'services/map_tile_cache_service.dart';
 import 'services/settings_service.dart';
@@ -73,12 +76,15 @@ class RealtimeDetectionApp extends StatelessWidget {
       routes: {
         '/startup': (context) => const StartupScreen(),
         '/auth': (context) => const AuthGate(),
+        '/choose-username': (context) => const ChooseUsernameScreen(),
         '/welcome': (context) => const WelcomeScreen(),
         '/signup': (context) => const SignUpScreen(),
         '/signin': (context) => const SignInScreen(),
         '/home': (context) => const MainShellScreen(),
         '/detect': (context) => const DetectionPage(),
         '/detection-result': (context) => const DetectionResultScreen(),
+        '/online-identification-result': (context) =>
+            const OnlineIdentificationResultScreen(),
         '/species-library': (context) => const SpeciesLibraryScreen(),
         '/species-detail': (context) => const SpeciesDetailScreen(),
         '/field-notes': (context) => const FieldNotesScreen(),
@@ -104,6 +110,9 @@ class AuthGate extends StatefulWidget {
 class _AuthGateState extends State<AuthGate> {
   late final Future<void> _initializeFuture;
   final AuthService _authService = AuthService.instance;
+  final UserProfileRepository _userProfileRepository =
+      UserProfileRepository.instance;
+  String? _skippedUsernameUid;
 
   @override
   void initState() {
@@ -136,7 +145,35 @@ class _AuthGateState extends State<AuthGate> {
             if (authState == null || !authState.isAuthenticated) {
               return const WelcomeScreen();
             }
-            return const MainShellScreen();
+            if (authState.isOfflineSession) {
+              return const MainShellScreen();
+            }
+            return FutureBuilder(
+              future: _userProfileRepository.ensureUserProfile(),
+              builder: (context, profileSnapshot) {
+                if (profileSnapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                final profile = profileSnapshot.data;
+                if (profile != null &&
+                    !profile.hasUsername &&
+                    _skippedUsernameUid != authState.uid) {
+                  return ChooseUsernameScreen(
+                    allowSkip: true,
+                    onSkip: () {
+                      setState(() => _skippedUsernameUid = authState.uid);
+                    },
+                    onSaved: () {
+                      setState(() => _skippedUsernameUid = null);
+                    },
+                  );
+                }
+                return const MainShellScreen();
+              },
+            );
           },
         );
       },

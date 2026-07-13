@@ -106,7 +106,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               : 'Account created for $userEmail',
         );
       }
-      _goTo(context, '/home');
+      _goTo(context, '/auth');
     } catch (error) {
       if (!mounted) return;
       _showToast(EmailAuthService.userMessageForError(error));

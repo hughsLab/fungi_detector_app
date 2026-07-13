@@ -80,7 +80,7 @@ class _SignInScreenState extends State<SignInScreen> {
             ? 'Signed in successfully.'
             : 'Signed in as $userEmail',
       );
-      _goTo(context, '/home');
+      _goTo(context, '/auth');
     } catch (error) {
       if (!mounted) return;
       _showToast(EmailAuthService.userMessageForError(error));

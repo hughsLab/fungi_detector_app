@@ -1,0 +1,68 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownsUserProfile(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function observationOwner(data) {
+      return data.ownerUid == request.auth.uid || data.userId == request.auth.uid;
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+
+      allow create: if ownsUserProfile(uid)
+        && request.resource.data.uid == request.auth.uid;
+
+      allow update: if ownsUserProfile(uid)
+        && request.resource.data.uid == resource.data.uid;
+
+      allow delete: if false;
+    }
+
+    match /usernames/{usernameLower} {
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && !exists(/databases/$(database)/documents/usernames/$(usernameLower));
+
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid;
+
+      allow delete: if signedIn()
+        && resource.data.uid == request.auth.uid;
+    }
+
+    match /observations/{observationId} {
+      allow read: if signedIn()
+        && (
+          observationOwner(resource.data) ||
+          resource.data.isPublic == true
+        );
+
+      allow create: if signedIn()
+        && observationOwner(request.resource.data)
+        && !('ownerEmail' in request.resource.data);
+
+      allow update: if signedIn()
+        && observationOwner(resource.data)
+        && request.resource.data.userId == resource.data.userId
+        && (
+          !('ownerUid' in resource.data) ||
+          request.resource.data.ownerUid == resource.data.ownerUid
+        )
+        && !('ownerEmail' in request.resource.data);
+
+      allow delete: if signedIn()
+        && observationOwner(resource.data);
+    }
+  }
+}

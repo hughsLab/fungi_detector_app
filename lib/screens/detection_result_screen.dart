@@ -275,6 +275,9 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
         modelDisplayName: selectedCandidate.modelDisplayName,
         sourceClassId: selectedCandidate.sourceClassId,
         label: label,
+        scientificName: _matchedSpecies?.scientificName ?? label,
+        commonName: _matchedSpecies?.commonName,
+        colloquialName: _matchedSpecies?.colloquialName,
         confidence: confidence,
         rawConfidence: selectedCandidate.rawConfidence,
         calibratedConfidence: selectedCandidate.calibratedConfidence,
@@ -300,6 +303,9 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
         locationSource: locationSource,
         locationLabel: locationLabel,
         notes: null,
+        detectionSource: 'offline_model',
+        identificationSource: 'offline',
+        isPublic: settings.shareObservationsOnPublicMap,
       );
       await _observationRepository.saveObservation(observation);
       if (!mounted) return;

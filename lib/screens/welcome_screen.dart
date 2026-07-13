@@ -146,7 +146,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                             const SizedBox(height: 10),
                             const Text(
                               'Identify and explore Australian mushrooms and fungi '
-                              'in real time using offline, on-device AI.\n\n'
+                              'in real time using on-device AI.\n\n'
                               'Create an account to identify, record, and discover ',
                               style: TextStyle(
                                 fontSize: 14.5,

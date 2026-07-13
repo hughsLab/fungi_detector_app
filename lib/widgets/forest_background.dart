@@ -5,6 +5,8 @@ class ForestBackground extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final String backgroundAsset;
   final bool useGradientOverlay;
+  final Gradient? overlayGradient;
+  final Color? overlayColor;
   final bool includeTopSafeArea;
   final bool includeBottomSafeArea;
 
@@ -14,6 +16,8 @@ class ForestBackground extends StatelessWidget {
     this.padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
     this.backgroundAsset = 'assets/images/bg1.png',
     this.useGradientOverlay = true,
+    this.overlayGradient,
+    this.overlayColor,
     this.includeTopSafeArea = true,
     this.includeBottomSafeArea = true,
   });
@@ -31,19 +35,22 @@ class ForestBackground extends StatelessWidget {
         ),
         if (useGradientOverlay)
           Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0x551F4E3D),
-                  Color(0xB31F4E3D),
-                ],
-              ),
+            decoration: BoxDecoration(
+              gradient: overlayGradient ??
+                  const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0x551F4E3D),
+                      Color(0xB31F4E3D),
+                    ],
+                  ),
             ),
           )
         else
-          ColoredBox(color: Colors.black.withValues(alpha: 0.15)),
+          ColoredBox(
+            color: overlayColor ?? Colors.black.withValues(alpha: 0.15),
+          ),
         SafeArea(
           top: includeTopSafeArea,
           bottom: includeBottomSafeArea,

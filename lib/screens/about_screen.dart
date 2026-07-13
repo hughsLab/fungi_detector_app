@@ -31,7 +31,7 @@ class AboutScreen extends StatelessWidget {
             ),
             SizedBox(height: 8),
             Text(
-              'Offline identification support for Australian fungi using on-device AI.',
+              'Identification support for Australian fungi using on-device AI and optional online checks.',
               style: TextStyle(
                 color: accentTextColor,
                 height: 1.4,
@@ -76,7 +76,7 @@ class AboutScreen extends StatelessWidget {
             ),
             SizedBox(height: 6),
             Text(
-              'v0.1.0 (offline preview)',
+              'v0.1.0',
               style: TextStyle(color: accentTextColor),
             ),
             SizedBox(height: 20),

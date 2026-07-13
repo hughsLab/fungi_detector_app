@@ -26,6 +26,16 @@ class LocalImagePreview extends StatelessWidget {
     final Widget content;
     if (resolvedPath == null || resolvedPath.isEmpty) {
       content = placeholder;
+    } else if (resolvedPath.startsWith('http://') ||
+        resolvedPath.startsWith('https://')) {
+      content = Image.network(
+        resolvedPath,
+        fit: fit,
+        cacheWidth: cacheWidth,
+        cacheHeight: cacheHeight,
+        filterQuality: FilterQuality.low,
+        errorBuilder: (context, error, stackTrace) => placeholder,
+      );
     } else {
       content = Image.file(
         File(resolvedPath),

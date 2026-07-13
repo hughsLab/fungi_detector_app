@@ -14,6 +14,8 @@ class AppSettings {
   final bool disclaimerAcknowledged;
   final bool mapTileCachingEnabled;
   final int mapTileCacheMaxSizeMb;
+  final bool shareObservationsOnPublicMap;
+  final bool showUsernameOnPublicObservations;
 
   const AppSettings({
     required this.confidenceThreshold,
@@ -23,6 +25,8 @@ class AppSettings {
     required this.disclaimerAcknowledged,
     required this.mapTileCachingEnabled,
     required this.mapTileCacheMaxSizeMb,
+    required this.shareObservationsOnPublicMap,
+    required this.showUsernameOnPublicObservations,
   });
 
   factory AppSettings.defaults() {
@@ -34,6 +38,8 @@ class AppSettings {
       disclaimerAcknowledged: false,
       mapTileCachingEnabled: true,
       mapTileCacheMaxSizeMb: 250,
+      shareObservationsOnPublicMap: true,
+      showUsernameOnPublicObservations: true,
     );
   }
 
@@ -45,6 +51,8 @@ class AppSettings {
     bool? disclaimerAcknowledged,
     bool? mapTileCachingEnabled,
     int? mapTileCacheMaxSizeMb,
+    bool? shareObservationsOnPublicMap,
+    bool? showUsernameOnPublicObservations,
   }) {
     return AppSettings(
       confidenceThreshold: confidenceThreshold ?? this.confidenceThreshold,
@@ -59,6 +67,11 @@ class AppSettings {
           mapTileCachingEnabled ?? this.mapTileCachingEnabled,
       mapTileCacheMaxSizeMb:
           mapTileCacheMaxSizeMb ?? this.mapTileCacheMaxSizeMb,
+      shareObservationsOnPublicMap:
+          shareObservationsOnPublicMap ?? this.shareObservationsOnPublicMap,
+      showUsernameOnPublicObservations:
+          showUsernameOnPublicObservations ??
+          this.showUsernameOnPublicObservations,
     );
   }
 
@@ -81,6 +94,10 @@ class AppSettings {
       mapTileCachingEnabled: json['mapTileCachingEnabled'] as bool? ?? true,
       mapTileCacheMaxSizeMb:
           (json['mapTileCacheMaxSizeMb'] as num?)?.toInt() ?? 250,
+      shareObservationsOnPublicMap:
+          json['shareObservationsOnPublicMap'] as bool? ?? true,
+      showUsernameOnPublicObservations:
+          json['showUsernameOnPublicObservations'] as bool? ?? true,
     );
   }
 
@@ -93,6 +110,8 @@ class AppSettings {
       'disclaimerAcknowledged': disclaimerAcknowledged,
       'mapTileCachingEnabled': mapTileCachingEnabled,
       'mapTileCacheMaxSizeMb': mapTileCacheMaxSizeMb,
+      'shareObservationsOnPublicMap': shareObservationsOnPublicMap,
+      'showUsernameOnPublicObservations': showUsernameOnPublicObservations,
     };
   }
 }

@@ -1,5 +1,6 @@
 import 'observation.dart';
 import 'field_note.dart';
+import 'mushroom_id_result.dart';
 
 enum SpeciesDetailSource {
   speciesLibrary,
@@ -151,5 +152,29 @@ class DetectionResultArgs {
     required this.isLichen,
     this.isSavedView = false,
     this.isConfirmed = true,
+  });
+}
+
+class OnlineIdentificationResultArgs {
+  final MushroomIdResult result;
+  final String photoPath;
+  final String? country;
+  final String? region;
+  final double? latitude;
+  final double? longitude;
+  final double? accuracyMeters;
+  final DateTime? capturedAt;
+  final String? locationLabel;
+
+  const OnlineIdentificationResultArgs({
+    required this.result,
+    required this.photoPath,
+    this.country,
+    this.region,
+    this.latitude,
+    this.longitude,
+    this.accuracyMeters,
+    this.capturedAt,
+    this.locationLabel,
   });
 }

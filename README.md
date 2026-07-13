@@ -49,6 +49,25 @@ The Android build will compile `native/yolo_engine` into `libyolo_engine.so`.
 For iOS the CocoaPods integration builds the same code directly into the Runner
 target, so FFI loads the symbols via `DynamicLibrary.process()`.
 
+## Online mushroom.id backend
+
+Online identification uses a Firebase HTTPS function named
+`identifyMushroomOnline` in `australia-southeast1`. The mushroom.id API key must
+be stored only as a Firebase Functions secret.
+
+```bash
+firebase functions:secrets:set MUSHROOM_ID_API_KEY --project fungi-97456
+firebase deploy --only functions --project fungi-97456
+```
+
+If the Cloud Functions API is disabled for the Firebase project, enable it in
+Google Cloud first, then deploy again. After deployment, this safe health check
+should return JSON without calling mushroom.id:
+
+```bash
+curl https://australia-southeast1-fungi-97456.cloudfunctions.net/identifyMushroomOnline
+```
+
 ## Next Steps
 
 - Tune model resolution / thresholds inside `NativeYoloConfig`

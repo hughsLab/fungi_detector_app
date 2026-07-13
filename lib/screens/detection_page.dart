@@ -6,6 +6,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart' as image_picker;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:yaml/yaml.dart';
@@ -18,6 +19,11 @@ import '../models/observation.dart';
 import '../models/species.dart';
 import '../native/native_yolo_engine.dart';
 import '../repositories/species_repository.dart';
+import '../services/country_location_service.dart';
+import '../services/location_capture_service.dart';
+import '../services/location_label_service.dart';
+import '../services/online_identification_service.dart';
+import '../services/settings_service.dart';
 
 const Color _deepGreen = Color(0xFF1F4E3D);
 const Color _accentGreen = Color(0xFF8FBFA1);
@@ -36,6 +42,8 @@ enum _DetectionUiState {
   matchFound,
   lowConfidence,
 }
+
+enum _IdentificationMode { offline, online }
 
 class _DetectionUiPresentation {
   final _DetectionUiState state;
@@ -121,6 +129,35 @@ class _LiveDetectionSnapshot {
     required this.detections,
     required this.timestampMs,
   });
+}
+
+class _OnlineIdentificationContext {
+  final String? country;
+  final String? region;
+  final double? latitude;
+  final double? longitude;
+  final double? accuracyMeters;
+  final DateTime? capturedAt;
+  final String? locationLabel;
+
+  const _OnlineIdentificationContext({
+    this.country,
+    this.region,
+    this.latitude,
+    this.longitude,
+    this.accuracyMeters,
+    this.capturedAt,
+    this.locationLabel,
+  });
+
+  OnlineIdentificationLocation toRequestLocation() {
+    return OnlineIdentificationLocation(
+      country: country,
+      region: region,
+      latitude: latitude,
+      longitude: longitude,
+    );
+  }
 }
 
 class _ScanWindowSupport {
@@ -249,6 +286,16 @@ class _DetectionPageState extends State<DetectionPage>
       <String, _LiveDetectionSnapshot>{};
   NativeYuvFrame? _latestFrame;
   final SpeciesRepository _speciesRepository = SpeciesRepository.instance;
+  final SettingsService _settingsService = SettingsService.instance;
+  final LocationCaptureService _locationCaptureService =
+      LocationCaptureService.instance;
+  final LocationLabelService _locationLabelService =
+      LocationLabelService.instance;
+  final CountryLocationService _countryLocationService =
+      CountryLocationService.instance;
+  final OnlineIdentificationService _onlineIdentificationService =
+      OnlineIdentificationService.instance;
+  final image_picker.ImagePicker _imagePicker = image_picker.ImagePicker();
   Map<String, String> _speciesIdByName = {};
   Map<String, String> _speciesIdByModelClass = {};
   Set<int> _lichenClassIndices = <int>{};
@@ -259,6 +306,8 @@ class _DetectionPageState extends State<DetectionPage>
   bool _engineReady = false;
   bool _isCapturing = false;
   bool _isScanning = false;
+  bool _onlineLoading = false;
+  _IdentificationMode _identificationMode = _IdentificationMode.offline;
   int _scanRemainingSeconds = 5;
   int _scanStartedAtMs = 0;
   Timer? _scanCountdownTimer;
@@ -1580,6 +1629,144 @@ class _DetectionPageState extends State<DetectionPage>
     }
   }
 
+  Future<void> _startOnlineIdentificationFromCamera() async {
+    if (_onlineLoading || _isCapturing || _isScanning) {
+      return;
+    }
+    if (kDebugMode) {
+      debugPrint('ONLINE_ID: online mode selected');
+      debugPrint('ONLINE_ID: take photo action started');
+    }
+
+    String? photoPath;
+    try {
+      setState(() {
+        _isCapturing = true;
+      });
+      photoPath = await _capturePhoto();
+      if (photoPath == null || !mounted) {
+        return;
+      }
+      await _runOnlineIdentification(photoPath);
+    } finally {
+      if (mounted) {
+        try {
+          if (_camera != null &&
+              _camera!.value.isInitialized &&
+              !_camera!.value.isStreamingImages) {
+            await _startImageStream();
+          }
+        } catch (e, stack) {
+          debugPrint('Failed to restart camera stream: $e');
+          debugPrintStack(stackTrace: stack);
+        }
+        setState(() {
+          _isCapturing = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _selectOnlineIdentificationPhoto() async {
+    if (_onlineLoading || _isCapturing || _isScanning) {
+      return;
+    }
+    if (kDebugMode) {
+      debugPrint('ONLINE_ID: online mode selected');
+      debugPrint('ONLINE_ID: select photo action started');
+    }
+    try {
+      final image = await _imagePicker.pickImage(
+        source: image_picker.ImageSource.gallery,
+        imageQuality: 92,
+      );
+      if (image == null || !mounted) {
+        return;
+      }
+      await _runOnlineIdentification(image.path);
+    } catch (e) {
+      _showMessage('Could not select photo: $e');
+    }
+  }
+
+  Future<void> _runOnlineIdentification(String photoPath) async {
+    if (_onlineLoading) {
+      return;
+    }
+    if (kDebugMode) {
+      debugPrint('ONLINE_ID: backend request will start');
+    }
+    setState(() {
+      _onlineLoading = true;
+    });
+    final navigator = Navigator.of(context);
+    try {
+      final contextData = await _buildOnlineIdentificationContext();
+      final result = await _onlineIdentificationService.identifyPhoto(
+        photoPath: photoPath,
+        location: contextData.toRequestLocation(),
+      );
+      if (!mounted) return;
+      await navigator.pushNamed(
+        '/online-identification-result',
+        arguments: OnlineIdentificationResultArgs(
+          result: result,
+          photoPath: photoPath,
+          country: contextData.country,
+          region: contextData.region,
+          latitude: contextData.latitude,
+          longitude: contextData.longitude,
+          accuracyMeters: contextData.accuracyMeters,
+          capturedAt: contextData.capturedAt,
+          locationLabel: contextData.locationLabel,
+        ),
+      );
+    } on OnlineIdentificationException catch (e) {
+      if (kDebugMode) {
+        debugPrint('ONLINE_ID: error code ${e.code}');
+        debugPrint('ONLINE_ID: error message ${e.message}');
+      }
+      _showMessage(e.message);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('ONLINE_ID: unexpected error ${e.runtimeType}: $e');
+      }
+      _showMessage('Online identification failed: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _onlineLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<_OnlineIdentificationContext> _buildOnlineIdentificationContext() async {
+    final settings = await _settingsService.loadSettings();
+    final country = await _countryLocationService.getCurrentCountryOrFallback();
+    CapturedLocation? capturedLocation;
+    String? locationLabel;
+    if (settings.locationTaggingEnabled) {
+      capturedLocation = await _locationCaptureService.captureForObservation();
+      if (capturedLocation != null) {
+        locationLabel = await _locationLabelService.labelFor(
+          latitude: capturedLocation.latitude,
+          longitude: capturedLocation.longitude,
+          mode: settings.locationLabelMode,
+        );
+      }
+    }
+    return _OnlineIdentificationContext(
+      country: country,
+      region: locationLabel,
+      latitude: capturedLocation?.latitude,
+      longitude: capturedLocation?.longitude,
+      accuracyMeters: capturedLocation?.accuracyMeters,
+      capturedAt: capturedLocation?.capturedAt,
+      locationLabel: locationLabel,
+    );
+  }
+
   Future<_CaptureSelection?> _runCaptureDetectors(NativeYuvFrame frame) async {
     final detections = <Detection>[];
     for (final model in _captureModels) {
@@ -2131,6 +2318,20 @@ class _DetectionPageState extends State<DetectionPage>
     );
   }
 
+  ButtonStyle _primaryActionStyle({bool disabledMuted = false}) {
+    return ElevatedButton.styleFrom(
+      backgroundColor: _highlightGreen,
+      foregroundColor: _deepGreen,
+      disabledBackgroundColor: disabledMuted
+          ? _deepGreen.withValues(alpha: 0.35)
+          : _highlightGreen.withValues(alpha: 0.85),
+      disabledForegroundColor: disabledMuted ? _mutedWhite : _deepGreen,
+      elevation: 0,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      shape: const StadiumBorder(),
+    );
+  }
+
   Future<void> _initCamera() async {
     final cameras = await availableCameras();
     final selected = cameras.firstWhere(
@@ -2364,6 +2565,25 @@ class _DetectionPageState extends State<DetectionPage>
                 final String? bannerSubtitle = ui.bannerSubtitle;
                 final String? bannerDetail = ui.bannerDetail;
                 final String? topSpeciesId = ui.speciesId;
+                final bool isOnlineMode =
+                    _identificationMode == _IdentificationMode.online;
+                final String visibleStatusText = _onlineLoading
+                    ? 'Checking with online identification...'
+                    : isOnlineMode
+                    ? 'Take or select one clear photo'
+                    : statusText;
+                final IconData visibleStatusIcon = _onlineLoading
+                    ? Icons.cloud_sync
+                    : isOnlineMode
+                    ? Icons.cloud_upload
+                    : statusIcon;
+                final Color visibleAccent = _onlineLoading || isOnlineMode
+                    ? _accentGreen
+                    : isReady
+                    ? _highlightGreen
+                    : (ui.state == _DetectionUiState.lowConfidence
+                          ? Colors.orangeAccent
+                          : _accentGreen);
 
                 return ColoredBox(
                   color: _deepGreen,
@@ -2450,61 +2670,103 @@ class _DetectionPageState extends State<DetectionPage>
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
+                                      _IdentificationModeToggle(
+                                        value: _identificationMode,
+                                        enabled: !_isCapturing &&
+                                            !_isScanning &&
+                                            !_onlineLoading,
+                                        onChanged: (value) {
+                                          if (kDebugMode &&
+                                              value == _IdentificationMode.online) {
+                                            debugPrint(
+                                              'ONLINE_ID: online mode selected',
+                                            );
+                                          }
+                                          setState(() {
+                                            _identificationMode = value;
+                                          });
+                                        },
+                                      ),
+                                      const SizedBox(height: 10),
                                       _StatusPill(
-                                        text: statusText,
-                                        icon: statusIcon,
-                                        accentColor: isReady
-                                            ? _highlightGreen
-                                            : (ui.state == _DetectionUiState.lowConfidence
-                                                  ? Colors.orangeAccent
-                                                  : _accentGreen),
+                                        text: visibleStatusText,
+                                        icon: visibleStatusIcon,
+                                        accentColor: visibleAccent,
                                         backgroundColor: _deepGreen.withValues(
                                           alpha: 0.75,
                                         ),
                                       ),
                                       const SizedBox(height: 10),
-                                      SizedBox(
-                                        width: 220,
-                                        child: ElevatedButton.icon(
-                                          onPressed:
-                                              (_isCapturing || _isScanning)
-                                              ? null
-                                              : _startTimedScan,
-                                          icon: Icon(
-                                            _isScanning
-                                                ? Icons.hourglass_top
-                                                : Icons.center_focus_strong,
-                                          ),
-                                          label: Text(
-                                            _isCapturing
-                                                ? 'Capturing...'
-                                                : _isScanning
-                                                ? 'Scanning... $_scanRemainingSeconds'
-                                                : 'Scan fungus',
-                                          ),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: _highlightGreen,
-                                            foregroundColor: _deepGreen,
-                                            disabledBackgroundColor:
-                                                (_isCapturing || _isScanning)
-                                                ? _highlightGreen.withValues(
-                                                    alpha: 0.85,
-                                                  )
-                                                : _deepGreen.withValues(
-                                                    alpha: 0.35,
-                                                  ),
-                                            disabledForegroundColor:
-                                                (_isCapturing || _isScanning)
-                                                ? _deepGreen
-                                                : _mutedWhite,
-                                            elevation: 0,
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 12,
+                                      if (isOnlineMode)
+                                        Wrap(
+                                          alignment: WrapAlignment.center,
+                                          spacing: 10,
+                                          runSpacing: 8,
+                                          children: [
+                                            ElevatedButton.icon(
+                                              onPressed: (_onlineLoading ||
+                                                      _isCapturing ||
+                                                      _isScanning)
+                                                  ? null
+                                                  : _startOnlineIdentificationFromCamera,
+                                              icon: const Icon(Icons.camera_alt),
+                                              label: Text(
+                                                _onlineLoading
+                                                    ? 'Checking...'
+                                                    : 'Take photo',
+                                              ),
+                                              style: _primaryActionStyle(),
                                             ),
-                                            shape: const StadiumBorder(),
+                                            OutlinedButton.icon(
+                                              onPressed: (_onlineLoading ||
+                                                      _isCapturing ||
+                                                      _isScanning)
+                                                  ? null
+                                                  : _selectOnlineIdentificationPhoto,
+                                              icon: const Icon(Icons.photo_library),
+                                              label: const Text('Select photo'),
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor: Colors.white,
+                                                side: BorderSide(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.6),
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 12,
+                                                ),
+                                                shape: const StadiumBorder(),
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      else
+                                        SizedBox(
+                                          width: 220,
+                                          child: ElevatedButton.icon(
+                                            onPressed:
+                                                (_isCapturing || _isScanning)
+                                                ? null
+                                                : _startTimedScan,
+                                            icon: Icon(
+                                              _isScanning
+                                                  ? Icons.hourglass_top
+                                                  : Icons.center_focus_strong,
+                                            ),
+                                            label: Text(
+                                              _isCapturing
+                                                  ? 'Capturing...'
+                                                  : _isScanning
+                                                  ? 'Scanning... $_scanRemainingSeconds'
+                                                  : 'Scan fungus',
+                                            ),
+                                            style: _primaryActionStyle(
+                                              disabledMuted:
+                                                  !(_isCapturing || _isScanning),
+                                            ),
                                           ),
                                         ),
-                                      ),
                                     ],
                                   ),
                                 ),
@@ -2518,6 +2780,98 @@ class _DetectionPageState extends State<DetectionPage>
                 );
               },
             ),
+    );
+  }
+}
+
+class _IdentificationModeToggle extends StatelessWidget {
+  final _IdentificationMode value;
+  final bool enabled;
+  final ValueChanged<_IdentificationMode> onChanged;
+
+  const _IdentificationModeToggle({
+    required this.value,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: _deepGreen.withValues(alpha: 0.75),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _accentGreen.withValues(alpha: 0.55)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ModeButton(
+            label: 'Offline',
+            icon: Icons.phone_android,
+            selected: value == _IdentificationMode.offline,
+            enabled: enabled,
+            onTap: () => onChanged(_IdentificationMode.offline),
+          ),
+          _ModeButton(
+            label: 'Online',
+            icon: Icons.cloud,
+            selected: value == _IdentificationMode.online,
+            enabled: enabled,
+            onTap: () => onChanged(_IdentificationMode.online),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _ModeButton({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color foreground = selected ? _deepGreen : _mutedWhite;
+    final Color background =
+        selected ? _highlightGreen : Colors.transparent;
+    return Material(
+      color: background,
+      borderRadius: BorderRadius.circular(15),
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(15),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: foreground, size: 15),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: foreground,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:ui';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -11,11 +13,11 @@ import '../models/observation.dart';
 import '../repositories/field_notes_repository.dart';
 import '../repositories/observation_repository.dart';
 import '../repositories/species_repository.dart';
+import '../services/auth_service.dart';
 import '../services/location_capture_service.dart';
 import '../services/map_tile_cache_service.dart';
 import '../services/settings_service.dart';
 import '../utils/formatting.dart';
-import '../widgets/forest_background.dart';
 import '../widgets/local_image_preview.dart';
 
 class MapScreen extends StatefulWidget {
@@ -35,6 +37,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   final LocationCaptureService _locationCaptureService =
       LocationCaptureService.instance;
   final SettingsService _settingsService = SettingsService.instance;
+  final Connectivity _connectivity = Connectivity();
   final MapController _mapController = MapController();
   final Uuid _uuid = const Uuid();
 
@@ -53,10 +56,12 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   MapPickLocationArgs? _pickArgs;
   LatLng? _pickedLocation;
   LatLng? _temporaryFocusLocation;
-  bool _allowMapWithoutLocation = false;
   bool _mapReady = false;
   bool _handledInitialArgs = false;
+  bool _hasNetworkConnection = true;
+  bool _mapTileError = false;
   AnimationController? _mapAnimationController;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   late final VoidCallback _settingsListener;
 
   @override
@@ -64,6 +69,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     super.initState();
     _settingsListener = _handleSettingsChanged;
     _settingsService.settingsNotifier.addListener(_settingsListener);
+    _startConnectivityMonitor();
     _loadData();
   }
 
@@ -77,10 +83,8 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is MapFocusRequest) {
       _pendingFocus = args;
-      _allowMapWithoutLocation = true;
     } else if (args is MapPickLocationArgs) {
       _pickArgs = args;
-      _allowMapWithoutLocation = true;
       final double? lat = args.initialLat;
       final double? lon = args.initialLon;
       if (lat != null && lon != null) {
@@ -92,8 +96,39 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _settingsService.settingsNotifier.removeListener(_settingsListener);
+    _connectivitySubscription?.cancel();
     _mapAnimationController?.dispose();
     super.dispose();
+  }
+
+  Future<void> _startConnectivityMonitor() async {
+    try {
+      _handleConnectivityResults(await _connectivity.checkConnectivity());
+      _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
+        _handleConnectivityResults,
+      );
+    } catch (e) {
+      debugPrint('MAP_CONNECTIVITY: unable to monitor network state: $e');
+    }
+  }
+
+  void _handleConnectivityResults(List<ConnectivityResult> results) {
+    final hasNetwork = results.any(
+      (result) => result != ConnectivityResult.none,
+    );
+    if (_hasNetworkConnection == hasNetwork) {
+      return;
+    }
+    if (!mounted) {
+      _hasNetworkConnection = hasNetwork;
+      return;
+    }
+    setState(() {
+      _hasNetworkConnection = hasNetwork;
+      if (hasNetwork) {
+        _mapTileError = false;
+      }
+    });
   }
 
   Future<void> _loadData() async {
@@ -178,7 +213,6 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   }
 
   void handleFocusRequest(MapFocusRequest request) {
-    _allowMapWithoutLocation = true;
     _pendingFocus = request;
     if (mounted) {
       setState(() {});
@@ -296,6 +330,60 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     return Colors.white70;
   }
 
+  String? get _currentUid => AuthService.instance.currentState.uid;
+
+  bool _ownsObservation(Observation observation) {
+    final uid = _currentUid;
+    return uid != null && uid.isNotEmpty && observation.userId == uid;
+  }
+
+  String _observerLabel(Observation observation, {required bool isOwner}) {
+    if (isOwner) {
+      return 'Your observation';
+    }
+    final username = observation.ownerUsername?.trim();
+    if (username != null && username.isNotEmpty) {
+      return 'Observed by $username';
+    }
+    return 'Observed by community member';
+  }
+
+  String? _observationImagePath(Observation observation) {
+    final imageUrl = observation.imageUrl?.trim();
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return imageUrl;
+    }
+    final photoPath = observation.photoPath?.trim();
+    if (photoPath != null && photoPath.isNotEmpty) {
+      return photoPath;
+    }
+    return null;
+  }
+
+  Future<void> _setObservationVisibility(
+    Observation observation,
+    bool isPublic,
+  ) async {
+    if (!_ownsObservation(observation)) {
+      _showMessage('This shared observation is read-only.');
+      return;
+    }
+    try {
+      await _observationRepository.updateObservationDetails(
+        observation.id,
+        isPublic: isPublic,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      _showMessage('Could not update sharing: $e');
+      return;
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    _showMessage(isPublic ? 'Observation shared.' : 'Observation made private.');
+  }
+
   void _openObservation(Observation observation) {
     Navigator.of(context).pushNamed(
       '/detection-result',
@@ -341,6 +429,81 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _handleMapTileError(
+    TileImage tile,
+    Object error,
+    StackTrace? stackTrace,
+  ) {
+    if (!mounted || _mapTileError) {
+      return;
+    }
+    debugPrint('MAP_TILE: tile load failed for ${tile.coordinates}: $error');
+    if (stackTrace != null) {
+      debugPrintStack(stackTrace: stackTrace, label: 'MAP_TILE');
+    }
+    setState(() {
+      _mapTileError = true;
+    });
+  }
+
+  Widget _emptyMapOverlay() {
+    return Positioned(
+      left: 16,
+      right: 84,
+      top: 16,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1F4E3D).withValues(alpha: 0.88),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        ),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'No mapped observations yet.',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Public shared observations and your saved locations will appear here.',
+                style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 12.5),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _offlineMapUnavailableOverlay() {
+    return Positioned(
+      left: 16,
+      right: 16,
+      bottom: _offlineDownloading || _offlineDownloadUpdate != null ? 96 : 20,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xFF4E2B1F).withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        ),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Text(
+            'Map unavailable offline. Connect to the internet or download a small offline region first.',
+            style: TextStyle(color: Colors.white, fontSize: 12.5),
+          ),
+        ),
+      ),
+    );
   }
 
   void _openNoteEditor({
@@ -514,6 +677,12 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         final color = _confidenceColor(confidence);
         final notes = (observation.notes ?? '').trim();
         final hasNotes = notes.isNotEmpty;
+        final isOwner = _ownsObservation(observation);
+        final observerLabel = _observerLabel(
+          observation,
+          isOwner: isOwner,
+        );
+        final imagePath = _observationImagePath(observation);
 
         return SafeArea(
           child: SingleChildScrollView(
@@ -538,6 +707,38 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                     fontSize: 12.5,
                   ),
                 ),
+                const SizedBox(height: 6),
+                Text(
+                  observerLabel,
+                  style: const TextStyle(
+                    color: Color(0xCCFFFFFF),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (!isOwner) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.18),
+                      ),
+                    ),
+                    child: const Text(
+                      'Shared public observation - read-only',
+                      style: TextStyle(
+                        color: Color(0xCCFFFFFF),
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 Row(
                   children: [
@@ -570,7 +771,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: LocalImagePreview(
-                    path: observation.photoPath,
+                    path: imagePath,
                     borderRadius: BorderRadius.circular(12),
                     cacheWidth: 640,
                     placeholder: const Center(
@@ -600,76 +801,101 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Field Notes',
-                  style: TextStyle(
-                    color: Color(0xFFE7F3E7),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                StreamBuilder<List<FieldNote>>(
-                  stream: _fieldNotesRepository.watchAllNotes(),
-                  builder: (context, snapshot) {
-                    final allNotes = snapshot.data ?? const <FieldNote>[];
-                    final observationNotes = allNotes
-                        .where(
-                          (note) => note.links.observationIds.contains(
-                            observation.id,
-                          ),
-                        )
-                        .toList();
-                    final double? lat = observation.latitude;
-                    final double? lon = observation.longitude;
-                    final List<FieldNote> locationNotes =
-                        (lat != null && lon != null)
-                        ? _notesNearLocation(allNotes, lat, lon)
-                        : const <FieldNote>[];
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Linked to this observation',
-                          style: TextStyle(
-                            color: Color(0xCCFFFFFF),
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        _noteList(observationNotes),
-                        const SizedBox(height: 10),
-                        const Text(
-                          'Notes at this location',
-                          style: TextStyle(
-                            color: Color(0xCCFFFFFF),
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        _noteList(locationNotes),
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      _openObservation(observation);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF8FBFA1),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: const StadiumBorder(),
+                if (isOwner) ...[
+                  const Text(
+                    'Field Notes',
+                    style: TextStyle(
+                      color: Color(0xFFE7F3E7),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
-                    child: const Text('Back to observation card'),
                   ),
-                ),
+                  const SizedBox(height: 6),
+                  StreamBuilder<List<FieldNote>>(
+                    stream: _fieldNotesRepository.watchAllNotes(),
+                    builder: (context, snapshot) {
+                      final allNotes = snapshot.data ?? const <FieldNote>[];
+                      final observationNotes = allNotes
+                          .where(
+                            (note) => note.links.observationIds.contains(
+                              observation.id,
+                            ),
+                          )
+                          .toList();
+                      final double? lat = observation.latitude;
+                      final double? lon = observation.longitude;
+                      final List<FieldNote> locationNotes =
+                          (lat != null && lon != null)
+                          ? _notesNearLocation(allNotes, lat, lon)
+                          : const <FieldNote>[];
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Linked to this observation',
+                            style: TextStyle(
+                              color: Color(0xCCFFFFFF),
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          _noteList(observationNotes),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Notes at this location',
+                            style: TextStyle(
+                              color: Color(0xCCFFFFFF),
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          _noteList(locationNotes),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () => _setObservationVisibility(
+                        observation,
+                        !observation.isPublic,
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.5),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: const StadiumBorder(),
+                      ),
+                      child: Text(
+                        observation.isPublic
+                            ? 'Make observation private'
+                            : 'Share observation publicly',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _openObservation(observation);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF8FBFA1),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: const StadiumBorder(),
+                      ),
+                      child: const Text('Back to observation card'),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -689,6 +915,25 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
+            final bool canDownload =
+                !_offlineDownloading &&
+                _hasNetworkConnection &&
+                _tileCacheService.isAvailable;
+            final bool hasSavedObservationLocations = _observationsCache.any(
+              (observation) => observation.location != null,
+            );
+            final bool canDownloadSavedObservations =
+                canDownload && hasSavedObservationLocations;
+            final String? disabledReason = !_hasNetworkConnection
+                ? 'Offline downloads need an internet connection.'
+                : (!_tileCacheService.isAvailable
+                      ? 'Offline map storage is not available on this device.'
+                      : null);
+            final String? savedObservationsDisabledReason =
+                disabledReason ??
+                (hasSavedObservationLocations
+                    ? null
+                    : 'No saved observation locations are available yet.');
             return SafeArea(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
@@ -763,15 +1008,15 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: _offlineDownloading
-                            ? null
-                            : () {
+                        onPressed: canDownload
+                            ? () {
                                 Navigator.of(context).pop();
                                 _offlineRadiusKm = selectedRadiusKm;
                                 _startDownloadAroundCurrentLocation(
                                   radiusKm: selectedRadiusKm,
                                 );
-                              },
+                              }
+                            : null,
                         icon: const Icon(Icons.my_location),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF8FBFA1),
@@ -787,15 +1032,15 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        onPressed: _offlineDownloading
-                            ? null
-                            : () {
+                        onPressed: canDownloadSavedObservations
+                            ? () {
                                 Navigator.of(context).pop();
                                 _offlineRadiusKm = selectedRadiusKm;
                                 _startDownloadAroundObservations(
                                   radiusKm: selectedRadiusKm,
                                 );
-                              },
+                              }
+                            : null,
                         icon: const Icon(Icons.pin_drop),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
@@ -811,6 +1056,28 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                       'Uses OpenStreetMap tiles; keep download regions modest.',
                       style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 12),
                     ),
+                    if (disabledReason != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        disabledReason,
+                        style: const TextStyle(
+                          color: Color(0xFFFFD1C1),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                    if (savedObservationsDisabledReason != null &&
+                        savedObservationsDisabledReason !=
+                            disabledReason) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        savedObservationsDisabledReason,
+                        style: const TextStyle(
+                          color: Color(0xFFFFD1C1),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -824,6 +1091,9 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   Future<void> _startDownloadAroundCurrentLocation({
     required double radiusKm,
   }) async {
+    if (!await _canStartOfflineDownload()) {
+      return;
+    }
     final captured = await _locationCaptureService.captureForObservation();
     if (captured == null) {
       _showMessage(
@@ -844,6 +1114,9 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   Future<void> _startDownloadAroundObservations({
     required double radiusKm,
   }) async {
+    if (!await _canStartOfflineDownload()) {
+      return;
+    }
     final requests = <OfflineDownloadRegionRequest>[];
     final seen = <String>{};
 
@@ -878,6 +1151,29 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     }
 
     await _runOfflineDownload(requests);
+  }
+
+  Future<bool> _canStartOfflineDownload() async {
+    final hasNetwork = await _refreshNetworkAvailability();
+    if (!hasNetwork) {
+      _showMessage('Offline map downloads need an internet connection.');
+      return false;
+    }
+    if (!_tileCacheService.isAvailable) {
+      _showMessage('Offline map storage is not available on this device.');
+      return false;
+    }
+    return true;
+  }
+
+  Future<bool> _refreshNetworkAvailability() async {
+    try {
+      final results = await _connectivity.checkConnectivity();
+      _handleConnectivityResults(results);
+      return results.any((result) => result != ConnectivityResult.none);
+    } catch (_) {
+      return _hasNetworkConnection;
+    }
   }
 
   Future<void> _runOfflineDownload(
@@ -1047,19 +1343,11 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    const accentTextColor = Color(0xCCFFFFFF);
     final bool pickMode = _pickArgs != null;
 
     if (_loading) {
       _mapReady = false;
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    final bool showLocationDisabled =
-        !_locationEnabled && !pickMode && !_allowMapWithoutLocation;
-
-    if (showLocationDisabled) {
-      _mapReady = false;
     }
 
     return Scaffold(
@@ -1080,267 +1368,180 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
               ]
             : null,
       ),
-      body: showLocationDisabled
-          ? ForestBackground(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              includeTopSafeArea: false,
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Location tagging is disabled.',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Enable it in Settings to map observations.',
-                      style: TextStyle(color: accentTextColor),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    OutlinedButton(
-                      onPressed: () {
-                        Navigator.of(context).pushNamed('/settings');
-                      },
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white54),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 10,
-                        ),
-                        shape: const StadiumBorder(),
-                      ),
-                      child: const Text('Open Settings'),
-                    ),
-                  ],
+      body: StreamBuilder<List<Observation>>(
+        stream: pickMode
+            ? _observationRepository.watchObservationsWithLocation()
+            : _observationRepository.streamVisibleMapObservations(),
+        builder: (context, snapshot) {
+          final observations = snapshot.data ?? const <Observation>[];
+          final ordered = [...observations];
+          ordered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          _observationsCache = ordered;
+          final markers = _buildMarkers(ordered, interactive: !pickMode);
+          final Observation? first = ordered.isEmpty ? null : ordered.first;
+          final ObservationLocation? firstLocation = first?.location;
+          final double? pickLat = _pickArgs?.initialLat;
+          final double? pickLon = _pickArgs?.initialLon;
+          final LatLng center = (pickLat != null && pickLon != null)
+              ? LatLng(pickLat, pickLon)
+              : (firstLocation == null
+                    ? const LatLng(-25.2744, 133.7751)
+                    : LatLng(
+                        firstLocation.latitude,
+                        firstLocation.longitude,
+                      ));
+
+          _mapReady = true;
+          _maybeHandlePendingFocus();
+
+          final List<Marker> overlayMarkers = [...markers];
+          final LatLng? picked = _pickedLocation;
+          if (picked != null) {
+            overlayMarkers.add(
+              Marker(
+                width: 42,
+                height: 42,
+                point: picked,
+                child: const Icon(
+                  Icons.place,
+                  color: Color(0xFFFFC857),
+                  size: 36,
                 ),
               ),
-            )
-          : StreamBuilder<List<Observation>>(
-              stream: _observationRepository.watchObservationsWithLocation(),
-              builder: (context, snapshot) {
-                final observations = snapshot.data ?? const <Observation>[];
-                if (snapshot.connectionState == ConnectionState.waiting &&
-                    observations.isEmpty &&
-                    !pickMode) {
-                  _mapReady = false;
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (observations.isEmpty && !pickMode) {
-                  _mapReady = false;
-                  return ForestBackground(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
+            );
+          }
+          final LatLng? tempFocus = _temporaryFocusLocation;
+          if (tempFocus != null) {
+            overlayMarkers.add(
+              Marker(
+                width: 42,
+                height: 42,
+                point: tempFocus,
+                child: const Icon(
+                  Icons.place,
+                  color: Color(0xFF7CD39A),
+                  size: 36,
+                ),
+              ),
+            );
+          }
+
+          return Stack(
+            children: [
+              FlutterMap(
+                options: MapOptions(
+                  initialCenter: center,
+                  initialZoom: pickMode ? 10.0 : 6.0,
+                  backgroundColor: const Color(0xFF0F2A20),
+                  onTap: pickMode
+                      ? (tapPosition, latlng) {
+                          setState(() {
+                            _pickedLocation = latlng;
+                          });
+                        }
+                      : null,
+                ),
+                mapController: _mapController,
+                children: [
+                  TileLayer(
+                    urlTemplate: MapTileCacheService.tileUrlTemplate,
+                    userAgentPackageName:
+                        MapTileCacheService.tileUserAgentPackageName,
+                    tileProvider: _tileProvider ?? NetworkTileProvider(),
+                    errorTileCallback: _handleMapTileError,
+                  ),
+                  MarkerLayer(markers: overlayMarkers),
+                ],
+              ),
+              if (!pickMode && ordered.isEmpty) _emptyMapOverlay(),
+              if (!_hasNetworkConnection && _mapTileError)
+                _offlineMapUnavailableOverlay(),
+              if (!pickMode)
+                Positioned(
+                  right: 16,
+                  top: 16,
+                  child: FloatingActionButton.small(
+                    heroTag: 'map-offline-download',
+                    onPressed: _openOfflineActionsSheet,
+                    backgroundColor: const Color(
+                      0xFF1F4E3D,
+                    ).withValues(alpha: 0.94),
+                    foregroundColor: Colors.white,
+                    child: const Icon(Icons.download_for_offline),
+                  ),
+                ),
+              if (!pickMode) _offlineDownloadStatusCard(),
+              if (pickMode)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 20,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1F4E3D).withValues(alpha: 0.92),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
                     ),
-                    includeTopSafeArea: false,
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'No mapped observations yet.',
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                            textAlign: TextAlign.center,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Tap the map to drop a pin',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Save an observation with a location to see it here.',
-                            style: TextStyle(color: accentTextColor),
-                            textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _pickedLocation == null
+                              ? 'No location selected'
+                              : '${_pickedLocation!.latitude.toStringAsFixed(4)}, ${_pickedLocation!.longitude.toStringAsFixed(4)}',
+                          style: const TextStyle(
+                            color: Color(0xCCFFFFFF),
+                            fontSize: 12.5,
                           ),
-                          const SizedBox(height: 16),
-                          OutlinedButton.icon(
-                            onPressed: _openOfflineActionsSheet,
-                            icon: const Icon(Icons.download_for_offline),
-                            style: OutlinedButton.styleFrom(
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _pickedLocation == null
+                                ? null
+                                : () {
+                                    final selected = _pickedLocation!;
+                                    Navigator.of(context).pop(
+                                      MapPickResult(
+                                        lat: selected.latitude,
+                                        lon: selected.longitude,
+                                        label: null,
+                                      ),
+                                    );
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF8FBFA1),
                               foregroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.white54),
+                              elevation: 0,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                                vertical: 10,
+                                vertical: 12,
                               ),
                               shape: const StadiumBorder(),
                             ),
-                            label: const Text('Download offline map region'),
+                            child: const Text('Use this location'),
                           ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-
-                final ordered = [...observations];
-                ordered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-                _observationsCache = ordered;
-                final markers = _buildMarkers(ordered, interactive: !pickMode);
-                final Observation? first = ordered.isEmpty
-                    ? null
-                    : ordered.first;
-                final ObservationLocation? firstLocation = first?.location;
-                final double? pickLat = _pickArgs?.initialLat;
-                final double? pickLon = _pickArgs?.initialLon;
-                final LatLng center = (pickLat != null && pickLon != null)
-                    ? LatLng(pickLat, pickLon)
-                    : (firstLocation == null
-                          ? const LatLng(-25.2744, 133.7751)
-                          : LatLng(
-                              firstLocation.latitude,
-                              firstLocation.longitude,
-                            ));
-
-                _mapReady = true;
-                _maybeHandlePendingFocus();
-
-                final List<Marker> overlayMarkers = [...markers];
-                final LatLng? picked = _pickedLocation;
-                if (picked != null) {
-                  overlayMarkers.add(
-                    Marker(
-                      width: 42,
-                      height: 42,
-                      point: picked,
-                      child: const Icon(
-                        Icons.place,
-                        color: Color(0xFFFFC857),
-                        size: 36,
-                      ),
-                    ),
-                  );
-                }
-                final LatLng? tempFocus = _temporaryFocusLocation;
-                if (tempFocus != null) {
-                  overlayMarkers.add(
-                    Marker(
-                      width: 42,
-                      height: 42,
-                      point: tempFocus,
-                      child: const Icon(
-                        Icons.place,
-                        color: Color(0xFF7CD39A),
-                        size: 36,
-                      ),
-                    ),
-                  );
-                }
-
-                return Stack(
-                  children: [
-                    FlutterMap(
-                      options: MapOptions(
-                        initialCenter: center,
-                        initialZoom: pickMode ? 10.0 : 6.0,
-                        backgroundColor: const Color(0xFF0F2A20),
-                        onTap: pickMode
-                            ? (tapPosition, latlng) {
-                                setState(() {
-                                  _pickedLocation = latlng;
-                                });
-                              }
-                            : null,
-                      ),
-                      mapController: _mapController,
-                      children: [
-                        TileLayer(
-                          urlTemplate: MapTileCacheService.tileUrlTemplate,
-                          userAgentPackageName:
-                              MapTileCacheService.tileUserAgentPackageName,
-                          tileProvider: _tileProvider ?? NetworkTileProvider(),
                         ),
-                        MarkerLayer(markers: overlayMarkers),
                       ],
                     ),
-                    if (!pickMode)
-                      Positioned(
-                        right: 16,
-                        top: 16,
-                        child: FloatingActionButton.small(
-                          heroTag: 'map-offline-download',
-                          onPressed: _openOfflineActionsSheet,
-                          backgroundColor: const Color(
-                            0xFF1F4E3D,
-                          ).withValues(alpha: 0.94),
-                          foregroundColor: Colors.white,
-                          child: const Icon(Icons.download_for_offline),
-                        ),
-                      ),
-                    if (!pickMode) _offlineDownloadStatusCard(),
-                    if (pickMode)
-                      Positioned(
-                        left: 16,
-                        right: 16,
-                        bottom: 20,
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF1F4E3D,
-                            ).withValues(alpha: 0.92),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.2),
-                            ),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Tap the map to drop a pin',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                _pickedLocation == null
-                                    ? 'No location selected'
-                                    : '${_pickedLocation!.latitude.toStringAsFixed(4)}, ${_pickedLocation!.longitude.toStringAsFixed(4)}',
-                                style: const TextStyle(
-                                  color: Color(0xCCFFFFFF),
-                                  fontSize: 12.5,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: _pickedLocation == null
-                                      ? null
-                                      : () {
-                                          final selected = _pickedLocation!;
-                                          Navigator.of(context).pop(
-                                            MapPickResult(
-                                              lat: selected.latitude,
-                                              lon: selected.longitude,
-                                              label: null,
-                                            ),
-                                          );
-                                        },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF8FBFA1),
-                                    foregroundColor: Colors.white,
-                                    elevation: 0,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                    ),
-                                    shape: const StadiumBorder(),
-                                  ),
-                                  child: const Text('Use this location'),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

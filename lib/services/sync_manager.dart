@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../models/field_note.dart';
 import '../models/observation.dart';
+import '../repositories/firebase_observation_repository.dart';
 import 'app_toast_service.dart';
 import 'auth_service.dart';
 
@@ -227,6 +228,8 @@ class SyncManager {
 
   final AuthService _authService = AuthService.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseObservationRepository _firebaseObservationRepository =
+      FirebaseObservationRepository.instance;
   final _SyncQueueStore _queueStore = _SyncQueueStore.instance;
   final ValueNotifier<SyncStatus> syncStatusNotifier =
       ValueNotifier<SyncStatus>(const SyncStatus.initial());
@@ -384,12 +387,15 @@ class SyncManager {
         if (entityId == null || entityId.isEmpty || payload == null) {
           return;
         }
-        await userDoc.collection('observations').doc(entityId).set({
-          ...payload,
-          '_syncedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+        final result = await _firebaseObservationRepository.saveObservation(
+          Observation.fromJson(payload),
+          userId: uid,
+        );
+        if (result.status == FirebaseObservationSaveStatus.failed) {
+          throw result.error ?? StateError('Observation cloud save failed.');
+        }
       case SyncMutationType.observationsClear:
-        await _deleteCollection(userDoc.collection('observations'));
+        await _deleteUserObservations(uid);
       case SyncMutationType.fieldNoteUpsert:
         final entityId = mutation.entityId;
         final payload = mutation.payload;
@@ -409,12 +415,14 @@ class SyncManager {
     }
   }
 
-  Future<void> _deleteCollection(
-    CollectionReference<Map<String, dynamic>> collection,
-  ) async {
+  Future<void> _deleteUserObservations(String uid) async {
     const int chunkSize = 400;
     while (true) {
-      final snapshot = await collection.limit(chunkSize).get();
+      final snapshot = await _firestore
+          .collection('observations')
+          .where('userId', isEqualTo: uid)
+          .limit(chunkSize)
+          .get();
       if (snapshot.docs.isEmpty) {
         return;
       }

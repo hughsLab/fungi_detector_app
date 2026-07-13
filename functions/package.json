@@ -1,0 +1,16 @@
+{
+  "name": "fungi-app-functions",
+  "description": "Firebase Functions for secure online mushroom identification.",
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0",
+    "firebase-functions": "^6.0.0"
+  },
+  "devDependencies": {}
+}

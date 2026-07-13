@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../repositories/user_profile_repository.dart';
 import 'app_toast_service.dart';
 
 enum AppAuthSource { firebase, cache, none }
@@ -208,6 +209,7 @@ class AuthService {
       firebaseUser,
     ) async {
       if (firebaseUser != null) {
+        await _ensureUserProfile(firebaseUser);
         await cacheFirebaseUserSession(firebaseUser);
       } else if (_isOnline) {
         await clearCachedSession();
@@ -220,6 +222,7 @@ class AuthService {
     ) async {
       final wasOffline = !_isOnline;
       _isOnline = _isConnected(results);
+      _logConnectivityChange(results, _isOnline);
       if (_isOnline && wasOffline) {
         _offlineLoginToastShownThisRun = false;
       }
@@ -265,9 +268,26 @@ class AuthService {
     }
   }
 
+  Future<void> _ensureUserProfile(User user) async {
+    try {
+      await UserProfileRepository.instance.ensureUserProfile(user: user);
+    } catch (e, st) {
+      debugPrint('AUTH: Failed ensuring user profile: $e');
+      debugPrintStack(stackTrace: st, label: 'AUTH');
+    }
+  }
+
   Future<bool> _checkOnline() async {
     final results = await _connectivity.checkConnectivity();
-    return _isConnected(results);
+    final connected = _isConnected(results);
+    if (kDebugMode) {
+      debugPrint(
+        'AUTH: connectivity check results='
+        '${results.map((result) => result.name).join(',')} '
+        'connected=$connected',
+      );
+    }
+    return connected;
   }
 
   bool _isConnected(List<ConnectivityResult> results) {
@@ -277,6 +297,17 @@ class AuthService {
       }
     }
     return false;
+  }
+
+  void _logConnectivityChange(List<ConnectivityResult> results, bool connected) {
+    if (!kDebugMode) {
+      return;
+    }
+    debugPrint(
+      'AUTH: connectivity changed results='
+      '${results.map((result) => result.name).join(',')} '
+      'connected=$connected',
+    );
   }
 
   Future<_CachedAuthSession?> _readCachedSession() async {

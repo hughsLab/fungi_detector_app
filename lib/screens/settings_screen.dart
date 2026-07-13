@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../models/user_profile.dart';
 import '../repositories/observation_repository.dart';
+import '../repositories/user_profile_repository.dart';
 import '../services/map_tile_cache_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/forest_background.dart';
@@ -16,6 +18,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final SettingsService _settingsService = SettingsService.instance;
   final ObservationRepository _observationRepository =
       ObservationRepository.instance;
+  final UserProfileRepository _userProfileRepository =
+      UserProfileRepository.instance;
   final MapTileCacheService _mapTileCacheService = MapTileCacheService.instance;
 
   AppSettings? _settings;
@@ -79,6 +83,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Navigator.of(context).pushNamed('/about');
   }
 
+  void _openUsernameEditor() {
+    Navigator.of(context).pushNamed('/choose-username');
+  }
+
   @override
   Widget build(BuildContext context) {
     const accentTextColor = Color(0xCCFFFFFF);
@@ -95,8 +103,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
         includeTopSafeArea: false,
         child: _loading || _settings == null
             ? const Center(child: CircularProgressIndicator())
-            : ListView(
+              : ListView(
                 children: [
+                  const _SectionHeader(title: 'Account'),
+                  const SizedBox(height: 8),
+                  StreamBuilder<UserProfile?>(
+                    stream: _userProfileRepository.streamCurrentUserProfile(),
+                    builder: (context, snapshot) {
+                      final profile = snapshot.data;
+                      final username = profile?.username?.trim();
+                      final hasUsername =
+                          username != null && username.isNotEmpty;
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          hasUsername ? username : 'Choose username',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        subtitle: const Text(
+                          'Your username may appear beside public observations.',
+                          style: TextStyle(color: accentTextColor),
+                        ),
+                        trailing: const Icon(
+                          Icons.edit,
+                          color: Colors.white70,
+                        ),
+                        onTap: _openUsernameEditor,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 20),
                   const _SectionHeader(title: 'Detection'),
                   const SizedBox(height: 12),
                   const Text(
@@ -147,6 +183,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 20),
                   const _SectionHeader(title: 'Location & Privacy'),
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _settings!.shareObservationsOnPublicMap,
+                    onChanged: (value) {
+                      _updateSettings(
+                        _settings!.copyWith(
+                          shareObservationsOnPublicMap: value,
+                        ),
+                      );
+                    },
+                    title: const Text(
+                      'Share observations on public map',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    subtitle: const Text(
+                      'When enabled, saved cloud observations can appear as public map pins. Other users can view them but cannot edit or delete them.',
+                      style: TextStyle(color: accentTextColor),
+                    ),
+                    activeColor: const Color(0xFF8FBFA1),
+                  ),
+                  StreamBuilder<UserProfile?>(
+                    stream: _userProfileRepository.streamCurrentUserProfile(),
+                    builder: (context, snapshot) {
+                      final username = snapshot.data?.username?.trim();
+                      final hasUsername =
+                          username != null && username.isNotEmpty;
+                      return SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: hasUsername &&
+                            _settings!.showUsernameOnPublicObservations,
+                        onChanged: !hasUsername
+                            ? null
+                            : (value) {
+                                _updateSettings(
+                                  _settings!.copyWith(
+                                    showUsernameOnPublicObservations: value,
+                                  ),
+                                );
+                              },
+                        title: const Text(
+                          'Show username on public observations',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        subtitle: Text(
+                          hasUsername
+                              ? 'Show your username with public map observations.'
+                              : 'Choose a username before this can be enabled.',
+                          style: const TextStyle(color: accentTextColor),
+                        ),
+                        activeColor: const Color(0xFF8FBFA1),
+                      );
+                    },
+                  ),
                   const SizedBox(height: 8),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,

@@ -325,12 +325,21 @@ class MapTileCacheService {
 
   FMTCTileProvider _buildTileProvider() {
     return _store.getTileProvider(
-      settings: FMTCTileProviderSettings(
-        behavior: CacheBehavior.cacheFirst,
-        cachedValidDuration: Duration.zero,
+      settings: buildOnlineFirstTileProviderSettings(
         maxStoreLength: _maxStoreLength,
-        setInstance: false,
       ),
+    );
+  }
+
+  @visibleForTesting
+  static FMTCTileProviderSettings buildOnlineFirstTileProviderSettings({
+    required int maxStoreLength,
+  }) {
+    return FMTCTileProviderSettings(
+      behavior: CacheBehavior.onlineFirst,
+      cachedValidDuration: Duration.zero,
+      maxStoreLength: maxStoreLength,
+      setInstance: false,
     );
   }
 }

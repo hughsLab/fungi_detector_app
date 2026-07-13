@@ -56,7 +56,9 @@ class LocationCaptureService {
     Position? position;
     try {
       position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       ).timeout(timeout);
     } on TimeoutException {
       position = await Geolocator.getLastKnownPosition();
@@ -81,7 +83,7 @@ class LocationCaptureService {
       latitude: latitude,
       longitude: longitude,
       accuracyMeters: position.accuracy,
-      capturedAt: position.timestamp ?? DateTime.now(),
+      capturedAt: position.timestamp,
     );
   }
 }
