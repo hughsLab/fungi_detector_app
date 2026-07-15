@@ -5,14 +5,15 @@ import 'package:realtime_detection_app/models/observation.dart';
 import 'package:realtime_detection_app/repositories/observation_repository.dart';
 
 void main() {
-  test('observation repository does not use internal JSON storage', () {
+  test('observation repository is local-first and queues cloud sync', () {
     final source = File(
       'lib/repositories/observation_repository.dart',
     ).readAsStringSync();
 
-    expect(source, isNot(contains('observations.json')));
-    expect(source, isNot(contains('path_provider')));
-    expect(source, isNot(contains('dart:convert')));
+    expect(source, contains('observations.json'));
+    expect(source, contains('path_provider'));
+    expect(source, contains('enqueueObservationUpsert'));
+    expect(source, contains('pending_cloud_sync'));
   });
 
   test('firebase public map feed uses top-level observations collection', () {
@@ -53,7 +54,29 @@ void main() {
     );
   });
 
-  test('visible map observations use Firebase pins only', () {
+  test('offline and online observations share the same cloud queue', () {
+    final repositorySource = File(
+      'lib/repositories/observation_repository.dart',
+    ).readAsStringSync();
+    final syncSource = File(
+      'lib/services/sync_manager.dart',
+    ).readAsStringSync();
+
+    expect(repositorySource, contains('enqueueObservationUpsert(observation)'));
+    expect(syncSource, contains('Observation.fromJson(payload)'));
+    expect(syncSource, isNot(contains("onlineIdentification == true")));
+    expect(syncSource, isNot(contains("detectionSource == 'offline_model'")));
+  });
+
+  test('sync completion preserves mutations queued during an active sync', () {
+    final source = File('lib/services/sync_manager.dart').readAsStringSync();
+
+    expect(source, contains('completeAttempt('));
+    expect(source, contains('new mutations arrived during sync'));
+    expect(source, isNot(contains('_queueStore.replace(remaining)')));
+  });
+
+  test('visible map observations merge Firebase and local pins', () {
     final publicPinned = _observation(
       id: 'public-pin',
       createdAt: DateTime.utc(2026, 7, 7, 10),
@@ -73,11 +96,20 @@ void main() {
     final merged = ObservationRepository.mergeFirebaseMapObservationLists(
       public: [publicPinned],
       mine: [myPinned],
+      local: [
+        _observation(
+          id: 'local-pin',
+          createdAt: DateTime.utc(2026, 7, 7, 8),
+          latitude: -43.1,
+          longitude: 147.1,
+        ),
+      ],
     );
 
     expect(merged.map((observation) => observation.id), [
       'public-pin',
       'my-pin',
+      'local-pin',
     ]);
     expect(merged.first.ownerUsername, 'field_user');
   });

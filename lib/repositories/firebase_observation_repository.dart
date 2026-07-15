@@ -6,6 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/observation.dart';
+import '../models/user_profile.dart';
 import '../services/settings_service.dart';
 import 'user_profile_repository.dart';
 
@@ -93,21 +94,41 @@ class FirebaseObservationRepository {
     String? userId,
   }) async {
     final uid = userId ?? _firebaseAuth.currentUser?.uid;
-    if (uid == null || uid.trim().isEmpty) {
+    if (kDebugMode) {
       debugPrint(
-        'FIREBASE_OBSERVATION: no signed-in Firebase user; '
-        'cloud save skipped for ${observation.id}.',
+        'FIREBASE_OBSERVATION_WRITE: called id=${observation.id} '
+        'signedIn=${_firebaseAuth.currentUser != null} '
+        'uidPresent=${uid?.trim().isNotEmpty == true} '
+        'hasLocalPhoto=${_hasLocalPhoto(observation.photoPath)} '
+        'hasValidCoordinates=${observation.location != null} '
+        'isPublic=${observation.isPublic} path=observations/${observation.id}',
       );
+    }
+    if (uid == null || uid.trim().isEmpty) {
+      _debugLog('cloud save skipped: no signed-in Firebase user');
       return FirebaseObservationSaveResult(
         status: FirebaseObservationSaveStatus.skippedNoUser,
         observation: observation,
       );
     }
+    if (observation.id.trim().isEmpty) {
+      return FirebaseObservationSaveResult(
+        status: FirebaseObservationSaveStatus.failed,
+        observation: observation.copyWith(syncStatus: 'cloud_failed'),
+        error: StateError('Observation id is empty.'),
+      );
+    }
 
     try {
-      final profile = await _userProfileRepository.ensureUserProfile(
-        user: _firebaseAuth.currentUser,
-      );
+      UserProfile? profile;
+      try {
+        profile = await _userProfileRepository.ensureUserProfile(
+          user: _firebaseAuth.currentUser,
+        );
+      } catch (e) {
+        // Profile metadata is optional and must not block an observation write.
+        _debugLog('optional user profile lookup failed: ${_safeError(e)}');
+      }
       final settings = await _settingsService.loadSettings();
       final hasUsername = profile?.hasUsername ?? false;
       final showUsername =
@@ -134,36 +155,41 @@ class FirebaseObservationRepository {
         updatedAt: now,
       );
       if (observation.isPublic && !showUsername) {
-        debugPrint(
-          'FIREBASE_OBSERVATION: public save without username for '
-          '${observation.id}.',
+        _debugLog(
+          'public save without username id=${observation.id}',
         );
       }
 
+      final data = _toFirestoreDocument(
+        observation: cloudObservation,
+        userId: uid,
+        downloadUrl: downloadUrl,
+        imageStoragePath: imageStoragePath,
+        syncStatus: syncStatus,
+        syncedAt: now,
+      );
+      _debugLog(
+        'Firestore write attempted=true collection=observations '
+        'document=${observation.id} ownerUidPresent=${uid.isNotEmpty} '
+        'userIdPresent=${uid.isNotEmpty} isPublic=${observation.isPublic} '
+        'detectionSource=${observation.detectionSource ?? "-"} '
+        'hasValidLocation=${observation.location != null} '
+        'hasPhoto=${downloadUrl != null} keys=${data.keys.toList()..sort()}',
+      );
       await _observations.doc(observation.id).set(
-            _toFirestoreDocument(
-              observation: cloudObservation,
-              userId: uid,
-              downloadUrl: downloadUrl,
-              imageStoragePath: imageStoragePath,
-              syncStatus: syncStatus,
-              syncedAt: now,
-            ),
+            data,
             SetOptions(merge: true),
           );
-      debugPrint(
-        'FIREBASE_OBSERVATION: saved observation ${observation.id} '
-        'for user $uid.',
-      );
+      _debugLog('write succeeded id=${observation.id}');
       return FirebaseObservationSaveResult(
         status: FirebaseObservationSaveStatus.saved,
         observation: cloudObservation,
       );
     } catch (e, st) {
-      debugPrint(
-        'FIREBASE_OBSERVATION: cloud save failed for ${observation.id}: $e',
-      );
-      debugPrintStack(stackTrace: st, label: 'FIREBASE_OBSERVATION');
+      final detail = e is FirebaseException
+          ? 'code=${e.code} message=${e.message ?? "-"}'
+          : _safeError(e);
+      _debugLog('write failed id=${observation.id} $detail', stackTrace: st);
       return FirebaseObservationSaveResult(
         status: FirebaseObservationSaveStatus.failed,
         observation: observation.copyWith(syncStatus: 'cloud_failed'),
@@ -209,16 +235,19 @@ class FirebaseObservationRepository {
       return const <Observation>[];
     }
 
+    _debugLog(
+      'read query path=observations filter=userId==currentUser limit=$limit',
+    );
     final snapshot = await _observations
         .where('userId', isEqualTo: uid)
-        .orderBy('observedAt', descending: true)
         .limit(limit)
         .get();
-    debugPrint(
-      'FIREBASE_OBSERVATION: loaded ${snapshot.docs.length} observation(s) '
-      'for user $uid.',
+    final observations = _fromDocuments(snapshot.docs);
+    observations.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    _debugLog(
+      'read snapshot=${snapshot.docs.length} parsed=${observations.length}',
     );
-    return snapshot.docs.map(_fromDocument).toList(growable: false);
+    return observations;
   }
 
   Future<void> updateObservationDetails(
@@ -323,18 +352,16 @@ class FirebaseObservationRepository {
         photoPath.isEmpty ||
         photoPath.startsWith('http://') ||
         photoPath.startsWith('https://')) {
-      debugPrint(
-        'FIREBASE_OBSERVATION: no local photo to upload for '
-        '${observation.id}; writing metadata only.',
+      _debugLog(
+        'no local photo id=${observation.id}; writing metadata only',
       );
       return _PhotoUploadResult.noPhoto();
     }
 
     final photoFile = File(photoPath);
     if (!await photoFile.exists()) {
-      debugPrint(
-        'FIREBASE_OBSERVATION: photo file missing at $photoPath for '
-        '${observation.id}; writing metadata only.',
+      _debugLog(
+        'local photo missing id=${observation.id}; writing metadata only',
       );
       return _PhotoUploadResult.noPhoto();
     }
@@ -358,11 +385,11 @@ class FirebaseObservationRepository {
         downloadUrl: downloadUrl,
       );
     } catch (e, st) {
-      debugPrint(
-        'FIREBASE_OBSERVATION: photo upload failed for '
-        '${observation.id}; writing observation metadata: $e',
+      _debugLog(
+        'photo upload failed id=${observation.id}; metadata write continues: '
+        '${_safeError(e)}',
+        stackTrace: st,
       );
-      debugPrintStack(stackTrace: st, label: 'FIREBASE_OBSERVATION');
       return _PhotoUploadResult.failed();
     }
   }
@@ -371,53 +398,17 @@ class FirebaseObservationRepository {
     Query<Map<String, dynamic>> baseQuery, {
     required int limit,
   }) async* {
-    Stream<List<Observation>> unorderedFallback() {
-      return baseQuery.limit(limit).snapshots().map((snapshot) {
-        final observations = _fromSnapshot(snapshot);
-        observations.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        return observations;
-      });
-    }
-
-    try {
-      yield* baseQuery
-          .orderBy('observedAt', descending: true)
-          .limit(limit)
-          .snapshots()
-          .map(_fromSnapshot);
-    } on FirebaseException catch (e) {
-      if (e.code != 'failed-precondition') {
-        rethrow;
-      }
-      debugPrint(
-        'FIREBASE_OBSERVATION: observedAt index missing; falling back to '
-        'createdAt ordering. Create a composite index for production.',
-      );
-      try {
-        yield* baseQuery
-            .orderBy('createdAt', descending: true)
-            .limit(limit)
-            .snapshots()
-            .map(_fromSnapshot);
-      } on FirebaseException catch (fallbackError) {
-        if (fallbackError.code != 'failed-precondition') {
-          rethrow;
-        }
-        debugPrint(
-          'FIREBASE_OBSERVATION: createdAt index also missing; falling back '
-          'to unordered Firebase snapshots sorted locally.',
-        );
-        yield* unorderedFallback();
-      }
-    }
+    yield* baseQuery.limit(limit).snapshots().map((snapshot) {
+      final observations = _fromSnapshot(snapshot);
+      observations.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return observations;
+    });
   }
 
   List<Observation> _fromSnapshot(
     QuerySnapshot<Map<String, dynamic>> snapshot,
   ) {
-    final observations = snapshot.docs.map(_fromDocument).toList(
-          growable: false,
-        );
+    final observations = _fromDocuments(snapshot.docs);
     if (kDebugMode) {
       final skipped = <String>[];
       var validCoordinates = 0;
@@ -451,30 +442,25 @@ class FirebaseObservationRepository {
 
   Future<void> _logPublicMapDiagnostics({required int limit}) async {
     try {
-      final snapshot = await _observations.limit(limit).get();
-      var publicCount = 0;
-      var skippedPrivate = 0;
+      final snapshot = await _observations
+          .where('isPublic', isEqualTo: true)
+          .limit(limit)
+          .get();
       var skippedMissingCoordinates = 0;
       var markerCount = 0;
       for (final doc in snapshot.docs) {
-        final observation = _fromDocument(doc);
-        final isPublic = doc.data()['isPublic'] == true;
-        if (isPublic) {
-          publicCount += 1;
-        } else {
-          skippedPrivate += 1;
-        }
+        final observation = _tryFromDocument(doc);
+        if (observation == null) continue;
         if (observation.location == null) {
           skippedMissingCoordinates += 1;
-        } else if (isPublic) {
+        } else {
           markerCount += 1;
         }
       }
       debugPrint(
         'FIREBASE_OBSERVATION: public map diagnostics fetched '
-        '${snapshot.docs.length}; public $publicCount; skipped because '
-        'isPublic false/missing $skippedPrivate; skipped because missing '
-        'coordinates $skippedMissingCoordinates; marker count $markerCount.',
+        '${snapshot.docs.length}; skipped because missing coordinates '
+        '$skippedMissingCoordinates; marker count $markerCount.',
       );
     } catch (e) {
       debugPrint('FIREBASE_OBSERVATION: public map diagnostics failed: $e');
@@ -575,6 +561,7 @@ class FirebaseObservationRepository {
     }
     data['createdAt'] ??= data['observedAt'] ?? data['timestamp'];
     data['timestamp'] ??= data['observedAt'] ?? data['createdAt'];
+    data['userId'] ??= data['ownerUid'];
     data['ownerUsername'] ??=
         data['username'] ?? data['authorUsername'] ?? data['userName'];
     data['ownerDisplayName'] ??=
@@ -583,6 +570,57 @@ class FirebaseObservationRepository {
         data['userDisplayName'];
     data['photoPath'] ??= data['imageUrl'] ?? data['downloadUrl'];
     return Observation.fromJson(data);
+  }
+
+  List<Observation> _fromDocuments(
+    Iterable<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    final observations = <Observation>[];
+    var parseFailures = 0;
+    for (final doc in docs) {
+      final observation = _tryFromDocument(doc);
+      if (observation == null) {
+        parseFailures += 1;
+      } else {
+        observations.add(observation);
+      }
+    }
+    if (parseFailures > 0) {
+      _debugLog('document parse failures=$parseFailures');
+    }
+    return observations;
+  }
+
+  Observation? _tryFromDocument(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    try {
+      return _fromDocument(doc);
+    } catch (e) {
+      _debugLog('parse failed doc=${doc.id} reason=${_safeError(e)}');
+      return null;
+    }
+  }
+
+  bool _hasLocalPhoto(String? value) {
+    final path = value?.trim();
+    return path != null &&
+        path.isNotEmpty &&
+        !path.startsWith('http://') &&
+        !path.startsWith('https://');
+  }
+
+  String _safeError(Object error) {
+    final value = error.toString();
+    return value.length <= 300 ? value : value.substring(0, 300);
+  }
+
+  void _debugLog(String message, {StackTrace? stackTrace}) {
+    if (!kDebugMode) return;
+    debugPrint('FIREBASE_OBSERVATION: $message');
+    if (stackTrace != null) {
+      debugPrintStack(stackTrace: stackTrace, label: 'FIREBASE_OBSERVATION');
+    }
   }
 
   String _coordinateSkipReason(Observation observation) {

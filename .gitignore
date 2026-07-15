@@ -50,6 +50,5 @@ app.*.map.json
 !.env.example
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
-firebase.json
 gitleaks-report.json
 gitleaks-report*.json

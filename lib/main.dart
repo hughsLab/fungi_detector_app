@@ -182,6 +182,7 @@ class _AuthGateState extends State<AuthGate> {
 }
 
 void _logFirebaseOptions(FirebaseOptions options) {
+  if (!kDebugMode) return;
   debugPrint(
     'FIREBASE_INIT: options projectId=${options.projectId} '
     'appId=${options.appId} messagingSenderId=${options.messagingSenderId} '
@@ -195,10 +196,13 @@ void _logFirebaseOptions(FirebaseOptions options) {
 }
 
 Future<void> _logSanityDiagnostics() async {
+  if (!kDebugMode) return;
   debugPrint('SANITY: platform=${defaultTargetPlatform.name} kIsWeb=$kIsWeb');
   final currentUser = FirebaseAuth.instance.currentUser;
   debugPrint(
-    'SANITY: currentUser uid=${currentUser?.uid} email=${currentUser?.email}',
+    'SANITY: firebaseApp=${Firebase.app().name} '
+    'projectId=${Firebase.app().options.projectId} '
+    'signedIn=${currentUser != null} uidPresent=${currentUser?.uid.isNotEmpty == true}',
   );
   try {
     final info = await PackageInfo.fromPlatform();

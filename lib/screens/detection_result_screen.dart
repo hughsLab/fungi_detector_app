@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -307,6 +308,15 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
         identificationSource: 'offline',
         isPublic: settings.shareObservationsOnPublicMap,
       );
+      if (kDebugMode) {
+        debugPrint(
+          'OFFLINE_OBSERVATION_SAVE: save tapped id=${observation.id} '
+          'detectionSource=${observation.detectionSource} '
+          'identificationSource=${observation.identificationSource} '
+          'hasLocation=${observation.location != null} '
+          'isPublic=${observation.isPublic}',
+        );
+      }
       await _observationRepository.saveObservation(observation);
       if (!mounted) return;
       _saved = true;

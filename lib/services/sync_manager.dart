@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -130,6 +131,7 @@ class _SyncQueueStore {
 
   static final _SyncQueueStore instance = _SyncQueueStore._();
   final Random _random = Random();
+  Completer<void>? _activeOperation;
 
   Future<File> _getFile() async {
     final directory = await getApplicationSupportDirectory();
@@ -137,6 +139,10 @@ class _SyncQueueStore {
   }
 
   Future<List<SyncMutation>> load() async {
+    return _synchronized(_loadUnlocked);
+  }
+
+  Future<List<SyncMutation>> _loadUnlocked() async {
     final file = await _getFile();
     if (!await file.exists()) {
       return [];
@@ -148,33 +154,86 @@ class _SyncQueueStore {
           .whereType<Map<String, dynamic>>()
           .map(SyncMutation.fromJson)
           .toList();
-    } catch (_) {
-      return [];
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('SYNC_QUEUE: read failed: $e');
+        debugPrintStack(stackTrace: st, label: 'SYNC_QUEUE');
+      }
+      rethrow;
     }
   }
 
-  Future<void> enqueue({
+  Future<int> enqueue({
     required SyncMutationType type,
     String? entityId,
     Map<String, dynamic>? payload,
   }) async {
-    final queue = await load();
-    final mutation = SyncMutation(
-      id: _newMutationId(),
-      type: type,
-      entityId: entityId,
-      payload: payload,
-      createdAt: DateTime.now(),
-      retryCount: 0,
-    );
-    final merged = _merge(queue, mutation);
-    await replace(merged);
+    return _synchronized(() async {
+      final queue = await _loadUnlocked();
+      final mutation = SyncMutation(
+        id: _newMutationId(),
+        type: type,
+        entityId: entityId,
+        payload: payload,
+        createdAt: DateTime.now(),
+        retryCount: 0,
+      );
+      final merged = _merge(queue, mutation);
+      if (kDebugMode) {
+        debugPrint(
+          'SYNC_QUEUE: write started mutation=${mutation.id} '
+          'type=${type.name} observationId=${entityId ?? "-"}',
+        );
+      }
+      await _replaceUnlocked(merged);
+      if (kDebugMode) {
+        debugPrint(
+          'SYNC_QUEUE: write succeeded mutation=${mutation.id} '
+          'queueLength=${merged.length}',
+        );
+      }
+      return merged.length;
+    });
   }
 
-  Future<void> replace(List<SyncMutation> queue) async {
+  Future<void> _replaceUnlocked(List<SyncMutation> queue) async {
     final file = await _getFile();
     final data = queue.map((mutation) => mutation.toJson()).toList();
     await file.writeAsString(jsonEncode(data));
+  }
+
+  Future<List<SyncMutation>> completeAttempt({
+    required Set<String> attemptedIds,
+    required Map<String, SyncMutation> failedById,
+  }) {
+    return _synchronized(() async {
+      final current = await _loadUnlocked();
+      final reconciled = <SyncMutation>[];
+      for (final mutation in current) {
+        if (!attemptedIds.contains(mutation.id)) {
+          reconciled.add(mutation);
+          continue;
+        }
+        final failed = failedById[mutation.id];
+        if (failed != null) reconciled.add(failed);
+      }
+      await _replaceUnlocked(reconciled);
+      return reconciled;
+    });
+  }
+
+  Future<T> _synchronized<T>(Future<T> Function() operation) async {
+    while (_activeOperation != null) {
+      await _activeOperation!.future;
+    }
+    final completer = Completer<void>();
+    _activeOperation = completer;
+    try {
+      return await operation();
+    } finally {
+      _activeOperation = null;
+      completer.complete();
+    }
   }
 
   List<SyncMutation> _merge(List<SyncMutation> queue, SyncMutation incoming) {
@@ -228,6 +287,7 @@ class SyncManager {
 
   final AuthService _authService = AuthService.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final FirebaseObservationRepository _firebaseObservationRepository =
       FirebaseObservationRepository.instance;
   final _SyncQueueStore _queueStore = _SyncQueueStore.instance;
@@ -242,6 +302,8 @@ class SyncManager {
   Future<void> initialize() async {
     if (_isInitialized) return;
     _isInitialized = true;
+
+    _debugLog('initialized after Firebase startup');
 
     await _authService.initialize();
     _lastKnownOnline = _authService.currentState.isOnline;
@@ -264,48 +326,60 @@ class SyncManager {
     unawaited(triggerSync(reason: 'startup'));
   }
 
-  Future<void> enqueueObservationUpsert(Observation observation) {
-    final future = _queueStore.enqueue(
+  Future<int> enqueueObservationUpsert(Observation observation) async {
+    final queueLength = await _queueStore.enqueue(
       type: SyncMutationType.observationUpsert,
       entityId: observation.id,
       payload: observation.toJson(),
     );
+    _debugLog(
+      'queued observation=${observation.id} '
+      'detectionSource=${observation.detectionSource ?? "-"} '
+      'identificationSource=${observation.identificationSource ?? "-"} '
+      'queueLength=$queueLength',
+    );
     unawaited(_triggerIfReady());
-    return future;
+    return queueLength;
   }
 
-  Future<void> enqueueObservationsClear() {
-    final future = _queueStore.enqueue(
+  Future<void> enqueueObservationsClear() async {
+    await _queueStore.enqueue(
       type: SyncMutationType.observationsClear,
     );
     unawaited(_triggerIfReady());
-    return future;
   }
 
-  Future<void> enqueueFieldNoteUpsert(FieldNote note) {
-    final future = _queueStore.enqueue(
+  Future<void> enqueueFieldNoteUpsert(FieldNote note) async {
+    await _queueStore.enqueue(
       type: SyncMutationType.fieldNoteUpsert,
       entityId: note.id,
       payload: note.toJson(),
     );
     unawaited(_triggerIfReady());
-    return future;
   }
 
-  Future<void> enqueueFieldNoteDelete(String noteId) {
-    final future = _queueStore.enqueue(
+  Future<void> enqueueFieldNoteDelete(String noteId) async {
+    await _queueStore.enqueue(
       type: SyncMutationType.fieldNoteDelete,
       entityId: noteId,
     );
     unawaited(_triggerIfReady());
-    return future;
   }
 
   Future<void> triggerSync({String reason = 'manual'}) async {
-    if (_isSyncing) return;
+    if (_isSyncing) {
+      _debugLog('trigger=$reason deferred because sync is already running');
+      return;
+    }
     await initialize();
 
     final authState = _authService.currentState;
+    _debugLog(
+      'trigger=$reason authStateSignedIn=${authState.isAuthenticated} '
+      'firebaseAuthPresent=${_firebaseAuth.currentUser != null} '
+      'uidPresent=${authState.uid?.isNotEmpty == true} '
+      'online=${authState.isOnline}',
+    );
     if (!authState.isOnline || !authState.isAuthenticated) {
       final pending = (await _queueStore.load()).length;
       syncStatusNotifier.value = syncStatusNotifier.value.copyWith(
@@ -324,6 +398,7 @@ class SyncManager {
     }
 
     final queue = await _queueStore.load();
+    _debugLog('processing started trigger=$reason queueLength=${queue.length}');
     if (queue.isEmpty) {
       syncStatusNotifier.value = syncStatusNotifier.value.copyWith(
         isSyncing: false,
@@ -341,22 +416,35 @@ class SyncManager {
     );
 
     int successCount = 0;
-    final remaining = <SyncMutation>[];
+    final failedById = <String, SyncMutation>{};
+    final attemptedIds = queue.map((item) => item.id).toSet();
     for (final mutation in queue) {
+      _debugLog(
+        'processing mutation=${mutation.id} type=${mutation.type.name} '
+        'observationId=${mutation.entityId ?? "-"} '
+        'detectionSource=${mutation.payload?["detectionSource"] ?? "-"}',
+      );
       try {
         await _applyMutation(uid: uid, mutation: mutation);
         successCount += 1;
+        _debugLog('mutation success id=${mutation.id}');
       } catch (e, st) {
-        debugPrint('SYNC[$reason]: failed mutation ${mutation.id}: $e');
-        debugPrintStack(stackTrace: st, label: 'SYNC');
-        remaining.add(mutation.copyWith(retryCount: mutation.retryCount + 1));
+        _debugLog(
+          'mutation failed id=${mutation.id} ${_safeError(e)}',
+          stackTrace: st,
+        );
+        failedById[mutation.id] =
+            mutation.copyWith(retryCount: mutation.retryCount + 1);
       }
     }
 
-    await _queueStore.replace(remaining);
+    final queueAfter = await _queueStore.completeAttempt(
+      attemptedIds: attemptedIds,
+      failedById: failedById,
+    );
 
     _isSyncing = false;
-    final pendingAfter = remaining.length;
+    final pendingAfter = queueAfter.length;
     final message = pendingAfter == 0
         ? 'Sync complete.'
         : 'Synced $successCount change(s), $pendingAfter pending.';
@@ -372,6 +460,22 @@ class SyncManager {
         'Sync complete: $successCount changes uploaded.',
       );
     }
+    final observationSyncFailed = queue.any(
+      (item) =>
+          item.type == SyncMutationType.observationUpsert &&
+          failedById.containsKey(item.id),
+    );
+    if (observationSyncFailed) {
+      await AppToastService.show(
+        'Saved locally. Cloud sync failed and will retry.',
+      );
+    }
+    final hasNewUnattempted =
+        queueAfter.any((item) => !attemptedIds.contains(item.id));
+    if (hasNewUnattempted) {
+      _debugLog('new mutations arrived during sync; processing next batch');
+      unawaited(triggerSync(reason: 'queued_during_sync'));
+    }
   }
 
   Future<void> _applyMutation({
@@ -385,14 +489,22 @@ class SyncManager {
         final entityId = mutation.entityId;
         final payload = mutation.payload;
         if (entityId == null || entityId.isEmpty || payload == null) {
-          return;
+          throw StateError('Observation sync mutation is incomplete.');
         }
+        _debugLog(
+          'Firestore upload called observation=$entityId '
+          'detectionSource=${payload["detectionSource"] ?? "-"} '
+          'authPresent=${_firebaseAuth.currentUser != null} online=true',
+        );
         final result = await _firebaseObservationRepository.saveObservation(
           Observation.fromJson(payload),
           userId: uid,
         );
         if (result.status == FirebaseObservationSaveStatus.failed) {
           throw result.error ?? StateError('Observation cloud save failed.');
+        }
+        if (!result.saved) {
+          throw StateError('Observation cloud save requires Firebase auth.');
         }
       case SyncMutationType.observationsClear:
         await _deleteUserObservations(uid);
@@ -442,6 +554,23 @@ class SyncManager {
     final state = _authService.currentState;
     if (state.isAuthenticated && state.isOnline) {
       await triggerSync(reason: 'mutation_enqueued');
+    }
+  }
+
+  String _safeError(Object error) {
+    if (error is FirebaseException) {
+      return 'FirebaseException code=${error.code} '
+          'message=${error.message ?? "-"}';
+    }
+    final value = error.toString();
+    return value.length <= 300 ? value : value.substring(0, 300);
+  }
+
+  void _debugLog(String message, {StackTrace? stackTrace}) {
+    if (!kDebugMode) return;
+    debugPrint('SYNC: $message');
+    if (stackTrace != null) {
+      debugPrintStack(stackTrace: stackTrace, label: 'SYNC');
     }
   }
 
