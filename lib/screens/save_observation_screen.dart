@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/navigation_args.dart';
@@ -10,6 +14,7 @@ import '../services/location_capture_service.dart';
 import '../services/location_label_service.dart';
 import '../services/settings_service.dart';
 import '../widgets/forest_background.dart';
+import '../widgets/local_image_preview.dart';
 
 class SaveObservationScreen extends StatefulWidget {
   const SaveObservationScreen({super.key});
@@ -28,6 +33,7 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
   final LocationLabelService _locationLabelService =
       LocationLabelService.instance;
   final Uuid _uuid = const Uuid();
+  final ImagePicker _imagePicker = ImagePicker();
 
   final TextEditingController _notesController = TextEditingController();
 
@@ -40,6 +46,7 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
   bool _loading = true;
   bool _saving = false;
   bool _initialized = false;
+  String? _photoPath;
 
   @override
   void didChangeDependencies() {
@@ -82,12 +89,20 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
     if (species == null) {
       return;
     }
+    final selectedPhotoPath = _photoPath;
+    if (selectedPhotoPath == null || selectedPhotoPath.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add a photo before saving.')),
+      );
+      return;
+    }
 
     setState(() {
       _saving = true;
     });
 
     try {
+      final photoPath = await _persistPhoto(selectedPhotoPath);
       final settings = await _settingsService.loadSettings();
       CapturedLocation? capturedLocation;
       String? locationMessage;
@@ -127,7 +142,7 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
         colloquialName: species.colloquialName,
         confidence: _includeConfidence ? _confidenceValue : null,
         createdAt: DateTime.now(),
-        photoPath: null,
+        photoPath: photoPath,
         latitude: latitude,
         longitude: longitude,
         accuracyMeters: accuracyMeters,
@@ -166,6 +181,40 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
         });
       }
     }
+  }
+
+  Future<void> _pickPhoto(ImageSource source) async {
+    try {
+      final photo = await _imagePicker.pickImage(
+        source: source,
+        imageQuality: 90,
+        maxWidth: 2048,
+      );
+      if (photo == null || !mounted) return;
+      setState(() => _photoPath = photo.path);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not add photo: $e')),
+      );
+    }
+  }
+
+  Future<String> _persistPhoto(String sourcePath) async {
+    final source = File(sourcePath);
+    if (!await source.exists()) {
+      throw StateError('The selected photo is no longer available.');
+    }
+    final directory = await getApplicationSupportDirectory();
+    final photosDir = Directory('${directory.path}/observation_photos');
+    if (!await photosDir.exists()) {
+      await photosDir.create(recursive: true);
+    }
+    final extension = sourcePath.toLowerCase().endsWith('.png') ? 'png' : 'jpg';
+    final fileName =
+        'manual_observation_${DateTime.now().microsecondsSinceEpoch}.$extension';
+    final savedPath = '${photosDir.path}${Platform.pathSeparator}$fileName';
+    return (await source.copy(savedPath)).path;
   }
 
   @override
@@ -232,6 +281,58 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
                           borderSide: BorderSide.none,
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Photo',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 180,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: LocalImagePreview(
+                        path: _photoPath,
+                        borderRadius: BorderRadius.circular(14),
+                        cacheWidth: 960,
+                        placeholder: const Center(
+                          child: Text(
+                            'A photo is required for every observation.',
+                            style: TextStyle(color: accentTextColor),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _saving
+                                ? null
+                                : () => _pickPhoto(ImageSource.camera),
+                            icon: const Icon(Icons.camera_alt),
+                            label: const Text('Take photo'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _saving
+                                ? null
+                                : () => _pickPhoto(ImageSource.gallery),
+                            icon: const Icon(Icons.photo_library),
+                            label: const Text('Choose photo'),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     SwitchListTile(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -48,21 +49,37 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
   double _minConfidence = 0.0;
   String _searchQuery = '';
   late final VoidCallback _settingsListener;
+  StreamSubscription<List<Observation>>? _observationSubscription;
 
   @override
   void initState() {
     super.initState();
     _settingsListener = _handleSettingsChanged;
     _settingsService.settingsNotifier.addListener(_settingsListener);
+    _observationSubscription = _observationRepository
+        .watchObservationChanges()
+        .listen(_handleObservationChanges);
     _loadData();
     _searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
+    _observationSubscription?.cancel();
     _searchController.dispose();
     _settingsService.settingsNotifier.removeListener(_settingsListener);
     super.dispose();
+  }
+
+  void _handleObservationChanges(List<Observation> observations) {
+    if (!mounted) return;
+    setState(() {
+      _observations = observations;
+      _visibleObservations = _buildVisibleObservations(
+        observations: observations,
+      );
+      _loading = false;
+    });
   }
 
   Future<void> _loadData() async {
@@ -795,6 +812,14 @@ class _ObservationCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
+                      'User: ${observation.observerName ?? 'Unknown user'}',
+                      style: const TextStyle(
+                        color: Color(0xCCFFFFFF),
+                        fontSize: 12.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
                       formatDateTime(observation.timestamp),
                       style: const TextStyle(
                         color: Color(0xCCFFFFFF),
@@ -956,6 +981,11 @@ class _ObservationDetailSheet extends StatelessWidget {
                   fontSize: 13,
                 ),
               ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'User: ${observation.observerName ?? 'Unknown user'}',
+              style: const TextStyle(color: accentTextColor, fontSize: 12.5),
             ),
             const SizedBox(height: 4),
             Text(

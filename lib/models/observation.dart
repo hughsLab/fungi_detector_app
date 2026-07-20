@@ -200,6 +200,18 @@ class Observation {
   double? get lon => longitude;
   DateTime get timestamp => createdAt;
 
+  String? get observerName {
+    final username = ownerUsername?.trim();
+    if (username != null && username.isNotEmpty) {
+      return username;
+    }
+    final displayName = ownerDisplayName?.trim();
+    if (displayName != null && displayName.isNotEmpty) {
+      return displayName;
+    }
+    return null;
+  }
+
   ObservationLocation? get location {
     final lat = latitude;
     final lon = longitude;

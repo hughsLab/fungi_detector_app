@@ -9,9 +9,11 @@ import '../models/observation.dart';
 import '../services/auth_service.dart';
 import '../services/sync_manager.dart';
 import 'firebase_observation_repository.dart';
+import 'user_profile_repository.dart';
 
 abstract class ObservationsRepository {
   Future<void> saveObservation(Observation observation);
+  Stream<List<Observation>> watchObservationChanges();
   Stream<List<Observation>> streamPublicObservations({int limit = 300});
   Stream<List<Observation>> streamMyObservations({int limit = 300});
   Stream<List<Observation>> streamVisibleMapObservations({int limit = 300});
@@ -25,7 +27,11 @@ class ObservationRepository implements ObservationsRepository {
   static final ObservationRepository instance = ObservationRepository._();
   final FirebaseObservationRepository _firebaseRepository =
       FirebaseObservationRepository.instance;
+  final UserProfileRepository _userProfileRepository =
+      UserProfileRepository.instance;
   final StreamController<List<Observation>> _locationStreamController =
+      StreamController<List<Observation>>.broadcast();
+  final StreamController<List<Observation>> _observationStreamController =
       StreamController<List<Observation>>.broadcast();
 
   Future<File> _getFile() async {
@@ -57,18 +63,36 @@ class ObservationRepository implements ObservationsRepository {
     await file.writeAsString(
       jsonEncode(observations.map((item) => item.toJson()).toList()),
     );
+    if (!_observationStreamController.isClosed) {
+      _observationStreamController.add(
+        List<Observation>.unmodifiable(observations),
+      );
+    }
     await _emitLocationUpdate(observations);
   }
 
+  @override
+  Stream<List<Observation>> watchObservationChanges() {
+    return _observationStreamController.stream;
+  }
+
   Future<List<Observation>> loadObservations({bool includeCloud = true}) async {
-    final local = await _loadLocalObservations();
+    var local = await _loadLocalObservations();
+    final localWithOwner = await _attachCurrentUserTo(local);
+    if (!identical(localWithOwner, local)) {
+      local = localWithOwner;
+      await _saveLocalObservations(local);
+    }
     if (!includeCloud || !AuthService.instance.currentState.isOnline) {
       return local;
     }
 
     try {
       final cloud = await _firebaseRepository.loadCurrentUserObservations();
-      final merged = _mergeById(local, cloud);
+      // A save may finish while the cloud request is in flight. Re-read the
+      // device file so that refresh cannot overwrite that new observation.
+      final latestLocal = await _loadLocalObservations();
+      final merged = _mergeById(latestLocal, cloud);
       if (cloud.isNotEmpty) {
         await _saveLocalObservations(merged);
       }
@@ -189,6 +213,9 @@ class ObservationRepository implements ObservationsRepository {
 
   @override
   Future<void> saveObservation(Observation observation) async {
+    if (!await _hasSavedPhoto(observation)) {
+      throw StateError('Every observation must include a saved photo.');
+    }
     final file = await _getFile();
     if (kDebugMode) {
       debugPrint(
@@ -201,9 +228,10 @@ class ObservationRepository implements ObservationsRepository {
         'isPublic=${observation.isPublic} cloudSyncEnabled=true path=${file.path}',
       );
     }
+    final localObservation = await _attachCurrentUser(observation);
     final observations = await _loadLocalObservations();
     final updated = _mergeById(observations, <Observation>[
-      observation.copyWith(syncStatus: 'pending_cloud_sync'),
+      localObservation.copyWith(syncStatus: 'pending_cloud_sync'),
     ]);
     await _saveLocalObservations(updated);
     if (kDebugMode) {
@@ -219,6 +247,82 @@ class ObservationRepository implements ObservationsRepository {
         'LOCAL_OBSERVATION: queuedForSync=true id=${observation.id} '
         'queueLength=$queueLength',
       );
+    }
+  }
+
+  Future<bool> _hasSavedPhoto(Observation observation) async {
+    for (final value in <String?>[
+      observation.photoPath,
+      observation.imageUrl,
+    ]) {
+      final path = value?.trim();
+      if (path == null || path.isEmpty) continue;
+      if (path.startsWith('https://') || path.startsWith('http://')) {
+        return true;
+      }
+      if (await File(path).exists()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  Future<Observation> _attachCurrentUser(Observation observation) async {
+    final observations = await _attachCurrentUserTo(<Observation>[observation]);
+    return observations.single;
+  }
+
+  Future<List<Observation>> _attachCurrentUserTo(
+    List<Observation> observations,
+  ) async {
+    if (observations.isEmpty) {
+      return observations;
+    }
+    final uid = AuthService.instance.currentState.uid;
+    if (uid == null || uid.trim().isEmpty) {
+      return observations;
+    }
+    final ownerAlreadyAttached = observations.every(
+      (observation) =>
+          observation.userId != null &&
+          (observation.userId != uid || observation.observerName != null),
+    );
+    if (ownerAlreadyAttached) {
+      return observations;
+    }
+    try {
+      final profile = await _userProfileRepository.getCurrentUserProfile();
+      var changed = false;
+      final updated = observations.map((observation) {
+        if (observation.userId != null && observation.userId != uid) {
+          return observation;
+        }
+        final needsUpdate = observation.userId != uid ||
+            (observation.ownerUsername == null && profile?.username != null) ||
+            (observation.ownerDisplayName == null &&
+                profile?.displayName != null);
+        if (!needsUpdate) {
+          return observation;
+        }
+        changed = true;
+        return observation.copyWith(
+          userId: uid,
+          ownerUsername: profile?.username,
+          ownerDisplayName: profile?.displayName,
+        );
+      }).toList(growable: false);
+      return changed ? updated : observations;
+    } catch (e) {
+      debugPrint('LOCAL_OBSERVATION: owner lookup failed: $e');
+      var changed = false;
+      final updated = observations.map((observation) {
+        if (observation.userId != null) {
+          return observation;
+        }
+        changed = true;
+        return observation.copyWith(userId: uid);
+      }).toList(growable: false);
+      return changed ? updated : observations;
     }
   }
 

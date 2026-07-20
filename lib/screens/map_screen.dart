@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:ui';
+import 'dart:ui' as ui;
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 import '../models/field_note.dart';
 import '../models/navigation_args.dart';
 import '../models/observation.dart';
+import '../models/species.dart';
 import '../repositories/field_notes_repository.dart';
 import '../repositories/observation_repository.dart';
 import '../repositories/species_repository.dart';
@@ -25,6 +26,208 @@ class MapScreen extends StatefulWidget {
 
   @override
   State<MapScreen> createState() => MapScreenState();
+}
+
+class _ObservationRarity {
+  final SpeciesRarity level;
+  final bool estimated;
+
+  const _ObservationRarity({required this.level, required this.estimated});
+}
+
+class _FungiMapMarker extends StatelessWidget {
+  final Color color;
+  final String semanticsLabel;
+
+  const _FungiMapMarker({
+    required this.color,
+    required this.semanticsLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: semanticsLabel,
+      child: Semantics(
+        label: semanticsLabel,
+        button: true,
+        child: CustomPaint(
+          painter: _FungiMarkerPainter(color),
+          size: const Size(48, 52),
+        ),
+      ),
+    );
+  }
+}
+
+class _FungiMarkerPainter extends CustomPainter {
+  final Color color;
+
+  const _FungiMarkerPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final outline = Paint()
+      ..color = const Color(0xFF17382D)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2
+      ..strokeJoin = StrokeJoin.round;
+    final shadow = Paint()
+      ..color = Colors.black.withValues(alpha: 0.28)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(size.width / 2, size.height - 4),
+        width: 25,
+        height: 7,
+      ),
+      shadow,
+    );
+
+    final stem = ui.Path()
+      ..moveTo(size.width * 0.42, size.height * 0.45)
+      ..quadraticBezierTo(
+        size.width * 0.43,
+        size.height * 0.72,
+        size.width * 0.34,
+        size.height * 0.88,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.50,
+        size.height * 0.96,
+        size.width * 0.66,
+        size.height * 0.88,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.57,
+        size.height * 0.72,
+        size.width * 0.58,
+        size.height * 0.45,
+      )
+      ..close();
+    canvas.drawPath(
+      stem,
+      Paint()
+        ..color = const Color(0xFFFFF2D1)
+        ..style = PaintingStyle.fill,
+    );
+    canvas.drawPath(stem, outline);
+
+    final cap = ui.Path()
+      ..moveTo(size.width * 0.10, size.height * 0.48)
+      ..quadraticBezierTo(
+        size.width * 0.16,
+        size.height * 0.10,
+        size.width * 0.50,
+        size.height * 0.08,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.84,
+        size.height * 0.10,
+        size.width * 0.90,
+        size.height * 0.48,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.50,
+        size.height * 0.57,
+        size.width * 0.10,
+        size.height * 0.48,
+      )
+      ..close();
+    canvas.drawPath(
+      cap,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.fill,
+    );
+    canvas.drawPath(cap, outline);
+
+    final spotPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.82)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(size.width * 0.34, size.height * 0.27), 2.4, spotPaint);
+    canvas.drawCircle(Offset(size.width * 0.55, size.height * 0.18), 2.0, spotPaint);
+    canvas.drawCircle(Offset(size.width * 0.68, size.height * 0.34), 2.3, spotPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _FungiMarkerPainter oldDelegate) {
+    return oldDelegate.color != color;
+  }
+}
+
+class _RarityLegend extends StatelessWidget {
+  const _RarityLegend();
+
+  static const _entries = <(String, Color)>[
+    ('Common', Color(0xFF2EAD67)),
+    ('Uncommon', Color(0xFF3D8FE3)),
+    ('Rare', Color(0xFFFFA000)),
+    ('Very rare', Color(0xFFE23D5B)),
+    ('Unknown', Color(0xFF78909C)),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1F4E3D).withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Fungi rarity',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 5),
+          for (final entry in _entries)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 1.5),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: entry.$2,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white70, width: 0.7),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    entry.$1,
+                    style: const TextStyle(color: Colors.white, fontSize: 10.5),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 4),
+          const SizedBox(
+            width: 130,
+            child: Text(
+              'Range estimate unless curated rarity is available.',
+              style: TextStyle(
+                color: Color(0xCCFFFFFF),
+                fontSize: 9,
+                height: 1.2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
@@ -50,6 +253,9 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   double _offlineRadiusKm = 3.0;
   OfflineDownloadUpdate? _offlineDownloadUpdate;
   Map<String, String> _speciesNames = {};
+  Map<String, Species> _speciesById = {};
+  Map<String, Species> _speciesByModelClass = {};
+  Map<String, Species> _speciesByScientificName = {};
   TileProvider? _tileProvider;
   List<Observation> _observationsCache = const [];
   MapFocusRequest? _pendingFocus;
@@ -139,12 +345,35 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     );
     final species = await _speciesRepository.loadSpecies();
     final names = {for (final item in species) item.id: item.displayName};
+    final speciesById = {for (final item in species) item.id: item};
+    final speciesByModelClass = <String, Species>{
+      for (final item in species)
+        if (item.modelId != null && item.sourceClassId != null)
+          _modelClassKey(item.modelId!, item.sourceClassId!): item,
+    };
+    final speciesByScientificName = <String, Species>{};
+    for (final item in species) {
+      for (final name in <String?>[
+        item.scientificName,
+        item.canonicalName,
+        item.commonName,
+        item.colloquialName,
+      ]) {
+        final normalized = _normalizeSpeciesName(name);
+        if (normalized.isNotEmpty) {
+          speciesByScientificName.putIfAbsent(normalized, () => item);
+        }
+      }
+    }
     if (!mounted) return;
     setState(() {
       _locationEnabled = settings.locationTaggingEnabled;
       _tileCachingEnabled = settings.mapTileCachingEnabled;
       _tileCacheLimitMb = settings.mapTileCacheMaxSizeMb;
       _speciesNames = names;
+      _speciesById = speciesById;
+      _speciesByModelClass = speciesByModelClass;
+      _speciesByScientificName = speciesByScientificName;
       _tileProvider = _tileCacheService.tileProvider(
         cachingEnabled: _tileCachingEnabled,
       );
@@ -275,10 +504,10 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     controller.addListener(() {
       final double t = curve.value;
       final double lat =
-          lerpDouble(start.latitude, target.latitude, t) ?? target.latitude;
+          ui.lerpDouble(start.latitude, target.latitude, t) ?? target.latitude;
       final double lon =
-          lerpDouble(start.longitude, target.longitude, t) ?? target.longitude;
-      final double currentZoom = lerpDouble(startZoom, zoom, t) ?? zoom;
+          ui.lerpDouble(start.longitude, target.longitude, t) ?? target.longitude;
+      final double currentZoom = ui.lerpDouble(startZoom, zoom, t) ?? zoom;
       _mapController.move(LatLng(lat, lon), currentZoom);
     });
 
@@ -295,20 +524,95 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   }) {
     return observations.map((observation) {
       final location = observation.location!;
+      final rarity = _rarityForObservation(observation);
+      final name = _displayNameFor(observation);
       return Marker(
-        width: 44,
-        height: 44,
+        width: 48,
+        height: 52,
         point: LatLng(location.latitude, location.longitude),
         child: GestureDetector(
           onTap: interactive ? () => _showObservationSheet(observation) : null,
-          child: const Icon(
-            Icons.location_on,
-            color: Color(0xFF8FBFA1),
-            size: 38,
+          child: _FungiMapMarker(
+            color: _rarityColor(rarity.level),
+            semanticsLabel: '$name, ${_rarityLabel(rarity.level)} rarity',
           ),
         ),
       );
     }).toList();
+  }
+
+  String _modelClassKey(String modelId, int sourceClassId) {
+    return '$modelId:$sourceClassId';
+  }
+
+  String _normalizeSpeciesName(String? value) {
+    return value?.trim().toLowerCase() ?? '';
+  }
+
+  Species? _speciesForObservation(Observation observation) {
+    final modelId = observation.modelId;
+    final sourceClassId = observation.sourceClassId;
+    if (modelId != null && sourceClassId != null) {
+      final byModelClass =
+          _speciesByModelClass[_modelClassKey(modelId, sourceClassId)];
+      if (byModelClass != null) return byModelClass;
+    }
+    final byId = _speciesById[observation.speciesId];
+    if (byId != null) return byId;
+    for (final name in <String?>[
+      observation.scientificName,
+      observation.label,
+      observation.commonName,
+      observation.colloquialName,
+    ]) {
+      final species = _speciesByScientificName[_normalizeSpeciesName(name)];
+      if (species != null) return species;
+    }
+    return null;
+  }
+
+  _ObservationRarity _rarityForObservation(Observation observation) {
+    final species = _speciesForObservation(observation);
+    if (species == null) {
+      return const _ObservationRarity(
+        level: SpeciesRarity.unknown,
+        estimated: false,
+      );
+    }
+    return _ObservationRarity(
+      level: species.mapRarity,
+      estimated: species.mapRarityIsEstimated,
+    );
+  }
+
+  Color _rarityColor(SpeciesRarity rarity) {
+    switch (rarity) {
+      case SpeciesRarity.common:
+        return const Color(0xFF2EAD67);
+      case SpeciesRarity.uncommon:
+        return const Color(0xFF3D8FE3);
+      case SpeciesRarity.rare:
+        return const Color(0xFFFFA000);
+      case SpeciesRarity.veryRare:
+        return const Color(0xFFE23D5B);
+      case SpeciesRarity.unknown:
+        return const Color(0xFF78909C);
+    }
+  }
+
+  String _rarityLabel(SpeciesRarity rarity) {
+    switch (rarity) {
+      case SpeciesRarity.common:
+        return 'Common';
+      case SpeciesRarity.uncommon:
+        return 'Uncommon';
+      case SpeciesRarity.rare:
+        return 'Rare';
+      case SpeciesRarity.veryRare:
+        return 'Very rare';
+      case SpeciesRarity.unknown:
+        return 'Unknown';
+    }
   }
 
   String _displayNameFor(Observation observation) {
@@ -338,12 +642,12 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   }
 
   String _observerLabel(Observation observation, {required bool isOwner}) {
-    if (isOwner) {
-      return 'Your observation';
+    final observerName = observation.observerName;
+    if (observerName != null) {
+      return 'Observed by $observerName';
     }
-    final username = observation.ownerUsername?.trim();
-    if (username != null && username.isNotEmpty) {
-      return 'Observed by $username';
+    if (isOwner) {
+      return 'Observed by you';
     }
     return 'Observed by community member';
   }
@@ -683,6 +987,9 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           isOwner: isOwner,
         );
         final imagePath = _observationImagePath(observation);
+        final rarity = _rarityForObservation(observation);
+        final rarityColor = _rarityColor(rarity.level);
+        final raritySuffix = rarity.estimated ? ' (range estimate)' : '';
 
         return SafeArea(
           child: SingleChildScrollView(
@@ -740,7 +1047,9 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   ),
                 ],
                 const SizedBox(height: 10),
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -756,6 +1065,27 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                         'Confidence ${formatConfidence(confidence)}',
                         style: TextStyle(
                           color: color,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: rarityColor.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: rarityColor.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      child: Text(
+                        '${_rarityLabel(rarity.level)}$raritySuffix',
+                        style: TextStyle(
+                          color: rarityColor,
                           fontSize: 12.5,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1454,6 +1784,12 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 ],
               ),
               if (!pickMode && ordered.isEmpty) _emptyMapOverlay(),
+              if (!pickMode && ordered.isNotEmpty)
+                const Positioned(
+                  left: 12,
+                  top: 12,
+                  child: _RarityLegend(),
+                ),
               if (!_hasNetworkConnection && _mapTileError)
                 _offlineMapUnavailableOverlay(),
               if (!pickMode)

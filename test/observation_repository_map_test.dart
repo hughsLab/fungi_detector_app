@@ -14,6 +14,18 @@ void main() {
     expect(source, contains('path_provider'));
     expect(source, contains('enqueueObservationUpsert'));
     expect(source, contains('pending_cloud_sync'));
+    expect(source, contains('watchObservationChanges'));
+    expect(source, contains('_observationStreamController.add'));
+  });
+
+  test('saved observations screen listens for repository changes', () {
+    final source = File(
+      'lib/screens/observations_screen.dart',
+    ).readAsStringSync();
+
+    expect(source, contains('.watchObservationChanges()'));
+    expect(source, contains('_handleObservationChanges'));
+    expect(source, contains('_observationSubscription?.cancel()'));
   });
 
   test('firebase public map feed uses top-level observations collection', () {
@@ -66,6 +78,28 @@ void main() {
     expect(syncSource, contains('Observation.fromJson(payload)'));
     expect(syncSource, isNot(contains("onlineIdentification == true")));
     expect(syncSource, isNot(contains("detectionSource == 'offline_model'")));
+  });
+
+  test('every observation requires a photo and uploads it to storage', () {
+    final localSource = File(
+      'lib/repositories/observation_repository.dart',
+    ).readAsStringSync();
+    final firebaseSource = File(
+      'lib/repositories/firebase_observation_repository.dart',
+    ).readAsStringSync();
+    final manualSaveSource = File(
+      'lib/screens/save_observation_screen.dart',
+    ).readAsStringSync();
+    final firebaseConfig = File('firebase.json').readAsStringSync();
+    final storageRules = File('storage.rules').readAsStringSync();
+
+    expect(localSource, contains('_hasSavedPhoto(observation)'));
+    expect(manualSaveSource, contains('ImageSource.camera'));
+    expect(manualSaveSource, contains('ImageSource.gallery'));
+    expect(firebaseSource, contains('await ref.putFile('));
+    expect(firebaseSource, contains('cloud_photo_failed'));
+    expect(firebaseConfig, contains('"rules": "storage.rules"'));
+    expect(storageRules, contains('request.auth.uid == uid'));
   });
 
   test('sync completion preserves mutations queued during an active sync', () {
@@ -158,6 +192,15 @@ void main() {
 
     expect(merged, hasLength(1));
     expect(merged.single.label, 'Newer cloud');
+  });
+
+  test('map uses fungi markers coloured by species rarity', () {
+    final source = File('lib/screens/map_screen.dart').readAsStringSync();
+
+    expect(source, contains('_FungiMapMarker('));
+    expect(source, contains('_rarityColor(rarity.level)'));
+    expect(source, contains("'Fungi rarity'"));
+    expect(source, isNot(contains('Icons.location_on,')));
   });
 }
 

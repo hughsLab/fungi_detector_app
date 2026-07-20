@@ -219,14 +219,19 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
       _showMessage('Detection confidence is invalid. Cannot save.');
       return;
     }
+    final sourcePhotoPath = args.photoPath?.trim();
+    if (sourcePhotoPath == null || sourcePhotoPath.isEmpty) {
+      _showMessage('A photo is required. Run the scan again before saving.');
+      return;
+    }
 
     setState(() {
       _saving = true;
     });
     try {
-      String? photoPath;
-      if (args.photoPath != null) {
-        photoPath = await _persistPhoto(args.photoPath!);
+      final photoPath = await _persistPhoto(sourcePhotoPath);
+      if (photoPath == null) {
+        throw StateError('The captured photo is no longer available.');
       }
       final candidates = _resultCandidates(args);
       final selectedCandidate = candidates[_selectedCandidateIndex];

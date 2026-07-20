@@ -47,5 +47,9 @@
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Your location is used to tag observations on the map.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Your camera is used to photograph observations.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Your photo library is used to add a picture to an observation.</string>
 </dict>
 </plist>

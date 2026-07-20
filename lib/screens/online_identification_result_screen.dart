@@ -57,6 +57,9 @@ class _OnlineIdentificationResultScreenState
       );
       final settings = await _settingsService.loadSettings();
       final photoPath = await _persistPhoto(args.photoPath);
+      if (photoPath == null) {
+        throw StateError('The selected photo is no longer available.');
+      }
       final secondary = result.alternatives.isEmpty
           ? null
           : result.alternatives.first;

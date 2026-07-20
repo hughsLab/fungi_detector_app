@@ -34,11 +34,13 @@ class _PhotoUploadResult {
   final String? imageStoragePath;
   final String? downloadUrl;
   final String status;
+  final Object? error;
 
   const _PhotoUploadResult({
     required this.imageStoragePath,
     required this.downloadUrl,
     required this.status,
+    this.error,
   });
 
   const _PhotoUploadResult.synced({
@@ -57,12 +59,15 @@ class _PhotoUploadResult {
           status: 'cloud_synced_no_photo',
         );
 
-  const _PhotoUploadResult.failed()
+  const _PhotoUploadResult.failed([Object? error])
       : this(
           imageStoragePath: null,
           downloadUrl: null,
           status: 'cloud_photo_failed',
+          error: error,
         );
+
+  bool get failed => status == 'cloud_photo_failed';
 }
 
 class FirebaseObservationRepository {
@@ -144,6 +149,21 @@ class FirebaseObservationRepository {
       final downloadUrl = photoUpload.downloadUrl ??
           _httpUrlOrNull(observation.imageUrl) ??
           _httpUrlOrNull(observation.photoPath);
+      if (photoUpload.failed && downloadUrl == null) {
+        return FirebaseObservationSaveResult(
+          status: FirebaseObservationSaveStatus.failed,
+          observation: observation.copyWith(syncStatus: 'cloud_photo_failed'),
+          error: photoUpload.error ??
+              StateError('The observation photo could not be uploaded.'),
+        );
+      }
+      if (downloadUrl == null) {
+        return FirebaseObservationSaveResult(
+          status: FirebaseObservationSaveStatus.failed,
+          observation: observation.copyWith(syncStatus: 'cloud_photo_failed'),
+          error: StateError('Every cloud observation requires a photo.'),
+        );
+      }
       final cloudObservation = observation.copyWith(
         userId: uid,
         ownerUsername: showUsername ? profile?.username : null,
@@ -174,7 +194,7 @@ class FirebaseObservationRepository {
         'userIdPresent=${uid.isNotEmpty} isPublic=${observation.isPublic} '
         'detectionSource=${observation.detectionSource ?? "-"} '
         'hasValidLocation=${observation.location != null} '
-        'hasPhoto=${downloadUrl != null} keys=${data.keys.toList()..sort()}',
+        'hasPhoto=true keys=${data.keys.toList()..sort()}',
       );
       await _observations.doc(observation.id).set(
             data,
@@ -353,17 +373,24 @@ class FirebaseObservationRepository {
         photoPath.startsWith('http://') ||
         photoPath.startsWith('https://')) {
       _debugLog(
-        'no local photo id=${observation.id}; writing metadata only',
+        'no local photo id=${observation.id}; checking existing cloud image',
       );
-      return _PhotoUploadResult.noPhoto();
+      return _httpUrlOrNull(observation.imageUrl) != null ||
+              _httpUrlOrNull(observation.photoPath) != null
+          ? const _PhotoUploadResult.noPhoto()
+          : _PhotoUploadResult.failed(
+              StateError('No observation photo was provided.'),
+            );
     }
 
     final photoFile = File(photoPath);
     if (!await photoFile.exists()) {
       _debugLog(
-        'local photo missing id=${observation.id}; writing metadata only',
+        'local photo missing id=${observation.id}; sync will retry',
       );
-      return _PhotoUploadResult.noPhoto();
+      return _PhotoUploadResult.failed(
+        StateError('The local observation photo is missing.'),
+      );
     }
 
     try {
@@ -372,7 +399,7 @@ class FirebaseObservationRepository {
       await ref.putFile(
         photoFile,
         SettableMetadata(
-          contentType: 'image/jpeg',
+          contentType: _photoContentType(photoPath),
           customMetadata: <String, String>{
             'observationId': observation.id,
             'userId': userId,
@@ -390,7 +417,7 @@ class FirebaseObservationRepository {
         '${_safeError(e)}',
         stackTrace: st,
       );
-      return _PhotoUploadResult.failed();
+      return _PhotoUploadResult.failed(e);
     }
   }
 
@@ -527,6 +554,16 @@ class FirebaseObservationRepository {
       return trimmed;
     }
     return null;
+  }
+
+  String _photoContentType(String path) {
+    final lower = path.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.heic') || lower.endsWith('.heif')) {
+      return 'image/heic';
+    }
+    return 'image/jpeg';
   }
 
   String? _nonEmptyOrNull(String? value) {

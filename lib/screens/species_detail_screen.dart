@@ -966,6 +966,11 @@ class _ObservationSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
+            'User: ${observation.observerName ?? 'Unknown user'}',
+            style: const TextStyle(color: Color(0xCCFFFFFF)),
+          ),
+          const SizedBox(height: 4),
+          Text(
             'Confidence: ${formatConfidence(observation.confidence)}',
             style: const TextStyle(color: Color(0xCCFFFFFF)),
           ),

@@ -75,6 +75,35 @@ void main() {
     expect(restored.syncStatus, 'synced');
   });
 
+  test('observation exposes username as its observer name', () {
+    final restored = Observation.fromJson({
+      'id': 'obs-user',
+      'speciesId': 'species-1',
+      'classIndex': 1,
+      'label': 'Aleuria aurantia',
+      'confidence': 0.9,
+      'createdAt': '2026-07-20T10:00:00.000Z',
+      'ownerUsername': 'field_user',
+      'ownerDisplayName': 'Field User',
+    });
+
+    expect(restored.observerName, 'field_user');
+  });
+
+  test('observation uses display name when username is unavailable', () {
+    final restored = Observation.fromJson({
+      'id': 'obs-display-name',
+      'speciesId': 'species-1',
+      'classIndex': 1,
+      'label': 'Aleuria aurantia',
+      'confidence': 0.9,
+      'createdAt': '2026-07-20T10:00:00.000Z',
+      'ownerDisplayName': 'Field User',
+    });
+
+    expect(restored.observerName, 'Field User');
+  });
+
   test('legacy observation without candidates still parses', () {
     final restored = Observation.fromJson({
       'id': 'legacy',

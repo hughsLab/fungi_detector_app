@@ -1,3 +1,5 @@
+enum SpeciesRarity { common, uncommon, rare, veryRare, unknown }
+
 class Species {
   final String id;
   final String? modelId;
@@ -28,6 +30,7 @@ class Species {
   final String? sourceTaxonomy;
   final String? sourceDescription;
   final String? thumbnailAssetPath;
+  final SpeciesRarity rarity;
 
   const Species({
     required this.id,
@@ -59,6 +62,7 @@ class Species {
     required this.sourceTaxonomy,
     required this.sourceDescription,
     required this.thumbnailAssetPath,
+    this.rarity = SpeciesRarity.unknown,
   });
 
   factory Species.fromJson(Map<String, dynamic> json) {
@@ -167,8 +171,28 @@ class Species {
       sourceDescription: sourceDescription,
       thumbnailAssetPath:
           json['thumbnailAssetPath']?.toString() ?? json['imageAsset']?.toString(),
+      rarity: _parseSpeciesRarity(
+        json['rarity'] ?? json['rarityStatus'] ?? json['rarity_status'],
+      ),
     );
   }
+
+  SpeciesRarity get mapRarity {
+    if (rarity != SpeciesRarity.unknown) {
+      return rarity;
+    }
+    final rangeScore = <String>{
+      ...location.global.map((value) => value.trim().toLowerCase()),
+      ...location.australiaStates.map((value) => value.trim().toLowerCase()),
+    }.where((value) => value.isNotEmpty).length;
+    if (rangeScore == 0) return SpeciesRarity.unknown;
+    if (rangeScore <= 4) return SpeciesRarity.veryRare;
+    if (rangeScore <= 7) return SpeciesRarity.rare;
+    if (rangeScore <= 11) return SpeciesRarity.uncommon;
+    return SpeciesRarity.common;
+  }
+
+  bool get mapRarityIsEstimated => rarity == SpeciesRarity.unknown;
 
   String get displayName {
     final common = commonName;
@@ -188,6 +212,27 @@ class Species {
       taxonomyGenus,
       taxonomySpecies,
     ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' > ');
+  }
+}
+
+SpeciesRarity _parseSpeciesRarity(dynamic value) {
+  final normalized = value
+      ?.toString()
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'[_-]+'), ' ');
+  switch (normalized) {
+    case 'common':
+      return SpeciesRarity.common;
+    case 'uncommon':
+      return SpeciesRarity.uncommon;
+    case 'rare':
+      return SpeciesRarity.rare;
+    case 'very rare':
+    case 'extremely rare':
+      return SpeciesRarity.veryRare;
+    default:
+      return SpeciesRarity.unknown;
   }
 }
 
