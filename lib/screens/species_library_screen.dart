@@ -4,6 +4,7 @@ import '../models/navigation_args.dart';
 import '../models/species.dart';
 import '../repositories/species_repository.dart';
 import '../widgets/forest_background.dart';
+import '../widgets/toxicity_badge.dart';
 
 class SpeciesLibraryScreen extends StatefulWidget {
   const SpeciesLibraryScreen({super.key});
@@ -230,6 +231,11 @@ class _SpeciesLibraryTile extends StatelessWidget {
                         ),
                       ),
                     ],
+                    const SizedBox(height: 6),
+                    ToxicityBadge(
+                      level: species.toxicityLevel,
+                      compact: true,
+                    ),
                   ],
                 ),
               ),

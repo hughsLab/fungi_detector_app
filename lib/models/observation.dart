@@ -1,3 +1,6 @@
+import 'inaturalist_taxon.dart';
+import 'toxicity_level.dart';
+
 enum ObservationLocationSource { deviceGps, exifGps, none }
 
 class ObservationCandidate {
@@ -124,6 +127,26 @@ class Observation {
   final double? publicLat;
   final double? publicLng;
   final String? syncStatus;
+  final ToxicityLevel toxicityLevel;
+  final String? toxicitySummary;
+  final String? toxicitySource;
+  final String? toxicitySourceUrl;
+  final DateTime? toxicityVerifiedAt;
+  final int? iNaturalistTaxonId;
+  final String? iNaturalistAcceptedName;
+  final String? iNaturalistCommonName;
+  final String? iNaturalistPhotoUrl;
+  final String? iNaturalistPhotoAttribution;
+  final String? iNaturalistPhotoLicense;
+  final String? iNaturalistTaxonUrl;
+  final int? iNaturalistGlobalObservationCount;
+  final int? iNaturalistRegionalObservationCount;
+  final DateTime? iNaturalistObservationCountUpdatedAt;
+  final String? conservationStatus;
+  final String? conservationStatusAuthority;
+  final String? conservationStatusPlace;
+  final DateTime? iNaturalistDataUpdatedAt;
+  final INaturalistMatchStatus? iNaturalistMatchStatus;
 
   const Observation({
     required this.id,
@@ -193,6 +216,26 @@ class Observation {
     this.publicLat,
     this.publicLng,
     this.syncStatus,
+    this.toxicityLevel = ToxicityLevel.unknown,
+    this.toxicitySummary,
+    this.toxicitySource,
+    this.toxicitySourceUrl,
+    this.toxicityVerifiedAt,
+    this.iNaturalistTaxonId,
+    this.iNaturalistAcceptedName,
+    this.iNaturalistCommonName,
+    this.iNaturalistPhotoUrl,
+    this.iNaturalistPhotoAttribution,
+    this.iNaturalistPhotoLicense,
+    this.iNaturalistTaxonUrl,
+    this.iNaturalistGlobalObservationCount,
+    this.iNaturalistRegionalObservationCount,
+    this.iNaturalistObservationCountUpdatedAt,
+    this.conservationStatus,
+    this.conservationStatusAuthority,
+    this.conservationStatusPlace,
+    this.iNaturalistDataUpdatedAt,
+    this.iNaturalistMatchStatus,
   });
 
   String get speciesName => label;
@@ -297,23 +340,17 @@ class Observation {
       commonName:
           json['commonName']?.toString() ?? json['colloquialName']?.toString(),
       colloquialName: json['colloquialName']?.toString(),
-      confidence: json['confidence'] == null
-          ? null
-          : (json['confidence'] as num).toDouble(),
+      confidence: _parseDouble(json['confidence']),
       rawConfidence: _parseDouble(json['rawConfidence']),
       calibratedConfidence: _parseDouble(json['calibratedConfidence']),
       finalScore: _parseDouble(json['finalScore']),
       top2Label: json['top2Label']?.toString(),
-      top2Confidence: json['top2Confidence'] == null
-          ? null
-          : (json['top2Confidence'] as num).toDouble(),
+      top2Confidence: _parseDouble(json['top2Confidence']),
       top2ModelId: json['top2ModelId']?.toString(),
       top2ModelDisplayName: json['top2ModelDisplayName']?.toString(),
       top2SourceClassId: _parseInt(json['top2SourceClassId']),
       candidates: _parseCandidates(json['candidates']),
-      top1VoteRatio: json['top1VoteRatio'] == null
-          ? null
-          : (json['top1VoteRatio'] as num).toDouble(),
+      top1VoteRatio: _parseDouble(json['top1VoteRatio']),
       windowFrameCount: json['windowFrameCount'] is num
           ? (json['windowFrameCount'] as num).toInt()
           : null,
@@ -375,6 +412,41 @@ class Observation {
       publicLat: _parseDouble(json['publicLat']),
       publicLng: _parseDouble(json['publicLng']),
       syncStatus: json['syncStatus']?.toString(),
+      toxicityLevel: parseToxicityLevel(
+        json['toxicityLevel'],
+        legacyIsPoisonous: json['isPoisonous'] is bool
+            ? json['isPoisonous'] as bool
+            : null,
+      ),
+      toxicitySummary: json['toxicitySummary']?.toString(),
+      toxicitySource: json['toxicitySource']?.toString(),
+      toxicitySourceUrl: json['toxicitySourceUrl']?.toString(),
+      toxicityVerifiedAt: _parseDateTime(json['toxicityVerifiedAt']),
+      iNaturalistTaxonId: _parseInt(json['iNaturalistTaxonId']),
+      iNaturalistAcceptedName:
+          json['iNaturalistAcceptedName']?.toString(),
+      iNaturalistCommonName: json['iNaturalistCommonName']?.toString(),
+      iNaturalistPhotoUrl: json['iNaturalistPhotoUrl']?.toString(),
+      iNaturalistPhotoAttribution:
+          json['iNaturalistPhotoAttribution']?.toString(),
+      iNaturalistPhotoLicense:
+          json['iNaturalistPhotoLicense']?.toString(),
+      iNaturalistTaxonUrl: json['iNaturalistTaxonUrl']?.toString(),
+      iNaturalistGlobalObservationCount:
+          _parseInt(json['iNaturalistGlobalObservationCount']),
+      iNaturalistRegionalObservationCount:
+          _parseInt(json['iNaturalistRegionalObservationCount']),
+      iNaturalistObservationCountUpdatedAt:
+          _parseDateTime(json['iNaturalistObservationCountUpdatedAt']),
+      conservationStatus: json['conservationStatus']?.toString(),
+      conservationStatusAuthority:
+          json['conservationStatusAuthority']?.toString(),
+      conservationStatusPlace: json['conservationStatusPlace']?.toString(),
+      iNaturalistDataUpdatedAt:
+          _parseDateTime(json['iNaturalistDataUpdatedAt']),
+      iNaturalistMatchStatus: _parseINaturalistMatchStatus(
+        json['iNaturalistMatchStatus'],
+      ),
     );
   }
 
@@ -454,6 +526,29 @@ class Observation {
       'publicLat': publicLat,
       'publicLng': publicLng,
       'syncStatus': syncStatus,
+      'toxicityLevel': toxicityLevel.name,
+      'toxicitySummary': toxicitySummary,
+      'toxicitySource': toxicitySource,
+      'toxicitySourceUrl': toxicitySourceUrl,
+      'toxicityVerifiedAt': toxicityVerifiedAt?.toIso8601String(),
+      'iNaturalistTaxonId': iNaturalistTaxonId,
+      'iNaturalistAcceptedName': iNaturalistAcceptedName,
+      'iNaturalistCommonName': iNaturalistCommonName,
+      'iNaturalistPhotoUrl': iNaturalistPhotoUrl,
+      'iNaturalistPhotoAttribution': iNaturalistPhotoAttribution,
+      'iNaturalistPhotoLicense': iNaturalistPhotoLicense,
+      'iNaturalistTaxonUrl': iNaturalistTaxonUrl,
+      'iNaturalistGlobalObservationCount':
+          iNaturalistGlobalObservationCount,
+      'iNaturalistRegionalObservationCount':
+          iNaturalistRegionalObservationCount,
+      'iNaturalistObservationCountUpdatedAt':
+          iNaturalistObservationCountUpdatedAt?.toIso8601String(),
+      'conservationStatus': conservationStatus,
+      'conservationStatusAuthority': conservationStatusAuthority,
+      'conservationStatusPlace': conservationStatusPlace,
+      'iNaturalistDataUpdatedAt': iNaturalistDataUpdatedAt?.toIso8601String(),
+      'iNaturalistMatchStatus': iNaturalistMatchStatus?.name,
     };
   }
 
@@ -525,6 +620,26 @@ class Observation {
     double? publicLat,
     double? publicLng,
     String? syncStatus,
+    ToxicityLevel? toxicityLevel,
+    String? toxicitySummary,
+    String? toxicitySource,
+    String? toxicitySourceUrl,
+    DateTime? toxicityVerifiedAt,
+    int? iNaturalistTaxonId,
+    String? iNaturalistAcceptedName,
+    String? iNaturalistCommonName,
+    String? iNaturalistPhotoUrl,
+    String? iNaturalistPhotoAttribution,
+    String? iNaturalistPhotoLicense,
+    String? iNaturalistTaxonUrl,
+    int? iNaturalistGlobalObservationCount,
+    int? iNaturalistRegionalObservationCount,
+    DateTime? iNaturalistObservationCountUpdatedAt,
+    String? conservationStatus,
+    String? conservationStatusAuthority,
+    String? conservationStatusPlace,
+    DateTime? iNaturalistDataUpdatedAt,
+    INaturalistMatchStatus? iNaturalistMatchStatus,
   }) {
     return Observation(
       id: id ?? this.id,
@@ -597,6 +712,41 @@ class Observation {
       publicLat: publicLat ?? this.publicLat,
       publicLng: publicLng ?? this.publicLng,
       syncStatus: syncStatus ?? this.syncStatus,
+      toxicityLevel: toxicityLevel ?? this.toxicityLevel,
+      toxicitySummary: toxicitySummary ?? this.toxicitySummary,
+      toxicitySource: toxicitySource ?? this.toxicitySource,
+      toxicitySourceUrl: toxicitySourceUrl ?? this.toxicitySourceUrl,
+      toxicityVerifiedAt: toxicityVerifiedAt ?? this.toxicityVerifiedAt,
+      iNaturalistTaxonId: iNaturalistTaxonId ?? this.iNaturalistTaxonId,
+      iNaturalistAcceptedName:
+          iNaturalistAcceptedName ?? this.iNaturalistAcceptedName,
+      iNaturalistCommonName:
+          iNaturalistCommonName ?? this.iNaturalistCommonName,
+      iNaturalistPhotoUrl:
+          iNaturalistPhotoUrl ?? this.iNaturalistPhotoUrl,
+      iNaturalistPhotoAttribution:
+          iNaturalistPhotoAttribution ?? this.iNaturalistPhotoAttribution,
+      iNaturalistPhotoLicense:
+          iNaturalistPhotoLicense ?? this.iNaturalistPhotoLicense,
+      iNaturalistTaxonUrl: iNaturalistTaxonUrl ?? this.iNaturalistTaxonUrl,
+      iNaturalistGlobalObservationCount:
+          iNaturalistGlobalObservationCount ??
+          this.iNaturalistGlobalObservationCount,
+      iNaturalistRegionalObservationCount:
+          iNaturalistRegionalObservationCount ??
+          this.iNaturalistRegionalObservationCount,
+      iNaturalistObservationCountUpdatedAt:
+          iNaturalistObservationCountUpdatedAt ??
+          this.iNaturalistObservationCountUpdatedAt,
+      conservationStatus: conservationStatus ?? this.conservationStatus,
+      conservationStatusAuthority:
+          conservationStatusAuthority ?? this.conservationStatusAuthority,
+      conservationStatusPlace:
+          conservationStatusPlace ?? this.conservationStatusPlace,
+      iNaturalistDataUpdatedAt:
+          iNaturalistDataUpdatedAt ?? this.iNaturalistDataUpdatedAt,
+      iNaturalistMatchStatus:
+          iNaturalistMatchStatus ?? this.iNaturalistMatchStatus,
     );
   }
 }
@@ -852,6 +1002,15 @@ ObservationLocationSource? _parseLocationSource(dynamic value) {
     if (candidate.name == raw) {
       return candidate;
     }
+  }
+  return null;
+}
+
+INaturalistMatchStatus? _parseINaturalistMatchStatus(dynamic value) {
+  final name = value?.toString();
+  if (name == null || name.isEmpty) return null;
+  for (final status in INaturalistMatchStatus.values) {
+    if (status.name == name) return status;
   }
   return null;
 }

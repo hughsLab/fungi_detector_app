@@ -80,12 +80,6 @@ class MushroomIdObservationMapper {
       lines.add('Online identification could not confidently identify this fungus.');
       return _dedupe(lines).join('\n\n');
     }
-    if ((top.edibility ?? '').trim().isNotEmpty) {
-      lines.add('Edibility: ${top.edibility!.trim()}');
-    }
-    if ((top.toxicity ?? '').trim().isNotEmpty) {
-      lines.add('Toxicity: ${top.toxicity!.trim()}');
-    }
     if ((top.description ?? '').trim().isNotEmpty) {
       lines.add('Description: ${top.description!.trim()}');
     }

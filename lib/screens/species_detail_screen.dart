@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 
 import '../models/field_note.dart';
+import '../models/inaturalist_taxon.dart';
 import '../models/navigation_args.dart';
 import '../models/observation.dart';
 import '../models/species.dart';
 import '../repositories/field_notes_repository.dart';
 import '../repositories/species_repository.dart';
 import '../services/species_map_location_resolver.dart';
+import '../services/inaturalist_service.dart';
 import '../utils/formatting.dart';
 import '../widgets/forest_background.dart';
 import '../widgets/global_distribution_map_preview.dart';
 import '../widgets/key_features_section.dart';
+import '../widgets/toxicity_safety_section.dart';
 
 class SpeciesDetailScreen extends StatefulWidget {
   const SpeciesDetailScreen({super.key});
@@ -52,7 +55,15 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
         }
       }
     }
-    return _SpeciesDetailData(species: species, similar: similar);
+    return _SpeciesDetailData(
+      species: species,
+      similar: similar,
+      iNaturalistFuture: species == null
+          ? null
+          : INaturalistService.instance.findTaxonByScientificName(
+              species.scientificName,
+            ),
+    );
   }
 
   void _openSaveObservation(String speciesId) {
@@ -290,8 +301,9 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                     );
                   }
 
-                  final species = snapshot.data!.species!;
-                  final similarSpecies = snapshot.data!.similar;
+                  final data = snapshot.data!;
+                  final species = data.species!;
+                  final similarSpecies = data.similar;
                   final observation = _args?.observation;
                   final String? comparePrimaryLabel =
                       _args?.comparePrimaryLabel?.trim();
@@ -402,6 +414,26 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                         const SizedBox(height: 16),
                         if (observation != null)
                           _ObservationSummaryCard(observation: observation),
+                        const SizedBox(height: 16),
+                        ToxicitySafetySection(
+                          level: species.toxicityLevel,
+                          summary: species.toxicitySummary,
+                          source: species.toxicitySource,
+                        ),
+                        const SizedBox(height: 16),
+                        if (data.iNaturalistFuture != null)
+                          FutureBuilder<INaturalistTaxonMatch>(
+                            future: data.iNaturalistFuture,
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState !=
+                                  ConnectionState.done) {
+                                return const _INaturalistSpeciesCard.loading();
+                              }
+                              return _INaturalistSpeciesCard(
+                                taxon: snapshot.data,
+                              );
+                            },
+                          ),
                         const SizedBox(height: 16),
                         _fieldNotesPanel(species.id),
                         if (description.isNotEmpty) ...[
@@ -698,11 +730,91 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
 class _SpeciesDetailData {
   final Species? species;
   final List<Species> similar;
+  final Future<INaturalistTaxonMatch>? iNaturalistFuture;
 
   const _SpeciesDetailData({
     required this.species,
     required this.similar,
+    required this.iNaturalistFuture,
   });
+}
+
+class _INaturalistSpeciesCard extends StatelessWidget {
+  final INaturalistTaxonMatch? taxon;
+  final bool isLoading;
+
+  const _INaturalistSpeciesCard({required this.taxon}) : isLoading = false;
+  const _INaturalistSpeciesCard.loading()
+    : taxon = null,
+      isLoading = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = taxon;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'iNaturalist species information',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (isLoading)
+            const LinearProgressIndicator()
+          else if (value == null ||
+              value.status != INaturalistMatchStatus.matched)
+            const Text(
+              'Supplementary public metadata is unavailable.',
+              style: TextStyle(color: Color(0xCCFFFFFF)),
+            )
+          else ...[
+            if (value.globalObservationCount != null)
+              Text(
+                'iNaturalist public observations: '
+                '${value.globalObservationCount}',
+                style: const TextStyle(color: Color(0xCCFFFFFF)),
+              ),
+            if ((value.conservationStatus ?? '').isNotEmpty)
+              Text(
+                'Conservation status: ${value.conservationStatus}'
+                '${(value.conservationStatusPlace ?? '').isEmpty ? '' : ' (${value.conservationStatusPlace})'}',
+                style: const TextStyle(color: Color(0xCCFFFFFF)),
+              ),
+            if ((value.photoAttribution ?? '').isNotEmpty)
+              Text(
+                'Reference image: ${value.photoAttribution}'
+                '${(value.photoLicense ?? '').isEmpty ? '' : ' / ${value.photoLicense}'}',
+                style: const TextStyle(
+                  color: Color(0xCCFFFFFF),
+                  fontSize: 12,
+                ),
+              ),
+            const SizedBox(height: 6),
+            const Text(
+              'Taxonomy and observation data: iNaturalist. Public observation '
+              'counts show reporting frequency and do not necessarily indicate '
+              'biological rarity.',
+              style: TextStyle(
+                color: Color(0xCCFFFFFF),
+                fontSize: 12,
+                height: 1.35,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 class _SeasonalityStrip extends StatelessWidget {

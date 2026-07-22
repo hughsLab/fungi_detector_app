@@ -165,7 +165,7 @@ void main() {
     expect(draft.confidence, 0.6433);
     expect(draft.candidates, hasLength(2));
     expect(draft.notes, contains('Do not consume fungi'));
-    expect(draft.notes, contains('Edibility: poisonous'));
+    expect(draft.notes, isNot(contains('Edibility: poisonous')));
     expect(draft.notes, contains('Possible matches'));
   });
 }

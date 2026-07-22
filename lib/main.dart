@@ -15,6 +15,7 @@ import 'screens/field_note_editor_screen.dart';
 import 'screens/field_notes_screen.dart';
 import 'screens/main_shell_screen.dart';
 import 'screens/map_screen.dart';
+import 'screens/insights_screen.dart';
 import 'screens/observations_screen.dart';
 import 'screens/online_identification_result_screen.dart';
 import 'screens/save_observation_screen.dart';
@@ -92,6 +93,7 @@ class RealtimeDetectionApp extends StatelessWidget {
         '/save-observation': (context) => const SaveObservationScreen(),
         '/observations': (context) => const ObservationsScreen(),
         '/map': (context) => const MapScreen(),
+        '/insights': (context) => const InsightsScreen(),
         '/settings': (context) => const SettingsScreen(),
         '/disclaimer': (context) => const DisclaimerScreen(),
         '/about': (context) => const AboutScreen(),

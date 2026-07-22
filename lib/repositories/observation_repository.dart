@@ -111,6 +111,14 @@ class ObservationRepository implements ObservationsRepository {
         );
   }
 
+  /// A read-only, bounded public snapshot for aggregate insights.
+  ///
+  /// Unlike [streamPublicObservations], this deliberately retains records
+  /// without coordinates because they still contribute to non-map metrics.
+  Stream<List<Observation>> streamPublicInsightObservations({int limit = 300}) {
+    return _firebaseRepository.streamPublicObservations(limit: limit);
+  }
+
   @override
   Stream<List<Observation>> streamMyObservations({int limit = 300}) {
     return _firebaseRepository.streamMyObservations(limit: limit);

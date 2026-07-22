@@ -155,12 +155,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    _ExploreGrid(
+                    HomeExploreMenu(
                       twoColumns: twoColumns,
                       observationCount: _observationCount,
                       onTapObservations: () => _goTo(context, '/observations'),
                       onTapLibrary: () => _goTo(context, '/species-library'),
                       onTapMap: () => _goTo(context, '/map'),
+                      onTapInsights: () => _goTo(context, '/insights'),
                       onTapNotes: () => _goTo(context, '/field-notes'),
                     ),
                   ],
@@ -439,20 +440,23 @@ class _StartDetectionCard extends StatelessWidget {
   }
 }
 
-class _ExploreGrid extends StatelessWidget {
+class HomeExploreMenu extends StatelessWidget {
   final bool twoColumns;
   final int? observationCount;
   final VoidCallback onTapObservations;
   final VoidCallback onTapLibrary;
   final VoidCallback onTapMap;
+  final VoidCallback onTapInsights;
   final VoidCallback onTapNotes;
 
-  const _ExploreGrid({
+  const HomeExploreMenu({
+    super.key,
     required this.twoColumns,
     required this.observationCount,
     required this.onTapObservations,
     required this.onTapLibrary,
     required this.onTapMap,
+    required this.onTapInsights,
     required this.onTapNotes,
   });
 
@@ -473,12 +477,21 @@ class _ExploreGrid extends StatelessWidget {
         onTap: onTapLibrary,
       ),
       _ExploreCard(
+        key: const Key('home-map-menu-item'),
         title: 'Observation Map',
         subtitle: 'View mapped finds',
         icon: Icons.location_on_rounded,
         onTap: onTapMap,
       ),
       _ExploreCard(
+        key: const Key('home-insights-menu-item'),
+        title: 'Insights',
+        subtitle: 'Explore detection trends',
+        icon: Icons.insights_rounded,
+        onTap: onTapInsights,
+      ),
+      _ExploreCard(
+        key: const Key('home-notes-menu-item'),
         title: 'Field Notes',
         subtitle: 'Local notes and photos',
         icon: Icons.edit_note_rounded,
@@ -517,6 +530,7 @@ class _ExploreCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const _ExploreCard({
+    super.key,
     required this.title,
     required this.subtitle,
     required this.icon,

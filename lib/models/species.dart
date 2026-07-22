@@ -1,3 +1,5 @@
+import 'toxicity_level.dart';
+
 enum SpeciesRarity { common, uncommon, rare, veryRare, unknown }
 
 class Species {
@@ -31,6 +33,21 @@ class Species {
   final String? sourceDescription;
   final String? thumbnailAssetPath;
   final SpeciesRarity rarity;
+  final ToxicityLevel toxicityLevel;
+  final String? toxicitySummary;
+  final String? toxicitySource;
+  final String? toxicitySourceUrl;
+  final DateTime? toxicityVerifiedAt;
+  final int? iNaturalistTaxonId;
+  final String? iNaturalistPreferredCommonName;
+  final String? iNaturalistPhotoUrl;
+  final String? iNaturalistPhotoAttribution;
+  final String? iNaturalistPhotoLicense;
+  final int? iNaturalistGlobalObservationCount;
+  final String? conservationStatus;
+  final String? conservationStatusAuthority;
+  final String? conservationStatusPlace;
+  final DateTime? iNaturalistDataUpdatedAt;
 
   const Species({
     required this.id,
@@ -63,6 +80,21 @@ class Species {
     required this.sourceDescription,
     required this.thumbnailAssetPath,
     this.rarity = SpeciesRarity.unknown,
+    this.toxicityLevel = ToxicityLevel.unknown,
+    this.toxicitySummary,
+    this.toxicitySource,
+    this.toxicitySourceUrl,
+    this.toxicityVerifiedAt,
+    this.iNaturalistTaxonId,
+    this.iNaturalistPreferredCommonName,
+    this.iNaturalistPhotoUrl,
+    this.iNaturalistPhotoAttribution,
+    this.iNaturalistPhotoLicense,
+    this.iNaturalistGlobalObservationCount,
+    this.conservationStatus,
+    this.conservationStatusAuthority,
+    this.conservationStatusPlace,
+    this.iNaturalistDataUpdatedAt,
   });
 
   factory Species.fromJson(Map<String, dynamic> json) {
@@ -174,6 +206,35 @@ class Species {
       rarity: _parseSpeciesRarity(
         json['rarity'] ?? json['rarityStatus'] ?? json['rarity_status'],
       ),
+      toxicityLevel: parseToxicityLevel(
+        json['toxicityLevel'],
+        legacyIsPoisonous: json['isPoisonous'] is bool
+            ? json['isPoisonous'] as bool
+            : null,
+      ),
+      toxicitySummary: json['toxicitySummary']?.toString(),
+      toxicitySource: json['toxicitySource']?.toString(),
+      toxicitySourceUrl: json['toxicitySourceUrl']?.toString(),
+      toxicityVerifiedAt: DateTime.tryParse(
+        json['toxicityVerifiedAt']?.toString() ?? '',
+      ),
+      iNaturalistTaxonId: _parseInt(json['iNaturalistTaxonId']),
+      iNaturalistPreferredCommonName:
+          json['iNaturalistPreferredCommonName']?.toString(),
+      iNaturalistPhotoUrl: json['iNaturalistPhotoUrl']?.toString(),
+      iNaturalistPhotoAttribution:
+          json['iNaturalistPhotoAttribution']?.toString(),
+      iNaturalistPhotoLicense:
+          json['iNaturalistPhotoLicense']?.toString(),
+      iNaturalistGlobalObservationCount:
+          _parseInt(json['iNaturalistGlobalObservationCount']),
+      conservationStatus: json['conservationStatus']?.toString(),
+      conservationStatusAuthority:
+          json['conservationStatusAuthority']?.toString(),
+      conservationStatusPlace: json['conservationStatusPlace']?.toString(),
+      iNaturalistDataUpdatedAt: DateTime.tryParse(
+        json['iNaturalistDataUpdatedAt']?.toString() ?? '',
+      ),
     );
   }
 
@@ -214,6 +275,10 @@ class Species {
     ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' > ');
   }
 }
+
+int? _parseInt(dynamic value) => value is num
+    ? value.toInt()
+    : int.tryParse(value?.toString() ?? '');
 
 SpeciesRarity _parseSpeciesRarity(dynamic value) {
   final normalized = value

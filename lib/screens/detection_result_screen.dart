@@ -10,6 +10,7 @@ import '../models/navigation_args.dart';
 import '../models/observation.dart';
 import '../models/species.dart';
 import '../models/species_map_marker.dart';
+import '../models/toxicity_level.dart';
 import '../repositories/field_notes_repository.dart';
 import '../repositories/observation_repository.dart';
 import '../repositories/species_repository.dart';
@@ -311,6 +312,11 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
         notes: null,
         detectionSource: 'offline_model',
         identificationSource: 'offline',
+        toxicityLevel: _matchedSpecies?.toxicityLevel ?? ToxicityLevel.unknown,
+        toxicitySummary: _matchedSpecies?.toxicitySummary,
+        toxicitySource: _matchedSpecies?.toxicitySource,
+        toxicitySourceUrl: _matchedSpecies?.toxicitySourceUrl,
+        toxicityVerifiedAt: _matchedSpecies?.toxicityVerifiedAt,
         isPublic: settings.shareObservationsOnPublicMap,
       );
       if (kDebugMode) {

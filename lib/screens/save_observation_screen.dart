@@ -154,6 +154,11 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
             : _notesController.text.trim(),
         detectionSource: 'manual',
         identificationSource: 'manual',
+        toxicityLevel: species.toxicityLevel,
+        toxicitySummary: species.toxicitySummary,
+        toxicitySource: species.toxicitySource,
+        toxicitySourceUrl: species.toxicitySourceUrl,
+        toxicityVerifiedAt: species.toxicityVerifiedAt,
         isPublic: settings.shareObservationsOnPublicMap,
       );
 

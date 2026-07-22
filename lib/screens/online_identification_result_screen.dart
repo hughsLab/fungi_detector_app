@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -8,12 +9,15 @@ import 'package:uuid/uuid.dart';
 import '../models/mushroom_id_result.dart';
 import '../models/navigation_args.dart';
 import '../models/observation.dart';
+import '../models/toxicity_level.dart';
 import '../repositories/observation_repository.dart';
 import '../repositories/species_repository.dart';
 import '../services/mushroom_id_observation_mapper.dart';
 import '../services/settings_service.dart';
+import '../services/species_enrichment_service.dart';
 import '../widgets/forest_background.dart';
 import '../widgets/local_image_preview.dart';
+import '../widgets/toxicity_badge.dart';
 
 class OnlineIdentificationResultScreen extends StatefulWidget {
   const OnlineIdentificationResultScreen({super.key});
@@ -32,16 +36,39 @@ class _OnlineIdentificationResultScreenState
   final MushroomIdObservationMapper _mapper =
       const MushroomIdObservationMapper();
   final Uuid _uuid = const Uuid();
+  final SpeciesEnrichmentService _enrichmentService =
+      SpeciesEnrichmentService.instance;
 
   OnlineIdentificationResultArgs? _args;
   bool _saving = false;
   bool _saved = false;
+  bool _enriching = false;
+  SpeciesEnrichmentResult? _enrichment;
+  Future<SpeciesEnrichmentResult>? _enrichmentFuture;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _args ??= ModalRoute.of(context)?.settings.arguments
-        as OnlineIdentificationResultArgs?;
+    if (_args == null) {
+      _args = ModalRoute.of(context)?.settings.arguments
+          as OnlineIdentificationResultArgs?;
+      final scientificName = _args?.result.topSuggestion?.scientificName.trim();
+      if (scientificName != null && scientificName.isNotEmpty) {
+        unawaited(_enrich(scientificName));
+      }
+    }
+  }
+
+  Future<void> _enrich(String scientificName) async {
+    setState(() => _enriching = true);
+    final future = _enrichmentService.enrich(scientificName);
+    _enrichmentFuture = future;
+    final result = await future;
+    if (!mounted) return;
+    setState(() {
+      _enrichment = result;
+      _enriching = false;
+    });
   }
 
   Future<void> _saveObservation(OnlineIdentificationResultArgs args) async {
@@ -55,6 +82,9 @@ class _OnlineIdentificationResultScreenState
         scientificName: draft.scientificName,
         label: draft.label,
       );
+      final enrichment = _enrichment;
+      final localSpecies = enrichment?.localSpecies ?? matchedSpecies;
+      final taxon = enrichment?.iNaturalist;
       final settings = await _settingsService.loadSettings();
       final photoPath = await _persistPhoto(args.photoPath);
       if (photoPath == null) {
@@ -66,12 +96,20 @@ class _OnlineIdentificationResultScreenState
 
       final observation = Observation(
         id: _uuid.v4(),
-        speciesId: matchedSpecies?.id ?? draft.scientificName,
+        speciesId: localSpecies?.id ?? draft.scientificName,
         classIndex: null,
-        label: draft.label,
-        scientificName: draft.scientificName,
-        commonName: draft.commonName,
-        colloquialName: draft.commonName,
+        label: localSpecies?.commonName ??
+            taxon?.preferredCommonName ??
+            draft.label,
+        scientificName:
+            taxon?.acceptedScientificName ?? draft.scientificName,
+        commonName: localSpecies?.commonName ??
+            taxon?.preferredCommonName ??
+            draft.commonName,
+        colloquialName: localSpecies?.colloquialName ??
+            localSpecies?.commonName ??
+            taxon?.preferredCommonName ??
+            draft.commonName,
         confidence: draft.confidence,
         rawConfidence: draft.confidence,
         calibratedConfidence: draft.confidence,
@@ -117,6 +155,32 @@ class _OnlineIdentificationResultScreenState
         ],
         regionSupported: result.regionSupported,
         locationFilterApplied: result.locationFilterApplied,
+        toxicityLevel:
+            enrichment?.toxicityLevel ??
+            localSpecies?.toxicityLevel ??
+            ToxicityLevel.unknown,
+        toxicitySummary:
+            enrichment?.toxicitySummary ?? localSpecies?.toxicitySummary,
+        toxicitySource:
+            enrichment?.toxicitySource ?? localSpecies?.toxicitySource,
+        toxicitySourceUrl:
+            enrichment?.toxicitySourceUrl ?? localSpecies?.toxicitySourceUrl,
+        toxicityVerifiedAt: localSpecies?.toxicityVerifiedAt,
+        iNaturalistTaxonId: taxon?.taxonId,
+        iNaturalistAcceptedName: taxon?.acceptedScientificName,
+        iNaturalistCommonName: taxon?.preferredCommonName,
+        iNaturalistPhotoUrl: taxon?.photoUrl,
+        iNaturalistPhotoAttribution: taxon?.photoAttribution,
+        iNaturalistPhotoLicense: taxon?.photoLicense,
+        iNaturalistTaxonUrl: taxon?.taxonUrl,
+        iNaturalistGlobalObservationCount: taxon?.globalObservationCount,
+        iNaturalistRegionalObservationCount: taxon?.regionalObservationCount,
+        iNaturalistObservationCountUpdatedAt: taxon?.fetchedAt,
+        conservationStatus: taxon?.conservationStatus,
+        conservationStatusAuthority: taxon?.conservationStatusAuthority,
+        conservationStatusPlace: taxon?.conservationStatusPlace,
+        iNaturalistDataUpdatedAt: taxon?.fetchedAt,
+        iNaturalistMatchStatus: taxon?.status,
         isPublic: settings.shareObservationsOnPublicMap,
       );
 
@@ -130,6 +194,10 @@ class _OnlineIdentificationResultScreenState
         );
       }
       await _observationRepository.saveObservation(observation);
+      final deferred = _enrichmentFuture;
+      if (enrichment == null && deferred != null) {
+        unawaited(_saveDeferredEnrichment(observation, deferred));
+      }
       if (!mounted) return;
       _saved = true;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -144,6 +212,52 @@ class _OnlineIdentificationResultScreenState
     } finally {
       if (mounted) {
         setState(() => _saving = false);
+      }
+    }
+  }
+
+  Future<void> _saveDeferredEnrichment(
+    Observation observation,
+    Future<SpeciesEnrichmentResult> future,
+  ) async {
+    try {
+      final enrichment = await future;
+      final taxon = enrichment.iNaturalist;
+      final local = enrichment.localSpecies;
+      final enriched = observation.copyWith(
+        speciesId: local?.id,
+        label: local?.commonName ?? taxon.preferredCommonName,
+        scientificName: taxon.acceptedScientificName,
+        commonName: local?.commonName ?? taxon.preferredCommonName,
+        colloquialName:
+            local?.colloquialName ??
+            local?.commonName ??
+            taxon.preferredCommonName,
+        toxicityLevel: enrichment.toxicityLevel,
+        toxicitySummary: enrichment.toxicitySummary,
+        toxicitySource: enrichment.toxicitySource,
+        toxicitySourceUrl: enrichment.toxicitySourceUrl,
+        toxicityVerifiedAt: local?.toxicityVerifiedAt,
+        iNaturalistTaxonId: taxon.taxonId,
+        iNaturalistAcceptedName: taxon.acceptedScientificName,
+        iNaturalistCommonName: taxon.preferredCommonName,
+        iNaturalistPhotoUrl: taxon.photoUrl,
+        iNaturalistPhotoAttribution: taxon.photoAttribution,
+        iNaturalistPhotoLicense: taxon.photoLicense,
+        iNaturalistTaxonUrl: taxon.taxonUrl,
+        iNaturalistGlobalObservationCount: taxon.globalObservationCount,
+        iNaturalistRegionalObservationCount: taxon.regionalObservationCount,
+        iNaturalistObservationCountUpdatedAt: taxon.fetchedAt,
+        conservationStatus: taxon.conservationStatus,
+        conservationStatusAuthority: taxon.conservationStatusAuthority,
+        conservationStatusPlace: taxon.conservationStatusPlace,
+        iNaturalistDataUpdatedAt: taxon.fetchedAt,
+        iNaturalistMatchStatus: taxon.status,
+      );
+      await _observationRepository.saveObservation(enriched);
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('Deferred iNaturalist enrichment was not saved: $error');
       }
     }
   }
@@ -183,7 +297,7 @@ class _OnlineIdentificationResultScreenState
     final result = args.result;
     final top = result.topSuggestion;
     final bool lowConfidence = !result.hasConfidentTopSuggestion;
-    final bool poisonous = _containsPoisonWarning(top);
+    final enrichment = _enrichment;
 
     return Scaffold(
       appBar: AppBar(
@@ -228,8 +342,6 @@ class _OnlineIdentificationResultScreenState
                         text:
                             'Online identification could not confidently identify this fungus.',
                       ),
-                    if (poisonous)
-                      const _WarningBanner(text: 'Poisonous warning returned.'),
                     const _WarningBanner(
                       text:
                           'Not for consumption. Do not eat fungi based on app identification.',
@@ -258,10 +370,38 @@ class _OnlineIdentificationResultScreenState
                         label: 'Common Names',
                         value: top!.commonNames.join(', '),
                       ),
-                    if ((top?.edibility ?? '').trim().isNotEmpty)
-                      _InfoLine(label: 'Edibility', value: top!.edibility!),
-                    if ((top?.toxicity ?? '').trim().isNotEmpty)
-                      _InfoLine(label: 'Toxicity', value: top!.toxicity!),
+                    const SizedBox(height: 10),
+                    ToxicityBadge(
+                      level:
+                          enrichment?.toxicityLevel ?? ToxicityLevel.unknown,
+                    ),
+                    if (_enriching)
+                      const _InfoLine(
+                        label: 'Species information',
+                        value: 'Checking iNaturalist…',
+                      )
+                    else if (enrichment?.iNaturalist.status.name == 'matched') ...[
+                      const _InfoLine(
+                        label: 'Identification source',
+                        value: 'Online identification',
+                      ),
+                      const _InfoLine(
+                        label: 'Species information',
+                        value: 'iNaturalist',
+                      ),
+                      if (enrichment?.iNaturalist.globalObservationCount != null)
+                        _InfoLine(
+                          label: 'iNaturalist public observations',
+                          value: enrichment!
+                              .iNaturalist.globalObservationCount!
+                              .toString(),
+                        ),
+                    ] else
+                      const _InfoLine(
+                        label: 'Toxicity',
+                        value:
+                            'Toxicity information unavailable for this species',
+                      ),
                     if ((top?.description ?? '').trim().isNotEmpty)
                       _InfoLine(label: 'Description', value: top!.description!),
                   ],
@@ -326,13 +466,6 @@ class _OnlineIdentificationResultScreenState
     );
   }
 
-  bool _containsPoisonWarning(MushroomIdSuggestion? suggestion) {
-    final text = [
-      suggestion?.edibility,
-      suggestion?.toxicity,
-    ].whereType<String>().join(' ').toLowerCase();
-    return text.contains('poison') || text.contains('toxic');
-  }
 }
 
 class _AlternativeTile extends StatelessWidget {

@@ -8,6 +8,7 @@ import '../models/field_note.dart';
 import '../models/navigation_args.dart';
 import '../models/observation.dart';
 import '../models/species.dart';
+import '../models/toxicity_level.dart';
 import '../repositories/field_notes_repository.dart';
 import '../repositories/observation_repository.dart';
 import '../repositories/species_repository.dart';
@@ -16,6 +17,8 @@ import '../utils/formatting.dart';
 import '../widgets/forest_background.dart';
 import '../widgets/key_features_section.dart';
 import '../widgets/local_image_preview.dart';
+import '../widgets/toxicity_badge.dart';
+import '../widgets/toxicity_safety_section.dart';
 
 class ObservationsScreen extends StatefulWidget {
   final ValueChanged<MapFocusRequest>? onMapFocusRequest;
@@ -300,8 +303,14 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
       }
     }
 
-    final String normalizedLabel = _normalizeForLookup(observation.label);
-    if (normalizedLabel.isNotEmpty) {
+    for (final name in [
+      observation.scientificName,
+      observation.iNaturalistAcceptedName,
+      observation.onlineScientificName,
+      observation.label,
+    ]) {
+      final String normalizedLabel = _normalizeForLookup(name);
+      if (normalizedLabel.isEmpty) continue;
       final String? lookupId = _speciesIdByScientificName[normalizedLabel];
       if (lookupId != null) {
         return _speciesById[lookupId];
@@ -316,6 +325,14 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
     final String speciesScientific = species?.scientificName.trim() ?? '';
     if (speciesScientific.isNotEmpty) {
       return speciesScientific;
+    }
+    for (final name in [
+      observation.iNaturalistAcceptedName,
+      observation.scientificName,
+      observation.onlineScientificName,
+    ]) {
+      final cleaned = name?.trim() ?? '';
+      if (cleaned.isNotEmpty) return cleaned;
     }
     final String label = observation.label.trim();
     if (label.isNotEmpty) {
@@ -387,6 +404,13 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
           scientificName: scientificName,
           colloquialName: _getObservationColloquialName(observation),
           keyFeatures: species?.keyFeatures ?? const <String>[],
+          toxicityLevel: observation.toxicityLevel == ToxicityLevel.unknown
+              ? species?.toxicityLevel ?? ToxicityLevel.unknown
+              : observation.toxicityLevel,
+          toxicitySummary:
+              observation.toxicitySummary ?? species?.toxicitySummary,
+          toxicitySource:
+              observation.toxicitySource ?? species?.toxicitySource,
           confidenceColor: _confidenceColor(observation.confidence),
           onOpenMap: observation.location == null
               ? null
@@ -606,6 +630,12 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
                                 confidenceColor: _confidenceColor(
                                   observation.confidence,
                                 ),
+                                toxicityLevel: observation.toxicityLevel ==
+                                        ToxicityLevel.unknown
+                                    ? _speciesForObservation(observation)
+                                            ?.toxicityLevel ??
+                                        ToxicityLevel.unknown
+                                    : observation.toxicityLevel,
                                 onTap: () => _openDetail(observation),
                                 onMapTap: () => _handleLocationTap(observation),
                               );
@@ -735,6 +765,7 @@ class _ObservationCard extends StatelessWidget {
   final String? colloquialName;
   final String locationText;
   final Color confidenceColor;
+  final ToxicityLevel toxicityLevel;
   final VoidCallback onTap;
   final VoidCallback onMapTap;
 
@@ -744,6 +775,7 @@ class _ObservationCard extends StatelessWidget {
     required this.colloquialName,
     required this.locationText,
     required this.confidenceColor,
+    required this.toxicityLevel,
     required this.onTap,
     required this.onMapTap,
   });
@@ -902,6 +934,11 @@ class _ObservationCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 6),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 112),
+                    child: ToxicityBadge(level: toxicityLevel, compact: true),
+                  ),
                 ],
               ),
             ],
@@ -918,6 +955,9 @@ class _ObservationDetailSheet extends StatelessWidget {
   final String? colloquialName;
   final List<String> keyFeatures;
   final Color confidenceColor;
+  final ToxicityLevel toxicityLevel;
+  final String? toxicitySummary;
+  final String? toxicitySource;
   final VoidCallback? onOpenMap;
   final VoidCallback onViewFull;
   final FieldNotesRepository _fieldNotesRepository =
@@ -929,6 +969,9 @@ class _ObservationDetailSheet extends StatelessWidget {
     required this.colloquialName,
     required this.keyFeatures,
     required this.confidenceColor,
+    required this.toxicityLevel,
+    required this.toxicitySummary,
+    required this.toxicitySource,
     required this.onOpenMap,
     required this.onViewFull,
   });
@@ -1040,6 +1083,25 @@ class _ObservationDetailSheet extends StatelessWidget {
                 value:
                     '${location.latitude.toStringAsFixed(3)}, ${location.longitude.toStringAsFixed(3)}',
               ),
+            _ObservationDetailRow(
+              label: 'Detection source',
+              value: observation.identificationSource ??
+                  observation.detectionSource ??
+                  'Not recorded',
+            ),
+            if (observation.iNaturalistGlobalObservationCount != null)
+              _ObservationDetailRow(
+                label: 'iNaturalist public observations',
+                value: observation.iNaturalistGlobalObservationCount.toString(),
+              ),
+            if ((observation.conservationStatus ?? '').trim().isNotEmpty)
+              _ObservationDetailRow(
+                label: 'Conservation status',
+                value: [
+                  observation.conservationStatus,
+                  observation.conservationStatusPlace,
+                ].whereType<String>().where((item) => item.isNotEmpty).join(' · '),
+              ),
             if (onOpenMap != null) ...[
               const SizedBox(height: 10),
               SizedBox(
@@ -1068,6 +1130,30 @@ class _ObservationDetailSheet extends StatelessWidget {
               features: keyFeatures,
               contained: true,
             ),
+            const SizedBox(height: 12),
+            ToxicitySafetySection(
+              level: toxicityLevel,
+              summary: toxicitySummary,
+              source: toxicitySource,
+            ),
+            if (observation.iNaturalistTaxonId != null) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Taxonomy and observation data: iNaturalist',
+                style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 12),
+              ),
+              if ((observation.iNaturalistPhotoAttribution ?? '')
+                  .trim()
+                  .isNotEmpty)
+                Text(
+                  'Reference image: ${observation.iNaturalistPhotoAttribution}'
+                  '${(observation.iNaturalistPhotoLicense ?? '').isEmpty ? '' : ' / ${observation.iNaturalistPhotoLicense}'}',
+                  style: const TextStyle(
+                    color: Color(0xCCFFFFFF),
+                    fontSize: 12,
+                  ),
+                ),
+            ],
             const SizedBox(height: 12),
             const Text(
               'Field Notes',
