@@ -16,7 +16,9 @@ import '../services/settings_service.dart';
 import '../utils/formatting.dart';
 import '../widgets/forest_background.dart';
 import '../widgets/key_features_section.dart';
+import '../widgets/inaturalist_observation_charts.dart';
 import '../widgets/local_image_preview.dart';
+import '../widgets/species/species_name_text.dart';
 import '../widgets/toxicity_badge.dart';
 import '../widgets/toxicity_safety_section.dart';
 
@@ -198,17 +200,22 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
     }
 
     final query = _searchQuery.trim().toLowerCase();
-    return list.where((observation) {
-      final confidence = observation.confidence ?? 0.0;
-      if (confidence < _minConfidence) {
-        return false;
-      }
-      if (query.isEmpty) {
-        return true;
-      }
-      final name = _displayNameForWithNames(observation, names).toLowerCase();
-      return name.contains(query);
-    }).toList(growable: false);
+    return list
+        .where((observation) {
+          final confidence = observation.confidence ?? 0.0;
+          if (confidence < _minConfidence) {
+            return false;
+          }
+          if (query.isEmpty) {
+            return true;
+          }
+          final name = _displayNameForWithNames(
+            observation,
+            names,
+          ).toLowerCase();
+          return name.contains(query);
+        })
+        .toList(growable: false);
   }
 
   String _displayNameForWithNames(
@@ -222,7 +229,8 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
     return speciesNames[observation.speciesId] ?? 'Unknown';
   }
 
-  String _normalizeForLookup(String? value) => value?.trim().toLowerCase() ?? '';
+  String _normalizeForLookup(String? value) =>
+      value?.trim().toLowerCase() ?? '';
 
   String _modelClassKey(String modelId, int sourceClassId) {
     return '$modelId:$sourceClassId';
@@ -230,10 +238,12 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
 
   Future<_TasColloquialMaps> _loadTasColloquialMaps() async {
     try {
-      final String raw = await rootBundle.loadString('assets/data/species_tas.json');
+      final String raw = await rootBundle.loadString(
+        'assets/data/species_tas.json',
+      );
       final dynamic decoded = jsonDecode(raw);
-      final List<dynamic> cards = (decoded is Map<String, dynamic> &&
-              decoded['cards'] is List<dynamic>)
+      final List<dynamic> cards =
+          (decoded is Map<String, dynamic> && decoded['cards'] is List<dynamic>)
           ? decoded['cards'] as List<dynamic>
           : const <dynamic>[];
 
@@ -260,10 +270,7 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
           byScientificName[normalizedScientific] = colloquial;
         }
       }
-      return _TasColloquialMaps(
-        byId: byId,
-        byScientificName: byScientificName,
-      );
+      return _TasColloquialMaps(byId: byId, byScientificName: byScientificName);
     } catch (_) {
       return const _TasColloquialMaps(
         byId: <String, String>{},
@@ -286,7 +293,8 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
 
   Species? _speciesForObservation(Observation observation) {
     final String? modelId = observation.modelId?.trim();
-    final int? sourceClassId = observation.sourceClassId ?? observation.classIndex;
+    final int? sourceClassId =
+        observation.sourceClassId ?? observation.classIndex;
     if (modelId != null && modelId.isNotEmpty && sourceClassId != null) {
       final Species? byModelClass =
           _speciesByModelClass[_modelClassKey(modelId, sourceClassId)];
@@ -357,7 +365,9 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
 
     final String speciesId = observation.speciesId.trim();
     if (speciesId.isNotEmpty) {
-      final String? fromTasId = _cleanColloquialName(_tasColloquialById[speciesId]);
+      final String? fromTasId = _cleanColloquialName(
+        _tasColloquialById[speciesId],
+      );
       if (fromTasId != null) {
         return fromTasId;
       }
@@ -409,8 +419,7 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
               : observation.toxicityLevel,
           toxicitySummary:
               observation.toxicitySummary ?? species?.toxicitySummary,
-          toxicitySource:
-              observation.toxicitySource ?? species?.toxicitySource,
+          toxicitySource: observation.toxicitySource ?? species?.toxicitySource,
           confidenceColor: _confidenceColor(observation.confidence),
           onOpenMap: observation.location == null
               ? null
@@ -630,11 +639,13 @@ class _ObservationsScreenState extends State<ObservationsScreen> {
                                 confidenceColor: _confidenceColor(
                                   observation.confidence,
                                 ),
-                                toxicityLevel: observation.toxicityLevel ==
+                                toxicityLevel:
+                                    observation.toxicityLevel ==
                                         ToxicityLevel.unknown
-                                    ? _speciesForObservation(observation)
-                                            ?.toxicityLevel ??
-                                        ToxicityLevel.unknown
+                                    ? _speciesForObservation(
+                                            observation,
+                                          )?.toxicityLevel ??
+                                          ToxicityLevel.unknown
                                     : observation.toxicityLevel,
                                 onTap: () => _openDetail(observation),
                                 onMapTap: () => _handleLocationTap(observation),
@@ -824,8 +835,9 @@ class _ObservationCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Scientific Name: $scientificName',
+                    LabeledSpeciesNameText(
+                      label: 'Scientific name',
+                      name: scientificName,
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
@@ -834,8 +846,9 @@ class _ObservationCard extends StatelessWidget {
                     ),
                     Padding(
                       padding: const EdgeInsets.only(top: 1),
-                      child: Text(
-                        'Colloquial Name: $colloquialDisplay',
+                      child: LabeledSpeciesNameText(
+                        label: 'Common name',
+                        name: colloquialDisplay,
                         style: const TextStyle(
                           color: Color(0xCCFFFFFF),
                           fontSize: 12.5,
@@ -1007,8 +1020,9 @@ class _ObservationDetailSheet extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Scientific Name: $scientificName',
+            LabeledSpeciesNameText(
+              label: 'Scientific name',
+              name: scientificName,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -1017,12 +1031,10 @@ class _ObservationDetailSheet extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.only(top: 2),
-              child: Text(
-                'Colloquial Name: $colloquialDisplay',
-                style: const TextStyle(
-                  color: Color(0xCCFFFFFF),
-                  fontSize: 13,
-                ),
+              child: LabeledSpeciesNameText(
+                label: 'Common name',
+                name: colloquialDisplay,
+                style: const TextStyle(color: Color(0xCCFFFFFF), fontSize: 13),
               ),
             ),
             const SizedBox(height: 4),
@@ -1047,10 +1059,7 @@ class _ObservationDetailSheet extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 cacheWidth: 640,
                 placeholder: const Center(
-                  child: Icon(
-                    Icons.image_not_supported,
-                    color: Colors.white70,
-                  ),
+                  child: Icon(Icons.image_not_supported, color: Colors.white70),
                 ),
               ),
             ),
@@ -1085,7 +1094,8 @@ class _ObservationDetailSheet extends StatelessWidget {
               ),
             _ObservationDetailRow(
               label: 'Detection source',
-              value: observation.identificationSource ??
+              value:
+                  observation.identificationSource ??
                   observation.detectionSource ??
                   'Not recorded',
             ),
@@ -1097,10 +1107,14 @@ class _ObservationDetailSheet extends StatelessWidget {
             if ((observation.conservationStatus ?? '').trim().isNotEmpty)
               _ObservationDetailRow(
                 label: 'Conservation status',
-                value: [
-                  observation.conservationStatus,
-                  observation.conservationStatusPlace,
-                ].whereType<String>().where((item) => item.isNotEmpty).join(' · '),
+                value:
+                    [
+                          observation.conservationStatus,
+                          observation.conservationStatusPlace,
+                        ]
+                        .whereType<String>()
+                        .where((item) => item.isNotEmpty)
+                        .join(' · '),
               ),
             if (onOpenMap != null) ...[
               const SizedBox(height: 10),
@@ -1112,7 +1126,9 @@ class _ObservationDetailSheet extends StatelessWidget {
                   label: const Text('Open on map'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
-                    side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.5),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: const StadiumBorder(),
                   ),
@@ -1126,10 +1142,7 @@ class _ObservationDetailSheet extends StatelessWidget {
                 value: observation.notes!.trim(),
               ),
             const SizedBox(height: 12),
-            KeyFeaturesSection(
-              features: keyFeatures,
-              contained: true,
-            ),
+            KeyFeaturesSection(features: keyFeatures, contained: true),
             const SizedBox(height: 12),
             ToxicitySafetySection(
               level: toxicityLevel,
@@ -1154,6 +1167,12 @@ class _ObservationDetailSheet extends StatelessWidget {
                   ),
                 ),
             ],
+            const SizedBox(height: 12),
+            INaturalistObservationCharts(
+              taxonId: observation.iNaturalistTaxonId,
+              scientificName:
+                  observation.iNaturalistAcceptedName ?? scientificName,
+            ),
             const SizedBox(height: 12),
             const Text(
               'Field Notes',

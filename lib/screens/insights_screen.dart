@@ -543,7 +543,10 @@ class _SpeciesRow extends StatelessWidget {
                     Expanded(
                       child: Text(
                         insight.commonName,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
                     ),
                     if (warning)
@@ -668,11 +671,27 @@ class _ToxicityCard extends StatelessWidget {
             total: statistics.totalObservations,
           ),
         const SizedBox(height: 8),
-        Text(
-          statistics.poisonousSpeciesList.isEmpty
-              ? 'No saved observation contains explicit poisonous or potentially poisonous metadata.'
-              : 'Poisonous observations: ${statistics.poisonousObservations} • Most detected: ${statistics.mostDetectedPoisonousSpecies?.commonName ?? 'Not available'}',
-        ),
+        if (statistics.poisonousSpeciesList.isEmpty)
+          const Text(
+            'No saved observation contains explicit poisonous or potentially poisonous metadata.',
+          )
+        else
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text:
+                      'Poisonous observations: ${statistics.poisonousObservations} • Most detected: ',
+                ),
+                TextSpan(
+                  text:
+                      statistics.mostDetectedPoisonousSpecies?.commonName ??
+                      'Not available',
+                  style: const TextStyle(fontStyle: FontStyle.italic),
+                ),
+              ],
+            ),
+          ),
         for (final item in statistics.poisonousSpeciesList)
           ListTile(
             contentPadding: EdgeInsets.zero,
@@ -680,7 +699,10 @@ class _ToxicityCard extends StatelessWidget {
               Icons.warning_amber_rounded,
               color: Color(0xFFB23A2E),
             ),
-            title: Text(item.commonName),
+            title: Text(
+              item.commonName,
+              style: const TextStyle(fontStyle: FontStyle.italic),
+            ),
             subtitle: Text(
               item.scientificName,
               style: const TextStyle(fontStyle: FontStyle.italic),
@@ -706,16 +728,18 @@ class _INaturalistInsightsCard extends StatelessWidget {
         Text('Unmatched species: ${statistics.iNaturalistUnmatchedSpecies}'),
         Text('Stale cached records: ${statistics.staleINaturalistRecords}'),
         if (statistics.mostPubliclyObservedSpecies != null)
-          Text(
-            'Most publicly observed: '
-            '${statistics.mostPubliclyObservedSpecies!.commonName} '
-            '(${statistics.mostPubliclyObservedSpecies!.iNaturalistGlobalObservationCount})',
+          _InlineSpeciesStatistic(
+            label: 'Most publicly observed',
+            name: statistics.mostPubliclyObservedSpecies!.commonName,
+            value:
+                '${statistics.mostPubliclyObservedSpecies!.iNaturalistGlobalObservationCount}',
           ),
         if (statistics.leastPubliclyObservedSpecies != null)
-          Text(
-            'Lowest iNaturalist observation count: '
-            '${statistics.leastPubliclyObservedSpecies!.commonName} '
-            '(${statistics.leastPubliclyObservedSpecies!.iNaturalistGlobalObservationCount})',
+          _InlineSpeciesStatistic(
+            label: 'Lowest iNaturalist observation count',
+            name: statistics.leastPubliclyObservedSpecies!.commonName,
+            value:
+                '${statistics.leastPubliclyObservedSpecies!.iNaturalistGlobalObservationCount}',
           ),
         for (final entry in statistics.conservationStatusCounts.entries)
           Text('${entry.key}: ${entry.value} species'),
@@ -838,12 +862,16 @@ class _ConfidenceCard extends StatelessWidget {
           'Average confidence',
           _percent(statistics.averageConfidence),
         ),
-        _MetricLine(
-          'Highest-confidence species',
-          statistics.highestConfidenceDetection == null
-              ? 'Not available'
-              : '${statistics.highestConfidenceDetection!.commonName} (${_percent(statistics.highestConfidenceDetection!.highestConfidence)})',
-        ),
+        if (statistics.highestConfidenceDetection == null)
+          const _MetricLine('Highest-confidence species', 'Not available')
+        else
+          _SpeciesMetricLine(
+            label: 'Highest-confidence species',
+            name: statistics.highestConfidenceDetection!.commonName,
+            value: _percent(
+              statistics.highestConfidenceDetection!.highestConfidence,
+            ),
+          ),
         _MetricLine(
           'Lowest saved detection',
           _percent(statistics.lowestSavedConfidence),
@@ -953,6 +981,73 @@ class _MetricLine extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
         ),
+      ],
+    ),
+  );
+}
+
+class _SpeciesMetricLine extends StatelessWidget {
+  final String label;
+  final String name;
+  final String value;
+
+  const _SpeciesMetricLine({
+    required this.label,
+    required this.name,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(label, style: const TextStyle(color: Color(0xFF607069))),
+        ),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: name,
+                  style: const TextStyle(fontStyle: FontStyle.italic),
+                ),
+                TextSpan(text: ' ($value)'),
+              ],
+            ),
+            textAlign: TextAlign.end,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _InlineSpeciesStatistic extends StatelessWidget {
+  final String label;
+  final String name;
+  final String value;
+
+  const _InlineSpeciesStatistic({
+    required this.label,
+    required this.name,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) => Text.rich(
+    TextSpan(
+      children: [
+        TextSpan(text: '$label: '),
+        TextSpan(
+          text: name,
+          style: const TextStyle(fontStyle: FontStyle.italic),
+        ),
+        TextSpan(text: ' ($value)'),
       ],
     ),
   );

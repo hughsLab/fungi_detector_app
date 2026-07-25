@@ -24,6 +24,7 @@ import '../widgets/forest_background.dart';
 import '../widgets/global_distribution_map_preview.dart';
 import '../widgets/key_features_section.dart';
 import '../widgets/local_image_preview.dart';
+import '../widgets/species/species_name_text.dart';
 
 class DetectionResultScreen extends StatefulWidget {
   const DetectionResultScreen({super.key});
@@ -164,8 +165,10 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
         ),
       );
     }
-    final validFallback =
-        fallback.where(_isValidCandidate).take(3).toList(growable: false);
+    final validFallback = fallback
+        .where(_isValidCandidate)
+        .take(3)
+        .toList(growable: false);
     return validFallback.isEmpty
         ? fallback.take(1).toList(growable: false)
         : validFallback;
@@ -201,7 +204,9 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
   Future<void> _saveObservation(DetectionResultArgs args) async {
     if (_saving) return;
     if (!args.isConfirmed) {
-      _showMessage('This scan was not confirmed. It cannot be saved as a species.');
+      _showMessage(
+        'This scan was not confirmed. It cannot be saved as a species.',
+      );
       return;
     }
 
@@ -257,8 +262,8 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
       DateTime? capturedAt;
       String? locationLabel;
       if (settings.locationTaggingEnabled) {
-        capturedLocation =
-            await _locationCaptureService.captureForObservation();
+        capturedLocation = await _locationCaptureService
+            .captureForObservation();
         locationMessage = _locationCaptureService.lastErrorMessage;
         if (capturedLocation != null) {
           latitude = capturedLocation.latitude;
@@ -288,7 +293,8 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
         confidence: confidence,
         rawConfidence: selectedCandidate.rawConfidence,
         calibratedConfidence: selectedCandidate.calibratedConfidence,
-        finalScore: selectedCandidate.finalScore ?? selectedCandidate.confidence,
+        finalScore:
+            selectedCandidate.finalScore ?? selectedCandidate.confidence,
         top2Label: secondaryCandidate?.label,
         top2Confidence: secondaryCandidate?.confidence,
         top2ModelId: secondaryCandidate?.modelId,
@@ -333,10 +339,10 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
       _saved = true;
       final String message =
           (locationSource == ObservationLocationSource.deviceGps)
-              ? 'Saved (pin added to Map).'
-              : (settings.locationTaggingEnabled
-                  ? (locationMessage ?? 'Saved without location.')
-                  : 'Saved (location tagging off).');
+          ? 'Saved (pin added to Map).'
+          : (settings.locationTaggingEnabled
+                ? (locationMessage ?? 'Saved without location.')
+                : 'Saved (location tagging off).');
       _showMessage(message);
     } catch (e) {
       if (!mounted) return;
@@ -481,10 +487,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                   );
                 },
                 icon: const Icon(Icons.add, color: Colors.white),
-                label: const Text(
-                  'Add',
-                  style: TextStyle(color: Colors.white),
-                ),
+                label: const Text('Add', style: TextStyle(color: Colors.white)),
               ),
             ],
           ),
@@ -494,8 +497,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
             builder: (context, snapshot) {
               final notes = (snapshot.data ?? const <FieldNote>[])
                   .where(
-                    (note) =>
-                        note.links.observationIds.contains(observationId),
+                    (note) => note.links.observationIds.contains(observationId),
                   )
                   .toList();
               if (notes.isEmpty) {
@@ -506,8 +508,9 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
               }
               return Column(
                 children: notes.map((note) {
-                  final title =
-                      note.title.trim().isEmpty ? 'Untitled note' : note.title;
+                  final title = note.title.trim().isEmpty
+                      ? 'Untitled note'
+                      : note.title;
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(
@@ -562,8 +565,9 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
 
     final candidates = _resultCandidates(args);
     final primaryCandidate = candidates.first;
-    final ObservationCandidate? secondaryCandidate =
-        candidates.length > 1 ? candidates[1] : null;
+    final ObservationCandidate? secondaryCandidate = candidates.length > 1
+        ? candidates[1]
+        : null;
     final bool hasMultipleCandidates = candidates.length > 1;
     final String votePercent =
         '${(args.top1VoteRatio * 100).toStringAsFixed(1)}%';
@@ -590,9 +594,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
     final DecisionResult headlineDecision = decideHeadline(
       topK: topCandidates,
       isLichen: args.isLichen,
-      existingRulesContext: ExistingRulesContext(
-        headlineLabel: _selectedLabel,
-      ),
+      existingRulesContext: ExistingRulesContext(headlineLabel: _selectedLabel),
     );
     final String? selectedSpeciesId =
         (_selectedSpeciesId?.trim().isNotEmpty ?? false)
@@ -605,10 +607,10 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
     final bool canOpenSpeciesProfile =
         selectedSpeciesId != null &&
         headlineDecision.headlineRankLevel == HeadlineRankLevel.species;
-    final bool canOpenMap =
-        args.latitude != null && args.longitude != null;
-    final _StabilityBadgeData stability =
-        _stabilityFromVoteRatio(args.top1VoteRatio);
+    final bool canOpenMap = args.latitude != null && args.longitude != null;
+    final _StabilityBadgeData stability = _stabilityFromVoteRatio(
+      args.top1VoteRatio,
+    );
     final distributionMarkers = _matchedSpecies == null
         ? const <SpeciesMapMarker>[]
         : SpeciesMapLocationResolver.instance.resolveMarkers(_matchedSpecies!);
@@ -652,6 +654,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                               color: Colors.white,
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
+                              fontStyle: FontStyle.italic,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -716,7 +719,11 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                             ),
                           ),
                           const SizedBox(height: 6),
-                          for (int index = 0; index < candidates.length; index++) ...[
+                          for (
+                            int index = 0;
+                            index < candidates.length;
+                            index++
+                          ) ...[
                             _CandidateCard(
                               title: _candidateTitle(index),
                               label: candidates[index].label,
@@ -801,9 +808,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                                   ),
                                 ),
                                 SizedBox(height: 12),
-                                KeyFeaturesSection(
-                                  features: <String>[],
-                                ),
+                                KeyFeaturesSection(features: <String>[]),
                               ],
                             ),
                           );
@@ -821,8 +826,8 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                           runSpacing: 8,
                           children: [
                             OutlinedButton.icon(
-                              onPressed: (args.isSavedView ||
-                                      !hasMultipleCandidates)
+                              onPressed:
+                                  (args.isSavedView || !hasMultipleCandidates)
                                   ? null
                                   : _toggleLock,
                               icon: Icon(
@@ -858,8 +863,7 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                                       source: args.isSavedView
                                           ? SpeciesDetailSource
                                                 .existingObservation
-                                          : SpeciesDetailSource
-                                                .detectionResult,
+                                          : SpeciesDetailSource.detectionResult,
                                     ),
                                   );
                                 },
@@ -882,12 +886,13 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                       ),
                     const SizedBox(height: 16),
                     GlobalDistributionMapPreview(
-                      scientificName: _matchedSpecies?.scientificName ??
-                          _selectedLabel,
+                      scientificName:
+                          _matchedSpecies?.scientificName ?? _selectedLabel,
                       canonicalName: _matchedSpecies?.canonicalName,
                       speciesId: selectedSpeciesId,
                       modelId: primaryCandidate.modelId ?? args.modelId,
-                      sourceClassId: primaryCandidate.sourceClassId ??
+                      sourceClassId:
+                          primaryCandidate.sourceClassId ??
                           args.sourceClassId ??
                           args.classIndex,
                       observationLatitude: args.latitude,
@@ -936,7 +941,9 @@ class _DetectionResultScreenState extends State<DetectionResultScreen> {
                   label: const Text('Open on map'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
-                    side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.5),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: const StadiumBorder(),
                   ),
@@ -1125,16 +1132,14 @@ class _CandidateCard extends StatelessWidget {
               color: Colors.white,
               fontSize: 15,
               fontWeight: FontWeight.w600,
+              fontStyle: FontStyle.italic,
             ),
           ),
           if (sourceLabel != null && sourceLabel!.trim().isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
               'Source: $sourceLabel',
-              style: const TextStyle(
-                color: Color(0xCCFFFFFF),
-                fontSize: 12.5,
-              ),
+              style: const TextStyle(color: Color(0xCCFFFFFF), fontSize: 12.5),
             ),
           ],
           const SizedBox(height: 6),
@@ -1267,8 +1272,9 @@ class _SpeciesSnapshotCard extends StatelessWidget {
     final String description = (species.shortDescription ?? '').trim();
     final String colloquialName =
         (species.colloquialName ?? species.commonName ?? '').trim();
-    final String colloquialDisplay =
-        colloquialName.isEmpty ? 'Not listed' : colloquialName;
+    final String colloquialDisplay = colloquialName.isEmpty
+        ? 'Not listed'
+        : colloquialName;
     final String habitat = (species.habitat ?? '').trim();
     final String season = (species.season ?? '').trim();
     final String distribution = species.distributionNote.trim();
@@ -1287,8 +1293,9 @@ class _SpeciesSnapshotCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            'Scientific Name: ${species.scientificName}',
+          LabeledSpeciesNameText(
+            label: 'Scientific name',
+            name: species.scientificName,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -1297,16 +1304,14 @@ class _SpeciesSnapshotCard extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.only(top: 2),
-            child: Text(
-              'Colloquial Name: $colloquialDisplay',
+            child: LabeledSpeciesNameText(
+              label: 'Common name',
+              name: colloquialDisplay,
               style: const TextStyle(color: Color(0xCCFFFFFF), fontSize: 13),
             ),
           ),
           const SizedBox(height: 10),
-          _InfoLine(
-            label: 'Taxonomy',
-            value: species.taxonomyPath,
-          ),
+          _InfoLine(label: 'Taxonomy', value: species.taxonomyPath),
           if (description.isNotEmpty)
             _InfoLine(label: 'Description', value: description),
           const SizedBox(height: 8),

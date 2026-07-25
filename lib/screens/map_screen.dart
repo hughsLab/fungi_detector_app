@@ -39,10 +39,7 @@ class _FungiMapMarker extends StatelessWidget {
   final Color color;
   final String semanticsLabel;
 
-  const _FungiMapMarker({
-    required this.color,
-    required this.semanticsLabel,
-  });
+  const _FungiMapMarker({required this.color, required this.semanticsLabel});
 
   @override
   Widget build(BuildContext context) {
@@ -145,9 +142,21 @@ class _FungiMarkerPainter extends CustomPainter {
     final spotPaint = Paint()
       ..color = Colors.white.withValues(alpha: 0.82)
       ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(size.width * 0.34, size.height * 0.27), 2.4, spotPaint);
-    canvas.drawCircle(Offset(size.width * 0.55, size.height * 0.18), 2.0, spotPaint);
-    canvas.drawCircle(Offset(size.width * 0.68, size.height * 0.34), 2.3, spotPaint);
+    canvas.drawCircle(
+      Offset(size.width * 0.34, size.height * 0.27),
+      2.4,
+      spotPaint,
+    );
+    canvas.drawCircle(
+      Offset(size.width * 0.55, size.height * 0.18),
+      2.0,
+      spotPaint,
+    );
+    canvas.drawCircle(
+      Offset(size.width * 0.68, size.height * 0.34),
+      2.3,
+      spotPaint,
+    );
   }
 
   @override
@@ -506,7 +515,8 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       final double lat =
           ui.lerpDouble(start.latitude, target.latitude, t) ?? target.latitude;
       final double lon =
-          ui.lerpDouble(start.longitude, target.longitude, t) ?? target.longitude;
+          ui.lerpDouble(start.longitude, target.longitude, t) ??
+          target.longitude;
       final double currentZoom = ui.lerpDouble(startZoom, zoom, t) ?? zoom;
       _mapController.move(LatLng(lat, lon), currentZoom);
     });
@@ -685,7 +695,9 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     }
     if (!mounted) return;
     Navigator.of(context).pop();
-    _showMessage(isPublic ? 'Observation shared.' : 'Observation made private.');
+    _showMessage(
+      isPublic ? 'Observation shared.' : 'Observation made private.',
+    );
   }
 
   void _openObservation(Observation observation) {
@@ -982,10 +994,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         final notes = (observation.notes ?? '').trim();
         final hasNotes = notes.isNotEmpty;
         final isOwner = _ownsObservation(observation);
-        final observerLabel = _observerLabel(
-          observation,
-          isOwner: isOwner,
-        );
+        final observerLabel = _observerLabel(observation, isOwner: isOwner);
         final imagePath = _observationImagePath(observation);
         final rarity = _rarityForObservation(observation);
         final rarityColor = _rarityColor(rarity.level);
@@ -1004,6 +1013,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
+                    fontStyle: FontStyle.italic,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -1397,8 +1407,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                       ),
                     ],
                     if (savedObservationsDisabledReason != null &&
-                        savedObservationsDisabledReason !=
-                            disabledReason) ...[
+                        savedObservationsDisabledReason != disabledReason) ...[
                       const SizedBox(height: 4),
                       Text(
                         savedObservationsDisabledReason,
@@ -1716,10 +1725,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
               ? LatLng(pickLat, pickLon)
               : (firstLocation == null
                     ? const LatLng(-25.2744, 133.7751)
-                    : LatLng(
-                        firstLocation.latitude,
-                        firstLocation.longitude,
-                      ));
+                    : LatLng(firstLocation.latitude, firstLocation.longitude));
 
           _mapReady = true;
           _maybeHandlePendingFocus();
@@ -1785,11 +1791,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
               ),
               if (!pickMode && ordered.isEmpty) _emptyMapOverlay(),
               if (!pickMode && ordered.isNotEmpty)
-                const Positioned(
-                  left: 12,
-                  top: 12,
-                  child: _RarityLegend(),
-                ),
+                const Positioned(left: 12, top: 12, child: _RarityLegend()),
               if (!_hasNetworkConnection && _mapTileError)
                 _offlineMapUnavailableOverlay(),
               if (!pickMode)
@@ -1862,9 +1864,7 @@ class MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                               backgroundColor: const Color(0xFF8FBFA1),
                               foregroundColor: Colors.white,
                               elevation: 0,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 12,
-                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: const StadiumBorder(),
                             ),
                             child: const Text('Use this location'),

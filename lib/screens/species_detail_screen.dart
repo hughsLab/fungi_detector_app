@@ -5,25 +5,46 @@ import '../models/inaturalist_taxon.dart';
 import '../models/navigation_args.dart';
 import '../models/observation.dart';
 import '../models/species.dart';
+import '../models/wikipedia_species_content.dart';
 import '../repositories/field_notes_repository.dart';
 import '../repositories/species_repository.dart';
 import '../services/species_map_location_resolver.dart';
 import '../services/inaturalist_service.dart';
+import '../services/wikipedia_service.dart';
 import '../utils/formatting.dart';
 import '../widgets/forest_background.dart';
 import '../widgets/global_distribution_map_preview.dart';
 import '../widgets/key_features_section.dart';
-import '../widgets/toxicity_safety_section.dart';
+import '../widgets/inaturalist_observation_charts.dart';
+import '../widgets/species/compact_safety_section.dart';
+import '../widgets/species/data_attribution_section.dart';
+import '../widgets/species/species_name_text.dart';
+import '../widgets/species/taxonomy_tree.dart';
+import '../widgets/species/wikipedia_species_section.dart';
 
 class SpeciesDetailScreen extends StatefulWidget {
-  const SpeciesDetailScreen({super.key});
+  const SpeciesDetailScreen({
+    super.key,
+    this.speciesRepository,
+    this.iNaturalistService,
+    this.wikipediaService,
+  });
+
+  final SpeciesRepository? speciesRepository;
+  final INaturalistService? iNaturalistService;
+  final WikipediaService? wikipediaService;
 
   @override
   State<SpeciesDetailScreen> createState() => _SpeciesDetailScreenState();
 }
 
 class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
-  final SpeciesRepository _repository = SpeciesRepository.instance;
+  SpeciesRepository get _repository =>
+      widget.speciesRepository ?? SpeciesRepository.instance;
+  INaturalistService get _iNaturalistService =>
+      widget.iNaturalistService ?? INaturalistService.instance;
+  WikipediaService get _wikipediaService =>
+      widget.wikipediaService ?? WikipediaService.instance;
   final FieldNotesRepository _fieldNotesRepository =
       FieldNotesRepository.instance;
   SpeciesDetailArgs? _args;
@@ -55,14 +76,30 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
         }
       }
     }
+    final iNaturalistFuture = species == null
+        ? null
+        : _iNaturalistService.findTaxonByScientificName(
+            species.scientificName,
+            storedTaxonId: species.iNaturalistTaxonId,
+            synonyms: [
+              if ((species.canonicalName ?? '').trim().isNotEmpty)
+                species.canonicalName!,
+            ],
+          );
+    final wikipediaFuture = species == null
+        ? null
+        : _wikipediaService.findSpecies(
+            species.scientificName,
+            synonyms: [
+              if ((species.canonicalName ?? '').trim().isNotEmpty)
+                species.canonicalName!,
+            ],
+          );
     return _SpeciesDetailData(
       species: species,
       similar: similar,
-      iNaturalistFuture: species == null
-          ? null
-          : INaturalistService.instance.findTaxonByScientificName(
-              species.scientificName,
-            ),
+      iNaturalistFuture: iNaturalistFuture,
+      wikipediaFuture: wikipediaFuture,
     );
   }
 
@@ -181,13 +218,13 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                 onPressed: () {
                   Navigator.of(context).pushNamed(
                     '/field-note-editor',
-                    arguments:
-                        FieldNoteEditorArgs(prelinkedSpeciesId: speciesId),
+                    arguments: FieldNoteEditorArgs(
+                      prelinkedSpeciesId: speciesId,
+                    ),
                   );
                 },
                 icon: const Icon(Icons.add, color: Colors.white),
-                label: const Text('Add',
-                    style: TextStyle(color: Colors.white)),
+                label: const Text('Add', style: TextStyle(color: Colors.white)),
               ),
             ],
           ),
@@ -206,8 +243,9 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
               }
               return Column(
                 children: notes.map((note) {
-                  final title =
-                      note.title.trim().isEmpty ? 'Untitled note' : note.title;
+                  final title = note.title.trim().isEmpty
+                      ? 'Untitled note'
+                      : note.title;
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(
@@ -224,8 +262,10 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                         fontSize: 11.5,
                       ),
                     ),
-                    trailing: const Icon(Icons.chevron_right,
-                        color: Colors.white70),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: Colors.white70,
+                    ),
                     onTap: () {
                       Navigator.of(context).pushNamed(
                         '/field-note-editor',
@@ -263,7 +303,11 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
     return Chip(
       label: Text(
         label,
-        style: const TextStyle(color: Colors.white, fontSize: 12.5),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12.5,
+          fontStyle: FontStyle.italic,
+        ),
       ),
       backgroundColor: background,
       side: BorderSide(color: border),
@@ -305,21 +349,19 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                   final species = data.species!;
                   final similarSpecies = data.similar;
                   final observation = _args?.observation;
-                  final String? comparePrimaryLabel =
-                      _args?.comparePrimaryLabel?.trim();
-                  final String? compareSecondaryLabel =
-                      _args?.compareSecondaryLabel?.trim();
+                  final String? comparePrimaryLabel = _args?.comparePrimaryLabel
+                      ?.trim();
+                  final String? compareSecondaryLabel = _args
+                      ?.compareSecondaryLabel
+                      ?.trim();
                   final String? compareSecondaryNormalized =
                       compareSecondaryLabel == null ||
-                              compareSecondaryLabel.isEmpty
-                          ? null
-                          : _normalizeLabel(compareSecondaryLabel);
+                          compareSecondaryLabel.isEmpty
+                      ? null
+                      : _normalizeLabel(compareSecondaryLabel);
                   final bool isCompareFlow = compareSecondaryNormalized != null;
                   final bool fromExistingObservation =
                       _args?.source == SpeciesDetailSource.existingObservation;
-                  const String safetyDisclaimerText =
-                      'AI identification is probabilistic and may be wrong. Do not use this app to decide whether a fungus is edible, toxic, safe to touch, or safe for animals. Never eat wild fungi unless confirmed by a qualified expert. Seek urgent medical or poisons advice if ingestion or poisoning is suspected.';
-
                   final similarNames = species.similarSpeciesNames
                       .where((name) => name.trim().isNotEmpty)
                       .toList();
@@ -338,31 +380,28 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                     }),
                     if (isCompareFlow &&
                         compareSecondaryLabel != null &&
-                        !similarNormalized
-                            .contains(compareSecondaryNormalized))
-                      _similarChip(
-                        compareSecondaryLabel,
-                        highlight: true,
-                      ),
+                        !similarNormalized.contains(compareSecondaryNormalized))
+                      _similarChip(compareSecondaryLabel, highlight: true),
                   ];
                   final bool hasSimilar = similarChips.isNotEmpty;
                   final description = species.shortDescription?.trim() ?? '';
                   final habitat = species.habitat?.trim() ?? '';
                   final season = species.season?.trim() ?? '';
-                  final Set<int> seasonMonths =
-                      season.isEmpty ? {} : _parseSeasonalityMonths(season);
-                  final String? ecologicalRole = _extractEcologicalRole(species);
-                  final distributionNote = species.distributionNote.trim();
-                  final location = species.location;
-                  final distributionMarkers =
-                      SpeciesMapLocationResolver.instance.resolveMarkers(
+                  final Set<int> seasonMonths = season.isEmpty
+                      ? {}
+                      : _parseSeasonalityMonths(season);
+                  final String? ecologicalRole = _extractEcologicalRole(
                     species,
                   );
-                  final edibilityWarning = species.edibilityWarning?.trim() ?? '';
-                  final String colloquialName = (species.colloquialName
-                                  ?.trim()
-                                  .isNotEmpty ??
-                              false)
+                  final distributionNote = species.distributionNote.trim();
+                  final location = species.location;
+                  final distributionMarkers = SpeciesMapLocationResolver
+                      .instance
+                      .resolveMarkers(species);
+                  final edibilityWarning =
+                      species.edibilityWarning?.trim() ?? '';
+                  final String colloquialName =
+                      (species.colloquialName?.trim().isNotEmpty ?? false)
                       ? species.colloquialName!.trim()
                       : ((species.commonName?.trim().isNotEmpty ?? false)
                             ? species.commonName!.trim()
@@ -372,23 +411,11 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Scientific Name: ${species.scientificName}',
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Text(
-                            'Colloquial Name: $colloquialName',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: accentTextColor,
-                            ),
-                          ),
+                        SpeciesNameText(
+                          scientificName: species.scientificName,
+                          commonName: colloquialName == 'Not listed'
+                              ? null
+                              : colloquialName,
                         ),
                         if (species.authority != null &&
                             species.authority!.isNotEmpty)
@@ -412,49 +439,43 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                             ),
                           ),
                         const SizedBox(height: 16),
-                        if (observation != null)
-                          _ObservationSummaryCard(observation: observation),
+                        if (data.wikipediaFuture != null)
+                          WikipediaSpeciesSection(
+                            future: data.wikipediaFuture!,
+                            localImageAssetPath: species.thumbnailAssetPath,
+                          ),
                         const SizedBox(height: 16),
-                        ToxicitySafetySection(
+                        if (data.iNaturalistFuture != null)
+                          INaturalistTaxonomySection(
+                            future: data.iNaturalistFuture!,
+                          ),
+                        const SizedBox(height: 16),
+                        if (data.iNaturalistFuture != null)
+                          INaturalistObservationInformation(
+                            future: data.iNaturalistFuture!,
+                          ),
+                        if (observation != null) ...[
+                          const SizedBox(height: 16),
+                          _ObservationSummaryCard(observation: observation),
+                        ],
+                        const SizedBox(height: 16),
+                        INaturalistObservationCharts(
+                          taxonId: species.iNaturalistTaxonId,
+                          scientificName: species.scientificName,
+                          service: _iNaturalistService,
+                        ),
+                        const SizedBox(height: 16),
+                        CompactSafetySection(
                           level: species.toxicityLevel,
                           summary: species.toxicitySummary,
                           source: species.toxicitySource,
+                          edibilityWarning: edibilityWarning,
                         ),
                         const SizedBox(height: 16),
-                        if (data.iNaturalistFuture != null)
-                          FutureBuilder<INaturalistTaxonMatch>(
-                            future: data.iNaturalistFuture,
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState !=
-                                  ConnectionState.done) {
-                                return const _INaturalistSpeciesCard.loading();
-                              }
-                              return _INaturalistSpeciesCard(
-                                taxon: snapshot.data,
-                              );
-                            },
+                        if (data.wikipediaFuture != null)
+                          DataAttributionSection(
+                            wikipediaFuture: data.wikipediaFuture!,
                           ),
-                        const SizedBox(height: 16),
-                        _fieldNotesPanel(species.id),
-                        if (description.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Overview',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            description,
-                            style: const TextStyle(
-                              color: accentTextColor,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
                         const SizedBox(height: 16),
                         const Text(
                           'Field Guide+',
@@ -474,9 +495,19 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              KeyFeaturesSection(
-                                features: species.keyFeatures,
-                              ),
+                              if (description.isNotEmpty) ...[
+                                _sectionTitle('Local guide overview'),
+                                const SizedBox(height: 6),
+                                Text(
+                                  description,
+                                  style: const TextStyle(
+                                    color: accentTextColor,
+                                    height: 1.4,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                              KeyFeaturesSection(features: species.keyFeatures),
                               if (habitat.isNotEmpty) ...[
                                 const SizedBox(height: 12),
                                 _sectionTitle('Habitat'),
@@ -501,7 +532,8 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                                   ),
                                 ),
                               ],
-                              if (season.isNotEmpty || seasonMonths.isNotEmpty) ...[
+                              if (season.isNotEmpty ||
+                                  seasonMonths.isNotEmpty) ...[
                                 const SizedBox(height: 12),
                                 _sectionTitle('Seasonality'),
                                 const SizedBox(height: 6),
@@ -518,7 +550,8 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                               ],
                               const SizedBox(height: 12),
                               _sectionTitle('Similar Species'),
-                              if (isCompareFlow && compareSecondaryLabel != null) ...[
+                              if (isCompareFlow &&
+                                  compareSecondaryLabel != null) ...[
                                 const SizedBox(height: 6),
                                 Text(
                                   'Comparing with $compareSecondaryLabel. Review key features and habitat differences.',
@@ -616,81 +649,7 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                               'Location data not available for this species.',
                         ),
                         const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Text(
-                            'AI results are probabilistic and must not be used for edibility decisions.',
-                            style: TextStyle(
-                              color: accentTextColor,
-                              height: 1.4,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Theme(
-                          data: Theme.of(context).copyWith(
-                            dividerColor: Colors.transparent,
-                          ),
-                          child: ExpansionTile(
-                            tilePadding: const EdgeInsets.symmetric(
-                              horizontal: 0,
-                            ),
-                            collapsedBackgroundColor:
-                                Colors.white.withValues(alpha: 0.06),
-                            backgroundColor:
-                                Colors.white.withValues(alpha: 0.08),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.12),
-                              ),
-                            ),
-                            collapsedShape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.12),
-                              ),
-                            ),
-                            title: const Text(
-                              'Safety disclaimer',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            initiallyExpanded: true,
-                            children: [
-                              Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (edibilityWarning.isNotEmpty) ...[
-                                      Text(
-                                        edibilityWarning,
-                                        style:
-                                            const TextStyle(color: Colors.white),
-                                      ),
-                                      const SizedBox(height: 6),
-                                    ],
-                                    const Text(
-                                      safetyDisclaimerText,
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        height: 1.4,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        _fieldNotesPanel(species.id),
                         const SizedBox(height: 16),
                         SizedBox(
                           width: double.infinity,
@@ -702,8 +661,7 @@ class _SpeciesDetailScreenState extends State<SpeciesDetailScreen> {
                               backgroundColor: const Color(0xFF8FBFA1),
                               foregroundColor: Colors.white,
                               elevation: 0,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 16),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: const StadiumBorder(),
                             ),
                             child: Text(
@@ -731,90 +689,14 @@ class _SpeciesDetailData {
   final Species? species;
   final List<Species> similar;
   final Future<INaturalistTaxonMatch>? iNaturalistFuture;
+  final Future<WikipediaSpeciesContent>? wikipediaFuture;
 
   const _SpeciesDetailData({
     required this.species,
     required this.similar,
     required this.iNaturalistFuture,
+    required this.wikipediaFuture,
   });
-}
-
-class _INaturalistSpeciesCard extends StatelessWidget {
-  final INaturalistTaxonMatch? taxon;
-  final bool isLoading;
-
-  const _INaturalistSpeciesCard({required this.taxon}) : isLoading = false;
-  const _INaturalistSpeciesCard.loading()
-    : taxon = null,
-      isLoading = true;
-
-  @override
-  Widget build(BuildContext context) {
-    final value = taxon;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'iNaturalist species information',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          if (isLoading)
-            const LinearProgressIndicator()
-          else if (value == null ||
-              value.status != INaturalistMatchStatus.matched)
-            const Text(
-              'Supplementary public metadata is unavailable.',
-              style: TextStyle(color: Color(0xCCFFFFFF)),
-            )
-          else ...[
-            if (value.globalObservationCount != null)
-              Text(
-                'iNaturalist public observations: '
-                '${value.globalObservationCount}',
-                style: const TextStyle(color: Color(0xCCFFFFFF)),
-              ),
-            if ((value.conservationStatus ?? '').isNotEmpty)
-              Text(
-                'Conservation status: ${value.conservationStatus}'
-                '${(value.conservationStatusPlace ?? '').isEmpty ? '' : ' (${value.conservationStatusPlace})'}',
-                style: const TextStyle(color: Color(0xCCFFFFFF)),
-              ),
-            if ((value.photoAttribution ?? '').isNotEmpty)
-              Text(
-                'Reference image: ${value.photoAttribution}'
-                '${(value.photoLicense ?? '').isEmpty ? '' : ' / ${value.photoLicense}'}',
-                style: const TextStyle(
-                  color: Color(0xCCFFFFFF),
-                  fontSize: 12,
-                ),
-              ),
-            const SizedBox(height: 6),
-            const Text(
-              'Taxonomy and observation data: iNaturalist. Public observation '
-              'counts show reporting frequency and do not necessarily indicate '
-              'biological rarity.',
-              style: TextStyle(
-                color: Color(0xCCFFFFFF),
-                fontSize: 12,
-                height: 1.35,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 }
 
 class _SeasonalityStrip extends StatelessWidget {
@@ -824,20 +706,7 @@ class _SeasonalityStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const labels = [
-      'J',
-      'F',
-      'M',
-      'A',
-      'M',
-      'J',
-      'J',
-      'A',
-      'S',
-      'O',
-      'N',
-      'D',
-    ];
+    const labels = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
     return Wrap(
       spacing: 6,
       runSpacing: 6,
@@ -895,10 +764,7 @@ class _CompareSummaryCard extends StatelessWidget {
         children: [
           const Text(
             'Compare Similar',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           _CompareChipRow(
@@ -935,10 +801,7 @@ class _CompareChipRow extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xCCFFFFFF),
-            fontSize: 12,
-          ),
+          style: const TextStyle(color: Color(0xCCFFFFFF), fontSize: 12),
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -955,6 +818,7 @@ class _CompareChipRow extends StatelessWidget {
                 color: Colors.white,
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
+                fontStyle: FontStyle.italic,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -977,10 +841,7 @@ class _BulletList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return Text(
-        emptyText,
-        style: const TextStyle(color: Color(0xCCFFFFFF)),
-      );
+      return Text(emptyText, style: const TextStyle(color: Color(0xCCFFFFFF)));
     }
 
     return Column(
@@ -992,10 +853,7 @@ class _BulletList extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    '• ',
-                    style: TextStyle(color: Colors.white),
-                  ),
+                  const Text('• ', style: TextStyle(color: Colors.white)),
                   Expanded(
                     child: Text(
                       item,
@@ -1018,19 +876,13 @@ class _LocationLine extends StatelessWidget {
   final String label;
   final String value;
 
-  const _LocationLine({
-    required this.label,
-    required this.value,
-  });
+  const _LocationLine({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return RichText(
       text: TextSpan(
-        style: const TextStyle(
-          color: Color(0xCCFFFFFF),
-          height: 1.35,
-        ),
+        style: const TextStyle(color: Color(0xCCFFFFFF), height: 1.35),
         children: [
           TextSpan(
             text: '$label: ',
@@ -1066,10 +918,7 @@ class _ObservationSummaryCard extends StatelessWidget {
         children: [
           const Text(
             'Observation details',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Text(

@@ -113,8 +113,8 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
       DateTime? capturedAt;
       String? locationLabel;
       if (_locationEnabled) {
-        capturedLocation =
-            await _locationCaptureService.captureForObservation();
+        capturedLocation = await _locationCaptureService
+            .captureForObservation();
         locationMessage = _locationCaptureService.lastErrorMessage;
         if (capturedLocation != null) {
           latitude = capturedLocation.latitude;
@@ -166,19 +166,19 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
       if (!mounted) return;
       final String message =
           (locationSource == ObservationLocationSource.deviceGps)
-              ? 'Saved (pin added to Map).'
-              : (_locationEnabled
-                  ? (locationMessage ?? 'Saved without location.')
-                  : 'Saved (location tagging off).');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+          ? 'Saved (pin added to Map).'
+          : (_locationEnabled
+                ? (locationMessage ?? 'Saved without location.')
+                : 'Saved (location tagging off).');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save observation: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to save observation: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -199,9 +199,9 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
       setState(() => _photoPath = photo.path);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not add photo: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not add photo: $e')));
     }
   }
 
@@ -265,7 +265,10 @@ class _SaveObservationScreenState extends State<SaveObservationScreen> {
                               value: species,
                               child: Text(
                                 species.displayName,
-                                style: const TextStyle(color: Colors.white),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontStyle: FontStyle.italic,
+                                ),
                               ),
                             ),
                           )

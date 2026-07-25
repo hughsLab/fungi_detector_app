@@ -50,8 +50,9 @@ class _OnlineIdentificationResultScreenState
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_args == null) {
-      _args = ModalRoute.of(context)?.settings.arguments
-          as OnlineIdentificationResultArgs?;
+      _args =
+          ModalRoute.of(context)?.settings.arguments
+              as OnlineIdentificationResultArgs?;
       final scientificName = _args?.result.topSuggestion?.scientificName.trim();
       if (scientificName != null && scientificName.isNotEmpty) {
         unawaited(_enrich(scientificName));
@@ -98,15 +99,17 @@ class _OnlineIdentificationResultScreenState
         id: _uuid.v4(),
         speciesId: localSpecies?.id ?? draft.scientificName,
         classIndex: null,
-        label: localSpecies?.commonName ??
+        label:
+            localSpecies?.commonName ??
             taxon?.preferredCommonName ??
             draft.label,
-        scientificName:
-            taxon?.acceptedScientificName ?? draft.scientificName,
-        commonName: localSpecies?.commonName ??
+        scientificName: taxon?.acceptedScientificName ?? draft.scientificName,
+        commonName:
+            localSpecies?.commonName ??
             taxon?.preferredCommonName ??
             draft.commonName,
-        colloquialName: localSpecies?.colloquialName ??
+        colloquialName:
+            localSpecies?.colloquialName ??
             localSpecies?.commonName ??
             taxon?.preferredCommonName ??
             draft.commonName,
@@ -142,13 +145,13 @@ class _OnlineIdentificationResultScreenState
         onlineToxicity: top?.toxicity,
         onlineDescription: top?.description,
         onlineUrl: top?.url,
-        onlineTaxonomy:
-            top == null ? null : <String, dynamic>{...top.taxonomy},
-        onlineAlternatives:
-            result.alternatives.map((item) => item.toCompactJson()).toList(),
+        onlineTaxonomy: top == null ? null : <String, dynamic>{...top.taxonomy},
+        onlineAlternatives: result.alternatives
+            .map((item) => item.toCompactJson())
+            .toList(),
         onlineSimilarImages:
             top?.similarImages.map((item) => item.toJson()).toList() ??
-                const <Map<String, dynamic>>[],
+            const <Map<String, dynamic>>[],
         identificationWarnings: <String>[
           MushroomIdObservationMapper.safetyWarning,
           ...result.warnings,
@@ -206,9 +209,9 @@ class _OnlineIdentificationResultScreenState
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save observation: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to save observation: $e')));
     } finally {
       if (mounted) {
         setState(() => _saving = false);
@@ -353,6 +356,7 @@ class _OnlineIdentificationResultScreenState
                         color: Colors.white,
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
+                        fontStyle: FontStyle.italic,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -369,18 +373,19 @@ class _OnlineIdentificationResultScreenState
                       _InfoLine(
                         label: 'Common Names',
                         value: top!.commonNames.join(', '),
+                        valueItalic: true,
                       ),
                     const SizedBox(height: 10),
                     ToxicityBadge(
-                      level:
-                          enrichment?.toxicityLevel ?? ToxicityLevel.unknown,
+                      level: enrichment?.toxicityLevel ?? ToxicityLevel.unknown,
                     ),
                     if (_enriching)
                       const _InfoLine(
                         label: 'Species information',
                         value: 'Checking iNaturalist…',
                       )
-                    else if (enrichment?.iNaturalist.status.name == 'matched') ...[
+                    else if (enrichment?.iNaturalist.status.name ==
+                        'matched') ...[
                       const _InfoLine(
                         label: 'Identification source',
                         value: 'Online identification',
@@ -389,11 +394,11 @@ class _OnlineIdentificationResultScreenState
                         label: 'Species information',
                         value: 'iNaturalist',
                       ),
-                      if (enrichment?.iNaturalist.globalObservationCount != null)
+                      if (enrichment?.iNaturalist.globalObservationCount !=
+                          null)
                         _InfoLine(
                           label: 'iNaturalist public observations',
-                          value: enrichment!
-                              .iNaturalist.globalObservationCount!
+                          value: enrichment!.iNaturalist.globalObservationCount!
                               .toString(),
                         ),
                     ] else
@@ -452,7 +457,9 @@ class _OnlineIdentificationResultScreenState
                   onPressed: () => Navigator.of(context).pop(),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
-                    side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.5),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: const StadiumBorder(),
                   ),
@@ -465,7 +472,6 @@ class _OnlineIdentificationResultScreenState
       ),
     );
   }
-
 }
 
 class _AlternativeTile extends StatelessWidget {
@@ -482,7 +488,11 @@ class _AlternativeTile extends StatelessWidget {
           Expanded(
             child: Text(
               suggestion.scientificName,
-              style: const TextStyle(color: Colors.white, fontSize: 13.5),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13.5,
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ),
           Text(
@@ -554,8 +564,13 @@ class _ResultCard extends StatelessWidget {
 class _InfoLine extends StatelessWidget {
   final String label;
   final String value;
+  final bool valueItalic;
 
-  const _InfoLine({required this.label, required this.value});
+  const _InfoLine({
+    required this.label,
+    required this.value,
+    this.valueItalic = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -579,7 +594,7 @@ class _InfoLine extends StatelessWidget {
               color: Color(0xCCFFFFFF),
               fontSize: 13,
               height: 1.3,
-            ),
+            ).copyWith(fontStyle: valueItalic ? FontStyle.italic : null),
           ),
         ],
       ),

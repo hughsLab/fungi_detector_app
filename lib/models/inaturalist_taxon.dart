@@ -1,3 +1,5 @@
+import 'taxonomy_node.dart';
+
 enum INaturalistMatchStatus { matched, ambiguous, notFound, unavailable }
 
 class INaturalistTaxonMatch {
@@ -20,6 +22,7 @@ class INaturalistTaxonMatch {
   final String? conservationStatus;
   final String? conservationStatusAuthority;
   final String? conservationStatusPlace;
+  final List<TaxonomyNode> taxonomy;
   final DateTime fetchedAt;
   final DateTime expiresAt;
   final bool isStale;
@@ -44,6 +47,7 @@ class INaturalistTaxonMatch {
     required this.conservationStatus,
     required this.conservationStatusAuthority,
     required this.conservationStatusPlace,
+    this.taxonomy = const [],
     required this.fetchedAt,
     required this.expiresAt,
     this.isStale = false,
@@ -73,6 +77,7 @@ class INaturalistTaxonMatch {
     conservationStatus: null,
     conservationStatusAuthority: null,
     conservationStatusPlace: null,
+    taxonomy: const [],
     fetchedAt: fetchedAt,
     expiresAt: fetchedAt.add(const Duration(days: 1)),
   );
@@ -83,6 +88,7 @@ class INaturalistTaxonMatch {
     String? conservationStatus,
     String? conservationStatusAuthority,
     String? conservationStatusPlace,
+    List<TaxonomyNode>? taxonomy,
     DateTime? fetchedAt,
     DateTime? expiresAt,
     bool? isStale,
@@ -110,6 +116,7 @@ class INaturalistTaxonMatch {
         conservationStatusAuthority ?? this.conservationStatusAuthority,
     conservationStatusPlace:
         conservationStatusPlace ?? this.conservationStatusPlace,
+    taxonomy: taxonomy ?? this.taxonomy,
     fetchedAt: fetchedAt ?? this.fetchedAt,
     expiresAt: expiresAt ?? this.expiresAt,
     isStale: isStale ?? this.isStale,
@@ -136,6 +143,7 @@ class INaturalistTaxonMatch {
     'conservationStatus': conservationStatus,
     'conservationStatusAuthority': conservationStatusAuthority,
     'conservationStatusPlace': conservationStatusPlace,
+    'taxonomy': taxonomy.map((node) => node.toJson()).toList(),
     'fetchedAt': fetchedAt.toIso8601String(),
     'expiresAt': expiresAt.toIso8601String(),
   };
@@ -146,7 +154,8 @@ class INaturalistTaxonMatch {
       (value) => value.name == statusName,
       orElse: () => INaturalistMatchStatus.unavailable,
     );
-    final fetchedAt = DateTime.tryParse(json['fetchedAt']?.toString() ?? '') ??
+    final fetchedAt =
+        DateTime.tryParse(json['fetchedAt']?.toString() ?? '') ??
         DateTime.fromMillisecondsSinceEpoch(0);
     return INaturalistTaxonMatch(
       status: status,
@@ -166,9 +175,18 @@ class INaturalistTaxonMatch {
       globalObservationCount: _int(json['globalObservationCount']),
       regionalObservationCount: _int(json['regionalObservationCount']),
       conservationStatus: json['conservationStatus']?.toString(),
-      conservationStatusAuthority:
-          json['conservationStatusAuthority']?.toString(),
+      conservationStatusAuthority: json['conservationStatusAuthority']
+          ?.toString(),
       conservationStatusPlace: json['conservationStatusPlace']?.toString(),
+      taxonomy: (json['taxonomy'] as List<dynamic>? ?? const [])
+          .whereType<Map>()
+          .map(
+            (item) => TaxonomyNode.fromJson(
+              item.map((key, value) => MapEntry(key.toString(), value)),
+            ),
+          )
+          .where((node) => node.scientificName.trim().isNotEmpty)
+          .toList(),
       fetchedAt: fetchedAt,
       expiresAt:
           DateTime.tryParse(json['expiresAt']?.toString() ?? '') ?? fetchedAt,
@@ -176,6 +194,5 @@ class INaturalistTaxonMatch {
   }
 }
 
-int? _int(dynamic value) => value is num
-    ? value.toInt()
-    : int.tryParse(value?.toString() ?? '');
+int? _int(dynamic value) =>
+    value is num ? value.toInt() : int.tryParse(value?.toString() ?? '');
