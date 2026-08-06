@@ -36,7 +36,7 @@ class InsightsService {
     final regionCounts = <String, int>{};
     final monthCounts = <String, int>{};
     final weekdayCounts = <String, int>{};
-    final mappedLocations = <String>{};
+    final mappedLocations = <String, int>{};
     final confidenceValues = <double>[];
     final onlineConfidenceValues = <double>[];
     final offlineConfidenceValues = <double>[];
@@ -116,9 +116,9 @@ class InsightsService {
         withCoordinates++;
         // Rounded to about 1 km. Exact private coordinates never leave the
         // statistics layer or appear in the UI.
-        mappedLocations.add(
-          '${location.latitude.toStringAsFixed(2)},${location.longitude.toStringAsFixed(2)}',
-        );
+        final key =
+            '${location.latitude.toStringAsFixed(2)},${location.longitude.toStringAsFixed(2)}';
+        mappedLocations[key] = (mappedLocations[key] ?? 0) + 1;
       }
     }
 
@@ -203,20 +203,27 @@ class InsightsService {
       );
     final poisonousSorted = [...poisonousSpecies]
       ..sort((a, b) => b.detectionCount.compareTo(a.detectionCount));
-    final publiclyCounted = speciesInsights
-        .where((item) => item.iNaturalistGlobalObservationCount != null)
-        .toList()
-      ..sort(
-        (a, b) => b.iNaturalistGlobalObservationCount!.compareTo(
-          a.iNaturalistGlobalObservationCount!,
-        ),
-      );
+    final publiclyCounted =
+        speciesInsights
+            .where((item) => item.iNaturalistGlobalObservationCount != null)
+            .toList()
+          ..sort(
+            (a, b) => b.iNaturalistGlobalObservationCount!.compareTo(
+              a.iNaturalistGlobalObservationCount!,
+            ),
+          );
     final conservationCounts = <String, int>{};
+    final phylumCounts = <String, int>{};
+    final familyCounts = <String, int>{};
     for (final item in speciesInsights) {
       final status = item.conservationStatus?.trim();
       if (status != null && status.isNotEmpty) {
         conservationCounts[status] = (conservationCounts[status] ?? 0) + 1;
       }
+      final phylum = _cleanLabel(item.taxonomyPhylum) ?? 'Unclassified';
+      phylumCounts[phylum] = (phylumCounts[phylum] ?? 0) + 1;
+      final family = _cleanLabel(item.taxonomyFamily) ?? 'Unclassified';
+      familyCounts[family] = (familyCounts[family] ?? 0) + 1;
     }
     final matchedINaturalist = speciesInsights
         .where((item) => item.iNaturalistGlobalObservationCount != null)
@@ -296,16 +303,30 @@ class InsightsService {
       iNaturalistMatchedSpecies: matchedINaturalist,
       iNaturalistUnmatchedSpecies: speciesInsights.length - matchedINaturalist,
       staleINaturalistRecords: staleINaturalist,
-      mostPubliclyObservedSpecies:
-          publiclyCounted.isEmpty ? null : publiclyCounted.first,
-      leastPubliclyObservedSpecies:
-          publiclyCounted.isEmpty ? null : publiclyCounted.last,
+      mostPubliclyObservedSpecies: publiclyCounted.isEmpty
+          ? null
+          : publiclyCounted.first,
+      leastPubliclyObservedSpecies: publiclyCounted.isEmpty
+          ? null
+          : publiclyCounted.last,
       conservationStatusCounts: conservationCounts,
       observationsByMonth: _sortedMap(monthCounts),
       poisonousByMonth: _sortedMap(poisonousByMonth),
       observationsByWeekday: weekdayCounts,
       countryCounts: _rankedMap(countryCounts),
       regionCounts: _rankedMap(regionCounts),
+      phylumCounts: _rankedMap(phylumCounts),
+      familyCounts: _rankedMap(familyCounts),
+      mapPoints: mappedLocations.entries
+          .map((entry) {
+            final parts = entry.key.split(',');
+            return InsightMapPoint(
+              latitude: double.parse(parts[0]),
+              longitude: double.parse(parts[1]),
+              observationCount: entry.value,
+            );
+          })
+          .toList(growable: false),
       species: speciesInsights,
       rareSpecies: rareSpecies,
       poisonousSpeciesList: poisonousSorted,
@@ -522,6 +543,8 @@ class _SpeciesAccumulator {
           .whereType<String>()
           .where((item) => item.isNotEmpty)
           .firstOrNull,
+      taxonomyPhylum: identity.species?.taxonomyPhylum,
+      taxonomyFamily: identity.species?.taxonomyFamily,
     );
   }
 }
@@ -541,8 +564,7 @@ ToxicityCategory _toxicityFor(Observation observation) {
   return switch (observation.toxicityLevel) {
     ToxicityLevel.deadly => ToxicityCategory.deadly,
     ToxicityLevel.poisonous => ToxicityCategory.poisonous,
-    ToxicityLevel.potentiallyPoisonous =>
-      ToxicityCategory.potentiallyPoisonous,
+    ToxicityLevel.potentiallyPoisonous => ToxicityCategory.potentiallyPoisonous,
     ToxicityLevel.causesGastrointestinalIllness =>
       ToxicityCategory.causesGastrointestinalIllness,
     ToxicityLevel.psychoactive => ToxicityCategory.psychoactive,

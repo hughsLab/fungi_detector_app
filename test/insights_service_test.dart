@@ -236,6 +236,42 @@ void main() {
     expect(result.totalDetections, 1);
     expect(result.averageConfidence, .65);
   });
+
+  test('builds taxonomy and rounded map data for the fungi profile', () {
+    final species = _species(
+      id: '1',
+      scientific: 'Amanita example',
+      phylum: 'Basidiomycota',
+      family: 'Amanitaceae',
+    );
+    final result = service.calculate(
+      observations: [
+        _observation(
+          id: '1',
+          speciesId: '1',
+          label: 'Amanita example',
+          latitude: -42.8812,
+          longitude: 147.3298,
+        ),
+        _observation(
+          id: '2',
+          speciesId: '1',
+          label: 'Amanita example',
+          latitude: -42.8808,
+          longitude: 147.3301,
+        ),
+      ],
+      species: [species],
+      now: now,
+    );
+
+    expect(result.phylumCounts, {'Basidiomycota': 1});
+    expect(result.familyCounts, {'Amanitaceae': 1});
+    expect(result.mapPoints, hasLength(1));
+    expect(result.mapPoints.single.latitude, -42.88);
+    expect(result.mapPoints.single.longitude, 147.33);
+    expect(result.mapPoints.single.observationCount, 2);
+  });
 }
 
 Species _species({
@@ -243,11 +279,18 @@ Species _species({
   required String scientific,
   String? common,
   String? rarity,
+  String? phylum,
+  String? family,
 }) => Species.fromJson({
   'id': id,
   'scientificName': scientific,
   'commonName': common,
   if (rarity != null) 'rarity': rarity,
+  if (phylum != null || family != null)
+    'taxonomy': {
+      if (phylum != null) 'phylum': phylum,
+      if (family != null) 'family': family,
+    },
 });
 
 Observation _observation({

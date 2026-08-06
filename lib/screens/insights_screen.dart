@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/insight_statistics.dart';
 import '../models/observation.dart';
@@ -8,6 +11,7 @@ import '../models/species.dart';
 import '../repositories/observation_repository.dart';
 import '../repositories/species_repository.dart';
 import '../services/insights_service.dart';
+import '../services/map_tile_cache_service.dart';
 
 typedef ObservationLoader = Future<List<Observation>> Function();
 typedef SpeciesLoader = Future<List<Species>> Function();
@@ -251,63 +255,31 @@ class _InsightsScreenState extends State<InsightsScreen> {
               text:
                   'Global Insights is a read-only snapshot of up to 300 public observations. Counts may not represent the complete global collection.',
             ),
+          _FungiProfileHero(
+            statistics: statistics,
+            personal: _scope == InsightScope.personal,
+          ),
+          const SizedBox(height: 12),
           _SummaryGrid(statistics: statistics),
           const SizedBox(height: 16),
-          _SectionCard(
-            title: 'Detections by Species',
-            subtitle: 'Counts reflect saved, identified observations.',
-            child: Column(
-              children: [
-                TextField(
-                  key: const Key('insights-species-search'),
-                  controller: _searchController,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search),
-                    hintText: 'Search common or scientific name',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<SpeciesInsightSort>(
-                  key: const Key('insights-sort'),
-                  value: _sort,
-                  decoration: const InputDecoration(
-                    labelText: 'Sort species',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: SpeciesInsightSort.values
-                      .map(
-                        (value) => DropdownMenuItem(
-                          value: value,
-                          child: Text(_sortLabel(value)),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) setState(() => _sort = value);
-                  },
-                ),
-                const SizedBox(height: 8),
-                if (species.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Text('No species match your search.'),
-                  ),
-                for (final item in species.take(100))
-                  _SpeciesRow(
-                    key: ValueKey('species-${item.key}'),
-                    insight: item,
-                  ),
-                if (species.length > 100)
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(
-                      'Showing the first 100 of ${species.length} species. Refine your search to see more.',
-                    ),
-                  ),
-              ],
-            ),
+          _FungiActivityCard(
+            statistics: statistics,
+            personal: _scope == InsightScope.personal,
           ),
+          const SizedBox(height: 16),
+          _TaxonomyProfileCard(
+            statistics: statistics,
+            personal: _scope == InsightScope.personal,
+          ),
+          if (statistics.mapPoints.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _FungiMapCard(
+              statistics: statistics,
+              personal: _scope == InsightScope.personal,
+            ),
+          ],
+          const SizedBox(height: 16),
+          const _AboutFungiCard(),
           const SizedBox(height: 16),
           _RarityCard(statistics: statistics),
           const SizedBox(height: 16),
@@ -315,11 +287,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
           const SizedBox(height: 16),
           _INaturalistInsightsCard(statistics: statistics),
           const SizedBox(height: 16),
-          _TrendCard(statistics: statistics),
-          const SizedBox(height: 16),
-          _LocationCard(statistics: statistics),
-          const SizedBox(height: 16),
           _ConfidenceCard(statistics: statistics),
+          const SizedBox(height: 16),
+          _buildSpeciesCard(species),
           const SizedBox(height: 16),
           const _Notice(
             icon: Icons.warning_amber_rounded,
@@ -330,6 +300,63 @@ class _InsightsScreenState extends State<InsightsScreen> {
       ),
     );
   }
+
+  Widget _buildSpeciesCard(List<SpeciesInsight> species) => _SectionCard(
+    title: 'Detections by Species',
+    subtitle: 'Counts reflect saved, identified observations.',
+    child: Column(
+      children: [
+        TextField(
+          key: const Key('insights-species-search'),
+          controller: _searchController,
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.search),
+            hintText: 'Search common or scientific name',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<SpeciesInsightSort>(
+          key: const Key('insights-sort'),
+          value: _sort,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'Sort species',
+            border: OutlineInputBorder(),
+          ),
+          items: SpeciesInsightSort.values
+              .map(
+                (value) => DropdownMenuItem(
+                  value: value,
+                  child: Text(_sortLabel(value)),
+                ),
+              )
+              .toList(),
+          onChanged: (value) {
+            if (value != null) setState(() => _sort = value);
+          },
+        ),
+        const SizedBox(height: 8),
+        if (species.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(20),
+            child: Text('No species match your search.'),
+          ),
+        for (final item in species.take(100))
+          _SpeciesRow(
+            key: ValueKey('species-${item.key}'),
+            insight: item,
+          ),
+        if (species.length > 100)
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text(
+              'Showing the first 100 of ${species.length} species. Refine your search to see more.',
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
 class _ScopeSelector extends StatelessWidget {
@@ -370,57 +397,531 @@ class _ScopeSelector extends StatelessWidget {
   );
 }
 
+class _FungiProfileHero extends StatelessWidget {
+  final InsightStatistics statistics;
+  final bool personal;
+
+  const _FungiProfileHero({required this.statistics, required this.personal});
+
+  @override
+  Widget build(BuildContext context) {
+    final mostFound = statistics.species.isEmpty
+        ? null
+        : statistics.species.first;
+    final lastFound = statistics.species.isEmpty
+        ? null
+        : statistics.species
+              .map((item) => item.lastDetectedAt)
+              .reduce((a, b) => a.isAfter(b) ? a : b);
+    final repeatShare = statistics.totalDetections == 0
+        ? 0
+        : (statistics.repeatDetections * 100 / statistics.totalDetections)
+              .round();
+    return Container(
+      key: const Key('fungi-profile-hero'),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF164C34), Color(0xFF2D774E)],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Color(0x24FFFFFF),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.nature_outlined,
+                  color: Color(0xFFE8F4E8),
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      personal ? 'My fungi profile' : 'Community fungi profile',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 23,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      '${statistics.uniqueSpecies} species from ${statistics.totalObservations} observations',
+                      style: const TextStyle(color: Color(0xFFD7E9DE)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (mostFound != null)
+                _ProfilePill(
+                  icon: Icons.eco_outlined,
+                  text: 'Most found ${_compactName(mostFound.commonName)}',
+                ),
+              if (lastFound != null)
+                _ProfilePill(
+                  icon: Icons.history_rounded,
+                  text: 'Last found ${_shortDate(lastFound)}',
+                ),
+              _ProfilePill(
+                icon: Icons.calendar_month_outlined,
+                text: statistics.mostActiveMonth == null
+                    ? 'Season still emerging'
+                    : 'Peak ${_friendlyMonth(statistics.mostActiveMonth!)}',
+              ),
+              _ProfilePill(
+                icon: Icons.place_outlined,
+                text: '${statistics.uniqueMappedLocations} fungi places',
+              ),
+              _ProfilePill(
+                icon: Icons.repeat_rounded,
+                text: '$repeatShare% rediscoveries',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfilePill extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _ProfilePill({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+    decoration: BoxDecoration(
+      color: const Color(0x1FFFFFFF),
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15, color: const Color(0xFFE8F4E8)),
+        const SizedBox(width: 5),
+        Text(
+          text,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+enum _ActivityView { seasonality, history }
+
+class _FungiActivityCard extends StatefulWidget {
+  final InsightStatistics statistics;
+  final bool personal;
+
+  const _FungiActivityCard({required this.statistics, required this.personal});
+
+  @override
+  State<_FungiActivityCard> createState() => _FungiActivityCardState();
+}
+
+class _FungiActivityCardState extends State<_FungiActivityCard> {
+  _ActivityView _view = _ActivityView.seasonality;
+
+  @override
+  Widget build(BuildContext context) {
+    final values = _view == _ActivityView.seasonality
+        ? _seasonalValues(widget.statistics.observationsByMonth)
+        : widget.statistics.observationsByMonth.entries
+              .toList()
+              .reversed
+              .take(12)
+              .toList()
+              .reversed
+              .toList();
+    return _SectionCard(
+      title: widget.personal ? 'When I find fungi' : 'When fungi are found',
+      subtitle: _view == _ActivityView.seasonality
+          ? 'Your observations grouped by month across all years.'
+          : 'Your most recent monthly observation history.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SegmentedButton<_ActivityView>(
+            key: const Key('fungi-activity-view'),
+            showSelectedIcon: false,
+            expandedInsets: EdgeInsets.zero,
+            segments: const [
+              ButtonSegment(
+                value: _ActivityView.seasonality,
+                label: Text('Seasonality'),
+              ),
+              ButtonSegment(
+                value: _ActivityView.history,
+                label: Text('History'),
+              ),
+            ],
+            selected: {_view},
+            onSelectionChanged: (selection) {
+              setState(() => _view = selection.first);
+            },
+          ),
+          const SizedBox(height: 18),
+          _ObservationBarChart(values: values),
+        ],
+      ),
+    );
+  }
+}
+
+class _ObservationBarChart extends StatelessWidget {
+  final List<MapEntry<String, int>> values;
+
+  const _ObservationBarChart({required this.values});
+
+  @override
+  Widget build(BuildContext context) {
+    if (values.isEmpty) {
+      return const SizedBox(
+        height: 120,
+        child: Center(child: Text('More observations will reveal a pattern.')),
+      );
+    }
+    final maximum = values.fold<int>(1, (max, item) {
+      return item.value > max ? item.value : max;
+    });
+    return Semantics(
+      label: values.map((item) => '${item.key}: ${item.value}').join(', '),
+      child: SizedBox(
+        key: const Key('fungi-observation-chart'),
+        height: 160,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            for (final item in values)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        item.value == 0 ? '' : '${item.value}',
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: Color(0xFF607069),
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Flexible(
+                        child: FractionallySizedBox(
+                          heightFactor: item.value == 0
+                              ? .02
+                              : item.value / maximum,
+                          alignment: Alignment.bottomCenter,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF63A35C),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _shortChartLabel(item.key),
+                        maxLines: 1,
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: Color(0xFF607069),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TaxonomyProfileCard extends StatelessWidget {
+  final InsightStatistics statistics;
+  final bool personal;
+
+  const _TaxonomyProfileCard({
+    required this.statistics,
+    required this.personal,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final phyla = statistics.phylumCounts.entries.take(6).toList();
+    final families = statistics.familyCounts.entries
+        .where((entry) => entry.key != 'Unclassified')
+        .take(8)
+        .toList();
+    final maximum = phyla.fold<int>(1, (value, entry) {
+      return entry.value > value ? entry.value : value;
+    });
+    return _SectionCard(
+      title: personal
+          ? 'My corner of the fungi kingdom'
+          : 'The community fungi kingdom',
+      subtitle: 'The taxonomic range represented in your identified species.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final entry in phyla)
+            _BarRow(label: entry.key, value: entry.value, maximum: maximum),
+          if (families.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const Text(
+              'Most represented families',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 7,
+              runSpacing: 7,
+              children: [
+                for (final entry in families)
+                  Chip(
+                    visualDensity: VisualDensity.compact,
+                    avatar: const Icon(Icons.hub_outlined, size: 16),
+                    label: Text('${entry.key}  ${entry.value}'),
+                  ),
+              ],
+            ),
+          ],
+          if (phyla.length == 1 && phyla.first.key == 'Unclassified')
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text(
+                'Taxonomy will appear as your saved species records are enriched.',
+                style: TextStyle(color: Color(0xFF607069)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FungiMapCard extends StatelessWidget {
+  final InsightStatistics statistics;
+  final bool personal;
+
+  const _FungiMapCard({required this.statistics, required this.personal});
+
+  @override
+  Widget build(BuildContext context) {
+    final points = statistics.mapPoints.take(100).toList();
+    final latitude =
+        points.fold<double>(0, (sum, p) => sum + p.latitude) / points.length;
+    final longitude =
+        points.fold<double>(0, (sum, p) => sum + p.longitude) / points.length;
+    final latitudeSpread = points
+        .map((point) => (point.latitude - latitude).abs())
+        .fold<double>(0, (max, value) => value > max ? value : max);
+    final longitudeSpread = points
+        .map((point) => (point.longitude - longitude).abs())
+        .fold<double>(0, (max, value) => value > max ? value : max);
+    final spread = latitudeSpread > longitudeSpread
+        ? latitudeSpread
+        : longitudeSpread;
+    final zoom = spread < .08
+        ? 11.0
+        : spread < .5
+        ? 8.0
+        : spread < 2
+        ? 6.0
+        : 3.0;
+    return _SectionCard(
+      title: personal ? 'My fungi places' : 'Community fungi places',
+      subtitle:
+          '${statistics.observationsWithCoordinates} observations across ${statistics.uniqueMappedLocations} mapped areas. Locations are rounded for this overview.',
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: SizedBox(
+          key: const Key('fungi-insights-map'),
+          height: 260,
+          child: Stack(
+            children: [
+              FlutterMap(
+                options: MapOptions(
+                  initialCenter: LatLng(latitude, longitude),
+                  initialZoom: zoom,
+                  minZoom: 2,
+                  maxZoom: 16,
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: MapTileCacheService.tileUrlTemplate,
+                    userAgentPackageName:
+                        MapTileCacheService.tileUserAgentPackageName,
+                    tileProvider: MapTileCacheService.instance.tileProvider(
+                      cachingEnabled: true,
+                    ),
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      for (final point in points)
+                        Marker(
+                          point: LatLng(point.latitude, point.longitude),
+                          width: 34,
+                          height: 34,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1F6F47),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x33000000),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                            alignment: Alignment.center,
+                            child: point.observationCount > 1
+                                ? Text(
+                                    '${point.observationCount}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.nature_outlined,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+              const Positioned(
+                right: 8,
+                bottom: 6,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(color: Color(0xCCFFFFFF)),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    child: Text(
+                      '© OpenStreetMap contributors',
+                      style: TextStyle(fontSize: 9),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AboutFungiCard extends StatelessWidget {
+  static final Uri _wikipediaUri = Uri.parse(
+    'https://en.wikipedia.org/wiki/Fungus',
+  );
+
+  const _AboutFungiCard();
+
+  @override
+  Widget build(BuildContext context) => _SectionCard(
+    title: 'The kingdom you are exploring',
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Fungi are their own kingdom of life, including mushrooms, moulds and yeasts. They do not photosynthesise: they absorb nutrients from their surroundings. Many live unseen in soil or dead matter as decomposers, while others form close partnerships with plants and animals.',
+          style: TextStyle(height: 1.45),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'The mushrooms you record are often only the fruiting structures of a much larger hidden organism.',
+          style: TextStyle(height: 1.45, color: Color(0xFF42584C)),
+        ),
+        const SizedBox(height: 8),
+        TextButton.icon(
+          key: const Key('fungi-wikipedia-link'),
+          onPressed: () =>
+              launchUrl(_wikipediaUri, mode: LaunchMode.externalApplication),
+          icon: const Icon(Icons.open_in_new_rounded, size: 18),
+          label: const Text('Learn about Fungi on Wikipedia'),
+        ),
+        const Text(
+          'Overview adapted from Wikipedia · CC BY-SA',
+          style: TextStyle(fontSize: 11, color: Color(0xFF607069)),
+        ),
+      ],
+    ),
+  );
+}
+
 class _SummaryGrid extends StatelessWidget {
   final InsightStatistics statistics;
   const _SummaryGrid({required this.statistics});
   @override
   Widget build(BuildContext context) {
-    final toxicityAvailable =
-        statistics.toxicitySpeciesCounts[ToxicityCategory.unknown] !=
-        statistics.uniqueSpecies;
-    final rarityAvailable =
-        statistics.raritySpeciesCounts[SpeciesRarity.unknown] !=
-        statistics.uniqueSpecies;
     final cards = [
       (
         'Total observations',
         '${statistics.totalObservations}',
         Icons.collections_bookmark_outlined,
       ),
+      ('Fungi species', '${statistics.uniqueSpecies}', Icons.nature_outlined),
       (
-        'Saved detections',
-        '${statistics.totalDetections}',
-        Icons.center_focus_strong_outlined,
-      ),
-      ('Unique species', '${statistics.uniqueSpecies}', Icons.eco_outlined),
-      (
-        'Poisonous detections',
-        toxicityAvailable
-            ? '${statistics.poisonousObservations}'
-            : 'Not available',
-        Icons.warning_amber_rounded,
-      ),
-      (
-        'Rare detections',
-        rarityAvailable ? '${statistics.rareObservations}' : 'Not available',
+        'New this month',
+        '${statistics.newSpeciesThisMonth}',
         Icons.auto_awesome_outlined,
       ),
       (
-        'Unidentified',
-        '${statistics.unidentifiedObservations}',
-        Icons.help_outline,
+        'Mapped places',
+        '${statistics.uniqueMappedLocations}',
+        Icons.map_outlined,
       ),
-      ('Online', '${statistics.onlineDetections}', Icons.cloud_outlined),
       (
-        'Offline',
-        '${statistics.offlineDetections}',
-        Icons.phone_android_outlined,
+        'Last 30 days',
+        '${statistics.observationsLast30Days}',
+        Icons.calendar_today_outlined,
       ),
-      ('Pending sync', '${statistics.pendingCloudSync}', Icons.sync_outlined),
+      ('Rediscoveries', '${statistics.repeatDetections}', Icons.repeat_rounded),
     ];
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = (constraints.maxWidth - 16) / 3;
+        final width = (constraints.maxWidth - 8) / 2;
         return Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -749,102 +1250,6 @@ class _INaturalistInsightsCard extends StatelessWidget {
           'and do not necessarily indicate biological rarity.',
           style: TextStyle(fontSize: 12, color: Color(0xFF607069)),
         ),
-      ],
-    ),
-  );
-}
-
-class _TrendCard extends StatelessWidget {
-  final InsightStatistics statistics;
-  const _TrendCard({required this.statistics});
-  @override
-  Widget build(BuildContext context) => _SectionCard(
-    title: 'Observation Trends',
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _MetricLine('Last 7 days', '${statistics.observationsLast7Days}'),
-        _MetricLine('Last 30 days', '${statistics.observationsLast30Days}'),
-        _MetricLine(
-          'Most active month',
-          statistics.mostActiveMonth ?? 'Not available',
-        ),
-        _MetricLine(
-          'Most active day',
-          statistics.mostActiveWeekday ?? 'Not available',
-        ),
-        _MetricLine(
-          'Average per active month',
-          statistics.averageObservationsPerActiveMonth?.toStringAsFixed(1) ??
-              'Not available',
-        ),
-        _MetricLine(
-          'New species this month',
-          '${statistics.newSpeciesThisMonth}',
-        ),
-        _MetricLine(
-          'First-time / repeat detections',
-          '${statistics.firstTimeDetections} / ${statistics.repeatDetections}',
-        ),
-        const SizedBox(height: 10),
-        for (final entry in statistics.observationsByMonth.entries)
-          _BarRow(
-            label: entry.key,
-            value: entry.value,
-            maximum: statistics.observationsByMonth.values.fold(
-              0,
-              (a, b) => a > b ? a : b,
-            ),
-          ),
-      ],
-    ),
-  );
-}
-
-class _LocationCard extends StatelessWidget {
-  final InsightStatistics statistics;
-  const _LocationCard({required this.statistics});
-  @override
-  Widget build(BuildContext context) => _SectionCard(
-    title: 'Location Insights',
-    subtitle: 'Only broad labels and aggregate coordinate counts are shown.',
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _MetricLine(
-          'With coordinates',
-          '${statistics.observationsWithCoordinates}',
-        ),
-        _MetricLine(
-          'Without coordinates',
-          '${statistics.observationsWithoutCoordinates}',
-        ),
-        _MetricLine(
-          'Unique mapped areas',
-          '${statistics.uniqueMappedLocations}',
-        ),
-        _MetricLine(
-          'Most active location',
-          statistics.mostActiveLocation ?? 'Not available',
-        ),
-        if (statistics.countryCounts.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          const Text(
-            'Countries',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          for (final entry in statistics.countryCounts.entries.take(8))
-            _MetricLine(entry.key, '${entry.value}'),
-        ],
-        if (statistics.regionCounts.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          const Text(
-            'States & regions',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          for (final entry in statistics.regionCounts.entries.take(8))
-            _MetricLine(entry.key, '${entry.value}'),
-        ],
       ],
     ),
   );
@@ -1185,6 +1590,100 @@ String _sourceLabel(DetectionSourceCategory value) => switch (value) {
   DetectionSourceCategory.both => 'Both',
   DetectionSourceCategory.unknown => 'Unknown source',
 };
+List<MapEntry<String, int>> _seasonalValues(Map<String, int> history) {
+  final totals = List<int>.filled(12, 0);
+  for (final entry in history.entries) {
+    final parts = entry.key.split('-');
+    final month = parts.length > 1 ? int.tryParse(parts.last) : null;
+    if (month != null && month >= 1 && month <= 12) {
+      totals[month - 1] += entry.value;
+    }
+  }
+  const labels = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return [
+    for (var index = 0; index < 12; index++)
+      MapEntry(labels[index], totals[index]),
+  ];
+}
+
+String _shortChartLabel(String value) {
+  if (!value.contains('-')) return value;
+  final parts = value.split('-');
+  if (parts.length < 2) return value;
+  final month = int.tryParse(parts.last);
+  if (month == null || month < 1 || month > 12) return value;
+  const labels = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return labels[month - 1];
+}
+
+String _friendlyMonth(String value) {
+  final parts = value.split('-');
+  final month = int.tryParse(parts.last);
+  if (month == null || month < 1 || month > 12) return value;
+  const labels = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+  return labels[month - 1];
+}
+
+String _compactName(String value) =>
+    value.length <= 26 ? value : '${value.substring(0, 25)}…';
+
+String _shortDate(DateTime value) {
+  const labels = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return '${value.day} ${labels[value.month - 1]}';
+}
+
 String _percent(double? value) =>
     value == null ? 'Not available' : '${(value * 100).toStringAsFixed(1)}%';
 String _date(DateTime value) =>

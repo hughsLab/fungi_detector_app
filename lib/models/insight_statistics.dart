@@ -40,6 +40,8 @@ class SpeciesInsight {
   final ToxicityCategory toxicity;
   final int? iNaturalistGlobalObservationCount;
   final String? conservationStatus;
+  final String? taxonomyPhylum;
+  final String? taxonomyFamily;
 
   const SpeciesInsight({
     required this.key,
@@ -57,6 +59,20 @@ class SpeciesInsight {
     required this.toxicity,
     required this.iNaturalistGlobalObservationCount,
     required this.conservationStatus,
+    required this.taxonomyPhylum,
+    required this.taxonomyFamily,
+  });
+}
+
+class InsightMapPoint {
+  final double latitude;
+  final double longitude;
+  final int observationCount;
+
+  const InsightMapPoint({
+    required this.latitude,
+    required this.longitude,
+    required this.observationCount,
   });
 }
 
@@ -109,6 +125,9 @@ class InsightStatistics {
   final Map<String, int> observationsByWeekday;
   final Map<String, int> countryCounts;
   final Map<String, int> regionCounts;
+  final Map<String, int> phylumCounts;
+  final Map<String, int> familyCounts;
+  final List<InsightMapPoint> mapPoints;
   final List<SpeciesInsight> species;
   final List<SpeciesInsight> rareSpecies;
   final List<SpeciesInsight> poisonousSpeciesList;
@@ -163,6 +182,9 @@ class InsightStatistics {
     required Map<String, int> observationsByWeekday,
     required Map<String, int> countryCounts,
     required Map<String, int> regionCounts,
+    required Map<String, int> phylumCounts,
+    required Map<String, int> familyCounts,
+    required List<InsightMapPoint> mapPoints,
     required List<SpeciesInsight> species,
     required List<SpeciesInsight> rareSpecies,
     required List<SpeciesInsight> poisonousSpeciesList,
@@ -176,6 +198,9 @@ class InsightStatistics {
        observationsByWeekday = Map.unmodifiable(observationsByWeekday),
        countryCounts = Map.unmodifiable(countryCounts),
        regionCounts = Map.unmodifiable(regionCounts),
+       phylumCounts = Map.unmodifiable(phylumCounts),
+       familyCounts = Map.unmodifiable(familyCounts),
+       mapPoints = List.unmodifiable(mapPoints),
        species = List.unmodifiable(species),
        rareSpecies = List.unmodifiable(rareSpecies),
        poisonousSpeciesList = List.unmodifiable(poisonousSpeciesList);

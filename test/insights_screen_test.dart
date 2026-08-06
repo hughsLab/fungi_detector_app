@@ -107,6 +107,12 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Total observations'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('insights-species-search')),
+        700,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
       expect(find.text('Detections by Species'), findsOneWidget);
       expect(find.byKey(const Key('insights-species-search')), findsOneWidget);
       expect(find.byKey(const Key('insights-sort')), findsOneWidget);
@@ -148,6 +154,12 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('insights-species-search')),
+      700,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('insights-species-search')),
       'boletus',
@@ -155,6 +167,38 @@ void main() {
     await tester.pump();
     expect(find.text('Second cap'), findsWidgets);
     expect(find.text('First cap'), findsNothing);
+  });
+
+  testWidgets('presents observations as a personal fungi profile', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final species = Species.fromJson({
+      'id': '1',
+      'scientificName': 'Amanita example',
+      'commonName': 'Example cap',
+      'taxonomy': {'phylum': 'Basidiomycota', 'family': 'Amanitaceae'},
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        home: InsightsScreen(
+          personalLoader: () async => [_observation('1', '1', 'Example cap')],
+          speciesLoader: () async => [species],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('fungi-profile-hero')), findsOneWidget);
+    expect(find.text('My fungi profile'), findsOneWidget);
+    await tester.drag(find.byType(ListView), const Offset(0, -520));
+    await tester.pumpAndSettle();
+    expect(find.text('When I find fungi'), findsOneWidget);
+    expect(find.byKey(const Key('fungi-observation-chart')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
 
