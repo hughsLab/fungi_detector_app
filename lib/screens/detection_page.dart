@@ -17,6 +17,7 @@ import '../detection/stability_engine.dart';
 import '../models/navigation_args.dart';
 import '../models/observation.dart';
 import '../models/species.dart';
+import '../native/image_yuv_frame_decoder.dart';
 import '../native/native_yolo_engine.dart';
 import '../repositories/species_repository.dart';
 import '../services/country_location_service.dart';
@@ -306,6 +307,7 @@ class _DetectionPageState extends State<DetectionPage>
   bool _engineReady = false;
   bool _isCapturing = false;
   bool _isScanning = false;
+  bool _offlinePhotoLoading = false;
   bool _onlineLoading = false;
   _IdentificationMode _identificationMode = _IdentificationMode.offline;
   int _scanRemainingSeconds = 5;
@@ -1667,6 +1669,135 @@ class _DetectionPageState extends State<DetectionPage>
     }
   }
 
+  Future<void> _startOfflineIdentificationFromCamera() async {
+    if (_offlinePhotoLoading || _onlineLoading || _isCapturing || _isScanning) {
+      return;
+    }
+
+    try {
+      setState(() {
+        _isCapturing = true;
+        _offlinePhotoLoading = true;
+      });
+      final photoPath = await _capturePhoto();
+      if (photoPath == null || !mounted) {
+        return;
+      }
+      await _runOfflinePhotoIdentification(photoPath);
+    } finally {
+      await _restartImageStreamAfterPhotoAction();
+      if (mounted) {
+        setState(() {
+          _isCapturing = false;
+          _offlinePhotoLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _selectOfflineIdentificationPhoto() async {
+    if (_offlinePhotoLoading || _onlineLoading || _isCapturing || _isScanning) {
+      return;
+    }
+
+    try {
+      final image = await _imagePicker.pickImage(
+        source: image_picker.ImageSource.gallery,
+        imageQuality: 92,
+        maxWidth: 1600,
+        maxHeight: 1600,
+      );
+      if (image == null || !mounted) {
+        return;
+      }
+      setState(() {
+        _isCapturing = true;
+        _offlinePhotoLoading = true;
+      });
+      await _runOfflinePhotoIdentification(image.path);
+    } catch (e, stack) {
+      debugPrint('Offline photo selection error: $e');
+      debugPrintStack(stackTrace: stack);
+      _showMessage('Could not analyze the selected photo: $e');
+    } finally {
+      await _restartImageStreamAfterPhotoAction();
+      if (mounted) {
+        setState(() {
+          _isCapturing = false;
+          _offlinePhotoLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _runOfflinePhotoIdentification(String photoPath) async {
+    if (!_engineReady) {
+      _showMessage('Offline detection is still loading. Please try again.');
+      return;
+    }
+
+    final navigator = Navigator.of(context);
+    try {
+      final frame = await ImageYuvFrameDecoder.decodeFile(photoPath);
+      final selection = await _runCaptureDetectors(frame);
+      if (!mounted) return;
+      final args = _resultArgsFromStillPhoto(selection, photoPath);
+      await navigator.pushNamed('/detection-result', arguments: args);
+    } catch (e, stack) {
+      debugPrint('Offline still-photo detection error: $e');
+      debugPrintStack(stackTrace: stack);
+      _showMessage('Could not analyze the selected photo: $e');
+    }
+  }
+
+  DetectionResultArgs _resultArgsFromStillPhoto(
+    _CaptureSelection? selection,
+    String photoPath,
+  ) {
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final emptySummary = _ScanWindowSummary(
+      startedAtMs: nowMs,
+      endedAtMs: nowMs,
+      supportByName: <String, _ScanWindowSupport>{},
+    );
+    if (selection == null ||
+        selection.primary.finalScore < _scanFinalAcceptanceThreshold) {
+      return _uncertainResultArgsFromScan(
+        emptySummary,
+        photoPath,
+        possibleCaptureSelection: selection,
+      );
+    }
+
+    return _resultArgsFromCaptureSelection(
+      selection,
+      null,
+      photoPath,
+      metrics: const _ResultWindowMetrics(
+        top1VoteRatio: 1.0,
+        windowFrameCount: 1,
+        windowDurationMs: 0,
+        stabilityWinCount: 1,
+        stabilityWindowSize: 1,
+      ),
+      isConfirmed: true,
+    );
+  }
+
+  Future<void> _restartImageStreamAfterPhotoAction() async {
+    if (!mounted) return;
+    try {
+      if (_camera != null &&
+          _camera!.value.isInitialized &&
+          !_camera!.value.isStreamingImages) {
+        await _startImageStream();
+      }
+    } catch (e, stack) {
+      debugPrint('Failed to restart camera stream: $e');
+      debugPrintStack(stackTrace: stack);
+    }
+  }
+
   Future<void> _selectOnlineIdentificationPhoto() async {
     if (_onlineLoading || _isCapturing || _isScanning) {
       return;
@@ -1679,6 +1810,8 @@ class _DetectionPageState extends State<DetectionPage>
       final image = await _imagePicker.pickImage(
         source: image_picker.ImageSource.gallery,
         imageQuality: 92,
+        maxWidth: 1600,
+        maxHeight: 1600,
       );
       if (image == null || !mounted) {
         return;
@@ -2517,7 +2650,7 @@ class _DetectionPageState extends State<DetectionPage>
     return Scaffold(
       backgroundColor: _deepGreen,
       appBar: AppBar(
-        title: const Text('Realtime Detection'),
+        title: const Text('Fungi Detection'),
         backgroundColor: _deepGreen,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -2567,17 +2700,22 @@ class _DetectionPageState extends State<DetectionPage>
                 final String? topSpeciesId = ui.speciesId;
                 final bool isOnlineMode =
                     _identificationMode == _IdentificationMode.online;
-                final String visibleStatusText = _onlineLoading
+                final String visibleStatusText = _offlinePhotoLoading
+                    ? 'Analyzing photo on this device...'
+                    : _onlineLoading
                     ? 'Checking with online identification...'
                     : isOnlineMode
                     ? 'Take or select one clear photo'
                     : statusText;
-                final IconData visibleStatusIcon = _onlineLoading
+                final IconData visibleStatusIcon = _offlinePhotoLoading
+                    ? Icons.image_search
+                    : _onlineLoading
                     ? Icons.cloud_sync
                     : isOnlineMode
                     ? Icons.cloud_upload
                     : statusIcon;
-                final Color visibleAccent = _onlineLoading || isOnlineMode
+                final Color visibleAccent =
+                    _offlinePhotoLoading || _onlineLoading || isOnlineMode
                     ? _accentGreen
                     : isReady
                     ? _highlightGreen
@@ -2742,30 +2880,62 @@ class _DetectionPageState extends State<DetectionPage>
                                           ],
                                         )
                                       else
-                                        SizedBox(
-                                          width: 220,
-                                          child: ElevatedButton.icon(
-                                            onPressed:
-                                                (_isCapturing || _isScanning)
-                                                ? null
-                                                : _startTimedScan,
-                                            icon: Icon(
-                                              _isScanning
-                                                  ? Icons.hourglass_top
-                                                  : Icons.center_focus_strong,
+                                        Wrap(
+                                          alignment: WrapAlignment.center,
+                                          spacing: 10,
+                                          runSpacing: 8,
+                                          children: [
+                                            ElevatedButton.icon(
+                                              onPressed: (_isCapturing ||
+                                                      _isScanning ||
+                                                      _offlinePhotoLoading)
+                                                  ? null
+                                                  : _startTimedScan,
+                                              icon: Icon(
+                                                _isScanning
+                                                    ? Icons.hourglass_top
+                                                    : Icons.center_focus_strong,
+                                              ),
+                                              label: Text(
+                                                _isScanning
+                                                    ? 'Scanning... $_scanRemainingSeconds'
+                                                    : 'Live scan',
+                                              ),
+                                              style: _primaryActionStyle(),
                                             ),
-                                            label: Text(
-                                              _isCapturing
-                                                  ? 'Capturing...'
-                                                  : _isScanning
-                                                  ? 'Scanning... $_scanRemainingSeconds'
-                                                  : 'Scan fungus',
+                                            ElevatedButton.icon(
+                                              onPressed: (_isCapturing ||
+                                                      _isScanning ||
+                                                      _offlinePhotoLoading)
+                                                  ? null
+                                                  : _startOfflineIdentificationFromCamera,
+                                              icon: const Icon(Icons.camera_alt),
+                                              label: const Text('Take photo'),
+                                              style: _primaryActionStyle(),
                                             ),
-                                            style: _primaryActionStyle(
-                                              disabledMuted:
-                                                  !(_isCapturing || _isScanning),
+                                            OutlinedButton.icon(
+                                              onPressed: (_isCapturing ||
+                                                      _isScanning ||
+                                                      _offlinePhotoLoading)
+                                                  ? null
+                                                  : _selectOfflineIdentificationPhoto,
+                                              icon: const Icon(Icons.photo_library),
+                                              label: const Text('Choose photo'),
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor: Colors.white,
+                                                side: BorderSide(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.6),
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 12,
+                                                ),
+                                                shape: const StadiumBorder(),
+                                              ),
                                             ),
-                                          ),
+                                          ],
                                         ),
                                     ],
                                   ),
